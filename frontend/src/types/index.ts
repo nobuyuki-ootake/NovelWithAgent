@@ -19,6 +19,7 @@ export interface PlotElement {
   title: string;
   description: string;
   order: number;
+  status: "決定" | "検討中";
 }
 
 // キャラクターの型定義
@@ -26,12 +27,15 @@ export interface Character {
   id: string;
   name: string;
   role: "protagonist" | "antagonist" | "supporting";
+  gender?: string;
+  birthDate?: string;
   description: string;
   background: string;
   motivation: string;
   traits: string[];
   relationships: CharacterRelationship[];
   imageUrl?: string;
+  customFields?: CustomField[];
 }
 
 // キャラクター関係の型定義
@@ -107,4 +111,11 @@ export interface Feedback {
   targetId?: string; // 章やシーンなどの対象ID
   targetType?: "chapter" | "scene" | "character" | "plot" | "entire";
   createdAt: Date;
+}
+
+// カスタムフィールドの型定義
+export interface CustomField {
+  id: string;
+  name: string;
+  value: string;
 }

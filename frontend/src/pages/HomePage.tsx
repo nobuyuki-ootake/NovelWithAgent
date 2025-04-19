@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -132,8 +131,14 @@ const HomePage: React.FC = () => {
         AI共創型小説作成ツール
       </Typography>
 
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          gap: 4,
+        }}
+      >
+        <Box sx={{ flex: 1 }}>
           <Card sx={{ height: "100%" }}>
             <CardContent>
               <Typography variant="h5" component="h2" gutterBottom>
@@ -193,9 +198,9 @@ const HomePage: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: 1 }}>
           <Card sx={{ height: "100%" }}>
             <CardContent>
               <Typography variant="h5" component="h2" gutterBottom>
@@ -247,8 +252,8 @@ const HomePage: React.FC = () => {
               </List>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* 新規プロジェクト作成ダイアログ */}
       <Dialog

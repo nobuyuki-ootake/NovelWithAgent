@@ -10,6 +10,8 @@ import AppLayout from "./components/layout/AppLayout";
 import SynopsisPage from "./pages/SynopsisPage";
 import WritingPage from "./pages/WritingPage";
 import HomePage from "./pages/HomePage";
+import PlotPage from "./pages/PlotPage";
+import CharactersPage from "./pages/CharactersPage";
 import { appModeState, currentProjectState } from "./store/atoms";
 import { NovelProject } from "./types";
 
@@ -55,9 +57,9 @@ function MainContent() {
       case "synopsis":
         return <SynopsisPage />;
       case "plot":
-        return <div>プロットページ（未実装）</div>;
+        return <PlotPage />;
       case "characters":
-        return <div>キャラクターページ（未実装）</div>;
+        return <CharactersPage />;
       case "worldbuilding":
         return <div>世界観構築ページ（未実装）</div>;
       case "timeline":

@@ -10,6 +10,7 @@ import {
   Divider,
   IconButton,
   Typography,
+  Button,
 } from "@mui/material";
 import {
   ShortText as SynopsisIcon,
@@ -20,9 +21,15 @@ import {
   MenuBook as WritingIcon,
   Feedback as FeedbackIcon,
   ChevronLeft as ChevronLeftIcon,
+  ExitToApp as ExitIcon,
 } from "@mui/icons-material";
 import { useRecoilState } from "recoil";
-import { appModeState, AppMode, sidebarOpenState } from "../../store/atoms";
+import {
+  appModeState,
+  AppMode,
+  sidebarOpenState,
+  currentProjectState,
+} from "../../store/atoms";
 
 interface SidebarProps {
   open: boolean;
@@ -31,13 +38,50 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ open }) => {
   const [appMode, setAppMode] = useRecoilState(appModeState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
+  const [, setCurrentProject] = useRecoilState(currentProjectState);
 
   const handleModeChange = (mode: AppMode) => {
-    setAppMode(mode);
+    // 編集中の場合はイベントを発火してモード変更を試みる
+    const event = new CustomEvent("modeChangeAttempt", {
+      detail: { mode },
+      cancelable: true,
+    });
+
+    // イベントを発行して、編集中のページがキャンセルしたかどうかを確認
+    const proceedWithChange = document.dispatchEvent(event);
+
+    // イベントがキャンセルされなかった場合はモードを変更
+    if (proceedWithChange) {
+      setAppMode(mode);
+    }
   };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  // ホームに戻る処理
+  const handleReturnToHome = () => {
+    // 編集中の場合はイベントを発火して移動を試みる
+    const event = new CustomEvent("modeChangeAttempt", {
+      detail: { mode: "home" },
+      cancelable: true,
+    });
+
+    // イベントを発行して、編集中のページがキャンセルしたかどうかを確認
+    const proceedWithChange = document.dispatchEvent(event);
+
+    // イベントがキャンセルされなかった場合はホームに戻る
+    if (proceedWithChange) {
+      // 現在のプロジェクトをクリア
+      setCurrentProject(null);
+
+      // ローカルストレージからcurrentProjectIdを削除
+      localStorage.removeItem("currentProjectId");
+
+      // ホーム画面に戻るためにURLを変更
+      window.location.href = "/";
+    }
   };
 
   const menuItems = [
@@ -77,9 +121,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
         "& .MuiDrawer-paper": {
           width: 240,
           boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
+      {/* ヘッダー部分 */}
       <Box
         sx={{
           display: "flex",
@@ -96,7 +143,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
         </IconButton>
       </Box>
       <Divider />
-      <List>
+
+      {/* メニューリスト */}
+      <List sx={{ flexGrow: 1, overflow: "auto" }}>
         {menuItems.map((item) => (
           <ListItem key={item.mode} disablePadding>
             <ListItemButton
@@ -109,6 +158,28 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
           </ListItem>
         ))}
       </List>
+
+      {/* 「ホームに戻る」ボタン */}
+      <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider" }}>
+        <Button
+          variant="outlined"
+          color="secondary"
+          fullWidth
+          startIcon={<ExitIcon />}
+          onClick={handleReturnToHome}
+          sx={{ mb: 1 }}
+        >
+          ホームに戻る
+        </Button>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          align="center"
+          sx={{ display: "block" }}
+        >
+          ※作業中のプロジェクトを閉じます
+        </Typography>
+      </Box>
     </Drawer>
   );
 };
