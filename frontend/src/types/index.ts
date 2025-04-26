@@ -53,6 +53,18 @@ export interface WorldBuilding {
   places: Place[];
   cultures: Culture[];
   history: string;
+  mapImageUrl?: string;
+  freeFields?: WorldBuildingFreeField[];
+  timelineSettings?: {
+    startDate: string;
+  };
+}
+
+// 世界観の自由入力フィールド
+export interface WorldBuildingFreeField {
+  id: string;
+  title: string;
+  content: string;
 }
 
 // 場所の型定義

@@ -12,6 +12,8 @@ import WritingPage from "./pages/WritingPage";
 import HomePage from "./pages/HomePage";
 import PlotPage from "./pages/PlotPage";
 import CharactersPage from "./pages/CharactersPage";
+import WorldBuildingPage from "./pages/WorldBuildingPage";
+import TimelinePage from "./pages/TimelinePage";
 import { appModeState, currentProjectState } from "./store/atoms";
 import { NovelProject } from "./types";
 
@@ -61,9 +63,9 @@ function MainContent() {
       case "characters":
         return <CharactersPage />;
       case "worldbuilding":
-        return <div>世界観構築ページ（未実装）</div>;
+        return <WorldBuildingPage />;
       case "timeline":
-        return <div>タイムラインページ（未実装）</div>;
+        return <TimelinePage />;
       case "writing":
         return <WritingPage />;
       case "feedback":
