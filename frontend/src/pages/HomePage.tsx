@@ -1,258 +1,172 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Box,
   Typography,
-  TextField,
   Button,
-  Card,
-  CardContent,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
+  Paper,
   List,
   ListItem,
   ListItemText,
-  ListItemButton,
+  Container,
+  Stack,
 } from "@mui/material";
-import { useRecoilState } from "recoil";
-import { v4 as uuidv4 } from "uuid";
-import { currentProjectState } from "../store/atoms";
-import { NovelProject } from "../types";
-import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import AddIcon from "@mui/icons-material/Add";
+import { styled } from "@mui/material/styles";
+import { useHome } from "../hooks/useHome";
+import ProjectCard from "../components/home/ProjectCard";
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  marginBottom: theme.spacing(3),
+}));
 
 const HomePage: React.FC = () => {
-  const [projects, setProjects] = useState<NovelProject[]>([]);
-  const [, setCurrentProject] = useRecoilState(currentProjectState);
-  const [newProjectTitle, setNewProjectTitle] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-
-  // ローカルストレージからプロジェクト一覧を取得
-  useEffect(() => {
-    const savedProjects = localStorage.getItem("novelProjects");
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
-    }
-  }, []);
-
-  // プロジェクト一覧を保存
-  const saveProjects = (updatedProjects: NovelProject[]) => {
-    localStorage.setItem("novelProjects", JSON.stringify(updatedProjects));
-    setProjects(updatedProjects);
-  };
-
-  // 新規プロジェクト作成ダイアログを開く
-  const handleOpenDialog = () => {
-    setDialogOpen(true);
-  };
-
-  // 新規プロジェクト作成ダイアログを閉じる
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setNewProjectTitle("");
-  };
-
-  // 新規プロジェクト作成
-  const handleCreateProject = () => {
-    if (!newProjectTitle.trim()) return;
-
-    const newProject: NovelProject = {
-      id: uuidv4(),
-      title: newProjectTitle.trim(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      synopsis: "",
-      plot: [],
-      characters: [],
-      worldBuilding: {
-        id: uuidv4(),
-        setting: "",
-        rules: [],
-        places: [],
-        cultures: [],
-        history: "",
-      },
-      timeline: [],
-      chapters: [],
-      feedback: [],
-    };
-
-    const updatedProjects = [...projects, newProject];
-    saveProjects(updatedProjects);
-
-    // 新規プロジェクトを選択
-    setCurrentProject(newProject);
-    localStorage.setItem("currentProjectId", newProject.id);
-
-    handleCloseDialog();
-  };
-
-  // プロジェクト選択
-  const handleSelectProject = (project: NovelProject) => {
-    setCurrentProject(project);
-    localStorage.setItem("currentProjectId", project.id);
-  };
-
-  // 削除確認ダイアログを開く
-  const handleOpenDeleteDialog = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setProjectToDelete(id);
-    setDeleteDialogOpen(true);
-  };
-
-  // 削除確認ダイアログを閉じる
-  const handleCloseDeleteDialog = () => {
-    setDeleteDialogOpen(false);
-    setProjectToDelete(null);
-  };
-
-  // プロジェクト削除
-  const handleDeleteProject = () => {
-    if (!projectToDelete) return;
-
-    const updatedProjects = projects.filter(
-      (project) => project.id !== projectToDelete
-    );
-    saveProjects(updatedProjects);
-    handleCloseDeleteDialog();
-  };
+  const {
+    projects,
+    currentProject,
+    newProjectTitle,
+    setNewProjectTitle,
+    dialogOpen,
+    deleteDialogOpen,
+    handleOpenDialog,
+    handleCloseDialog,
+    handleCreateProject,
+    handleSelectProject,
+    handleOpenDeleteDialog,
+    handleCloseDeleteDialog,
+    handleDeleteProject,
+  } = useHome();
 
   return (
-    <Box sx={{ p: 4, maxWidth: "1200px", mx: "auto" }}>
-      <Typography
-        variant="h3"
-        component="h1"
-        gutterBottom
-        align="center"
-        sx={{ mb: 4 }}
-      >
-        AI共創型小説作成ツール
-      </Typography>
-
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          gap: 4,
-        }}
-      >
-        <Box sx={{ flex: 1 }}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Typography variant="h5" component="h2" gutterBottom>
-                プロジェクト一覧
-              </Typography>
-
-              {projects.length === 0 ? (
-                <Typography
-                  variant="body1"
-                  color="text.secondary"
-                  sx={{ my: 4, textAlign: "center" }}
-                >
-                  まだプロジェクトがありません。新しいプロジェクトを作成してください。
-                </Typography>
-              ) : (
-                <List>
-                  {projects.map((project) => (
-                    <ListItem
-                      key={project.id}
-                      disablePadding
-                      secondaryAction={
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<DeleteIcon />}
-                          onClick={(e) => handleOpenDeleteDialog(project.id, e)}
-                        >
-                          削除
-                        </Button>
-                      }
-                    >
-                      <ListItemButton
-                        onClick={() => handleSelectProject(project)}
-                      >
-                        <ListItemText
-                          primary={project.title}
-                          secondary={`作成日: ${new Date(
-                            project.createdAt
-                          ).toLocaleDateString()}`}
-                        />
-                      </ListItemButton>
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-
-              <Box sx={{ mt: 3, textAlign: "center" }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  startIcon={<AddIcon />}
-                  onClick={handleOpenDialog}
-                >
-                  新規プロジェクト作成
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
+    <Container maxWidth="lg">
+      <Box sx={{ py: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 4,
+          }}
+        >
+          <Typography variant="h4" component="h1" gutterBottom>
+            小説創作支援ツール
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={handleOpenDialog}
+          >
+            新規プロジェクト
+          </Button>
         </Box>
 
-        <Box sx={{ flex: 1 }}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
+        <StyledPaper>
+          <Typography variant="h5" component="h2" gutterBottom>
+            プロジェクト一覧
+          </Typography>
+          {projects.length === 0 ? (
+            <Typography variant="body1" color="textSecondary" sx={{ my: 2 }}>
+              プロジェクトがありません。新規プロジェクトを作成してください。
+            </Typography>
+          ) : (
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mt: 2 }}>
+              {projects.map((project) => (
+                <Box
+                  key={project.id}
+                  sx={{
+                    width: {
+                      xs: "100%",
+                      sm: "calc(50% - 16px)",
+                      md: "calc(33.33% - 16px)",
+                    },
+                  }}
+                >
+                  <ProjectCard
+                    project={project}
+                    isSelected={currentProject?.id === project.id}
+                    onSelect={() => handleSelectProject(project)}
+                    onDelete={handleOpenDeleteDialog.bind(null, project.id)}
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+        </StyledPaper>
+
+        <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
+          <Box sx={{ flex: 1 }}>
+            <StyledPaper>
               <Typography variant="h5" component="h2" gutterBottom>
-                AI共創型小説作成について
+                ツールの特徴
               </Typography>
-              <Typography variant="body1" paragraph>
-                このツールはAIの力を借りながら、あなた自身の創造性を最大限に引き出すための共創型小説作成ツールです。
-              </Typography>
-              <Typography variant="body1" paragraph>
-                物語のあらすじ、プロット、キャラクター設定から章立てまで、創作の全工程をAIがサポートします。
-              </Typography>
-              <Typography variant="body1" paragraph>
-                始めるには、左側の「新規プロジェクト作成」ボタンをクリックして、作品のタイトルを入力してください。
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: "bold", mt: 2 }}>
-                主な機能:
-              </Typography>
-              <List dense>
+              <List>
                 <ListItem>
                   <ListItemText
-                    primary="あらすじ作成"
-                    secondary="物語の概要を決めましょう"
+                    primary="物語の構造化"
+                    secondary="あらすじ、プロット、キャラクター設定などを体系的に管理できます。"
                   />
                 </ListItem>
                 <ListItem>
                   <ListItemText
-                    primary="プロット構成"
-                    secondary="物語の流れを組み立てましょう"
+                    primary="世界観構築支援"
+                    secondary="小説の世界観や設定を詳細に作り込むための各種ツールを提供します。"
                   />
                 </ListItem>
                 <ListItem>
                   <ListItemText
-                    primary="キャラクター設定"
-                    secondary="魅力的な登場人物を作り出しましょう"
+                    primary="タイムライン管理"
+                    secondary="物語の時系列を視覚的に管理し、整合性を保ちながら創作できます。"
                   />
                 </ListItem>
                 <ListItem>
                   <ListItemText
-                    primary="世界観構築"
-                    secondary="物語の舞台を設定しましょう"
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemText
-                    primary="本文執筆"
-                    secondary="400字縦書き原稿用紙風のエディタで執筆しましょう"
+                    primary="AIアシスタント連携"
+                    secondary="創作過程でAIアシスタントからアドバイスやアイデアを得られます。"
                   />
                 </ListItem>
               </List>
-            </CardContent>
-          </Card>
-        </Box>
+            </StyledPaper>
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <StyledPaper>
+              <Typography variant="h5" component="h2" gutterBottom>
+                使い方
+              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="1. プロジェクトの作成"
+                    secondary="「新規プロジェクト」ボタンから小説のプロジェクトを作成します。"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="2. 設定の作成"
+                    secondary="あらすじ、プロット、キャラクター、世界観などの設定を作成します。"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="3. タイムラインの整理"
+                    secondary="物語の出来事を時系列順に配置し、整合性を確認します。"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="4. 執筆と編集"
+                    secondary="設定に基づいて執筆を進め、必要に応じてAIのサポートを受けられます。"
+                  />
+                </ListItem>
+              </List>
+            </StyledPaper>
+          </Box>
+        </Stack>
       </Box>
 
       {/* 新規プロジェクト作成ダイアログ */}
@@ -267,20 +181,22 @@ const HomePage: React.FC = () => {
           <TextField
             autoFocus
             margin="dense"
-            label="作品タイトル"
+            label="プロジェクト名"
+            type="text"
             fullWidth
-            variant="outlined"
             value={newProjectTitle}
             onChange={(e) => setNewProjectTitle(e.target.value)}
-            placeholder="例：星空の約束"
+            variant="outlined"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>キャンセル</Button>
+          <Button onClick={handleCloseDialog} color="primary">
+            キャンセル
+          </Button>
           <Button
             onClick={handleCreateProject}
-            variant="contained"
             color="primary"
+            variant="contained"
             disabled={!newProjectTitle.trim()}
           >
             作成
@@ -288,22 +204,29 @@ const HomePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* 削除確認ダイアログ */}
+      {/* プロジェクト削除確認ダイアログ */}
       <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>プロジェクトを削除しますか？</DialogTitle>
+        <DialogTitle>プロジェクトの削除</DialogTitle>
         <DialogContent>
-          <Typography>
-            このプロジェクトを削除すると、関連するすべてのデータが失われます。この操作は元に戻せません。
+          <Typography>このプロジェクトを削除してもよろしいですか？</Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            この操作は元に戻せません。
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDeleteDialog}>キャンセル</Button>
-          <Button onClick={handleDeleteProject} color="error">
+          <Button onClick={handleCloseDeleteDialog} color="primary">
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleDeleteProject}
+            color="error"
+            variant="contained"
+          >
             削除
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

@@ -58,3 +58,52 @@ export const chatPanelOpenState = atom<boolean>({
   key: "chatPanelOpen",
   default: true,
 });
+
+// AIエージェント連携機能用のステート
+
+// AIチャットパネルの表示状態
+export const aiChatPanelOpenState = atom<boolean>({
+  key: "aiChatPanelOpen",
+  default: false,
+});
+
+// 選択された要素のID一覧を格納するステート
+export interface SelectedElement {
+  id: string;
+  type: "plot" | "character" | "chapter" | "worldbuilding";
+  content: {
+    title: string;
+    description?: string;
+    [key: string]: string | number | boolean | string[] | undefined | null; // より具体的な型
+  };
+}
+
+export const selectedElementsState = atom<SelectedElement[]>({
+  key: "selectedElements",
+  default: [],
+});
+
+// AIチャットの会話履歴
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+export const aiChatHistoryState = atom<ChatMessage[]>({
+  key: "aiChatHistory",
+  default: [],
+});
+
+// 現在のメッセージ入力
+export const currentMessageState = atom<string>({
+  key: "currentMessage",
+  default: "",
+});
+
+// AIリクエスト処理中の状態
+export const aiLoadingState = atom<boolean>({
+  key: "aiLoading",
+  default: false,
+});

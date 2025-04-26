@@ -105,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
     { mode: "writing" as AppMode, text: "本文執筆", icon: <WritingIcon /> },
     {
       mode: "feedback" as AppMode,
-      text: "読者リアクション",
+      text: "想定読者",
       icon: <FeedbackIcon />,
     },
   ];

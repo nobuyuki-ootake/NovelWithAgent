@@ -58,6 +58,46 @@ export interface WorldBuilding {
   timelineSettings?: {
     startDate: string;
   };
+  // 社会と文化のタブ用フィールド
+  socialStructure?: string;
+  government?: string;
+  economy?: string;
+  religion?: string;
+  traditions?: string;
+  language?: string;
+  art?: string;
+  education?: string;
+  technology?: string;
+
+  // 地理と環境のタブ用フィールド
+  geography?: string;
+  climate?: string;
+  flora?: string;
+  fauna?: string;
+  resources?: string;
+  settlements?: string;
+  naturalDisasters?: string;
+  seasonalChanges?: string;
+
+  // 歴史と伝説のタブ用フィールド
+  historicalEvents?: string;
+  ancientCivilizations?: string;
+  myths?: string;
+  legends?: string;
+  folklore?: string;
+  religions?: string;
+  historicalFigures?: string;
+  conflicts?: string;
+
+  // 魔法と技術のタブ用フィールド
+  magicSystem?: string;
+  magicRules?: string;
+  magicUsers?: string;
+  artifacts?: string;
+  technologyLevel?: string;
+  inventions?: string;
+  energySources?: string;
+  transportation?: string;
 }
 
 // 世界観の自由入力フィールド
@@ -101,6 +141,7 @@ export interface Chapter {
   content: string;
   order: number;
   scenes: Scene[];
+  relatedEvents?: string[]; // 章に関連するタイムラインイベントのID配列
 }
 
 // シーンの型定義

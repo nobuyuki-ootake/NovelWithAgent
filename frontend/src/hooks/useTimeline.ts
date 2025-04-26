@@ -368,19 +368,39 @@ export function useTimeline() {
     [timelineEvents, handleOpenDialog]
   );
 
-  // 変更を保存
+  // プロジェクトとローカルストレージに保存する
   const handleSave = useCallback(() => {
     if (!currentProject) return;
 
-    setCurrentProject({
+    // 現在のタイムラインイベントを更新
+    const updatedProject = {
       ...currentProject,
       timeline: timelineEvents,
       updatedAt: new Date(),
-    });
+    };
 
-    setHasUnsavedChanges(false);
+    console.log("保存前のプロジェクト:", currentProject);
+    console.log("保存するタイムラインイベント:", timelineEvents);
+    console.log("更新後のプロジェクト:", updatedProject);
+
+    // Recoilのステートを更新
+    setCurrentProject(updatedProject);
+
+    // ローカルストレージを更新
+    const projectsStr = localStorage.getItem("novelProjects");
+    if (projectsStr) {
+      const projects = JSON.parse(projectsStr);
+      const updatedProjects = projects.map((p: NovelProject) =>
+        p.id === updatedProject.id ? updatedProject : p
+      );
+      localStorage.setItem("novelProjects", JSON.stringify(updatedProjects));
+      console.log("ローカルストレージに保存しました:", updatedProjects);
+    }
+
+    // 成功メッセージを表示
     setSnackbarMessage("タイムラインを保存しました");
     setSnackbarOpen(true);
+    setHasUnsavedChanges(false);
   }, [currentProject, timelineEvents, setCurrentProject]);
 
   // スナックバーを閉じる

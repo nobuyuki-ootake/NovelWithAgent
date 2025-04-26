@@ -16,9 +16,8 @@ import {
   Avatar,
   SelectChangeEvent,
 } from "@mui/material";
-import { Character, Place } from "../../types";
+import { Character, Place, TimelineEvent } from "../../types/index";
 import { getCharacterIcon } from "./TimelineUtils";
-import { TimelineEvent } from "../../types/index";
 
 interface TimelineEventDialogProps {
   open: boolean;

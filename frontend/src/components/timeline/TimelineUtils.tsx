@@ -1,4 +1,4 @@
-import { Character } from "../../types";
+import { Character } from "../../types/index";
 
 // キャラクターの役割に応じたアイコンとカラーを定義
 export const getCharacterIcon = (character: Character) => {
@@ -21,7 +21,7 @@ export const getCharacterIcon = (character: Character) => {
     default:
       return {
         color: "#808080", // グレー
-        emoji: "👤",
+        emoji: "��",
       };
   }
 };
