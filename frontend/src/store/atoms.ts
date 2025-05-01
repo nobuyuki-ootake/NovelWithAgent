@@ -1,5 +1,5 @@
 import { atom } from "recoil";
-import { NovelProject } from "../types";
+import { NovelProject } from "../types/index";
 
 // 現在選択されているプロジェクトのID
 export const currentProjectIdState = atom<string | null>({

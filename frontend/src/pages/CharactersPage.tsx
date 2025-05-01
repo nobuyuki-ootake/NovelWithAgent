@@ -98,10 +98,34 @@ const CharactersPage: React.FC = () => {
 
       {/* キャラクター一覧 */}
       <CharacterList
-        characters={characters}
+        characters={characters.map((character) => ({
+          ...character,
+          description: character.description || "",
+          background: character.background || "",
+          motivation: character.motivation || "",
+          traits: character.traits ?? [],
+          relationships: (character.relationships ?? []).map((rel) => ({
+            ...rel,
+            description: rel.description || "",
+          })),
+          customFields: character.customFields ?? [],
+        }))}
         viewMode={viewMode}
         onAddCharacter={handleOpenDialog}
-        onEditCharacter={handleEditCharacter}
+        onEditCharacter={(character) =>
+          handleEditCharacter({
+            ...character,
+            description: character.description || "",
+            background: character.background || "",
+            motivation: character.motivation || "",
+            traits: character.traits ?? [],
+            relationships: (character.relationships ?? []).map((rel) => ({
+              ...rel,
+              description: rel.description || "",
+            })),
+            customFields: character.customFields ?? [],
+          })
+        }
         onDeleteCharacter={handleDeleteCharacter}
       />
 
@@ -117,7 +141,18 @@ const CharactersPage: React.FC = () => {
         </DialogTitle>
         <DialogContent dividers>
           <CharacterForm
-            formData={formData}
+            formData={{
+              ...formData,
+              description: formData.description || "",
+              background: formData.background || "",
+              motivation: formData.motivation || "",
+              traits: formData.traits ?? [],
+              relationships: (formData.relationships ?? []).map((rel) => ({
+                ...rel,
+                description: rel.description || "",
+              })),
+              customFields: formData.customFields ?? [],
+            }}
             formErrors={formErrors}
             selectedEmoji={selectedEmoji}
             tempImageUrl={tempImageUrl}

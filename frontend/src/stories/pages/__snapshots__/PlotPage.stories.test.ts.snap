@@ -1,0 +1,47 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PlotPage > DOMスナップショットの例 1`] = `
+"
+      <div class="plot-page">
+        <h1>プロット設定</h1>
+        <div class="plot-structure">
+          <div class="plot-section">
+            <h2>導入部（起）</h2>
+            <div class="plot-point">
+              <h3>主人公の日常</h3>
+              <p>主人公・太郎は魔法学園に入学したばかりの新入生。特殊な魔法の才能があるものの、コントロールが未熟。</p>
+            </div>
+            <div class="plot-point">
+              <h3>事件の発生</h3>
+              <p>学園で不思議な事件が発生。生徒が次々と行方不明になっている。</p>
+            </div>
+          </div>
+          <div class="plot-section">
+            <h2>展開部（承）</h2>
+            <div class="plot-point">
+              <h3>仲間との出会い</h3>
+              <p>ヒロイン・花子と出会い、共に事件を調査することになる。</p>
+            </div>
+            <div class="plot-point">
+              <h3>試練の発生</h3>
+              <p>調査を進めるうちに、学園の禁断の領域について知る。</p>
+            </div>
+          </div>
+          <div class="plot-section">
+            <h2>山場（転）</h2>
+            <div class="plot-point">
+              <h3>真実の発覚</h3>
+              <p>学園の校長が裏で魔法実験を行っていることを発見。</p>
+            </div>
+          </div>
+          <div class="plot-section">
+            <h2>結末（結）</h2>
+            <div class="plot-point">
+              <h3>最終決戦</h3>
+              <p>主人公たちが協力して校長を倒し、行方不明になった生徒たちを救出する。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    "
+`;

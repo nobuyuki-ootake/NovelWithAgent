@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`HomePage > DOMスナップショットの例 1`] = `
+"
+      <div class="home-page">
+        <h1>ノベル作成エージェント</h1>
+        <div class="project-list">
+          <div class="project-card">
+            <h3>ファンタジー小説</h3>
+            <p class="project-synopsis">魔法の世界を冒険する若者の物語</p>
+            <div class="project-metadata">
+              <span>作成日: 2023年1月1日</span>
+              <span>更新日: 2023年1月10日</span>
+            </div>
+          </div>
+          <div class="project-card">
+            <h3>ミステリー小説</h3>
+            <p class="project-synopsis">田舎町で起こった連続殺人事件の謎を追う刑事の物語</p>
+            <div class="project-metadata">
+              <span>作成日: 2023年2月1日</span>
+              <span>更新日: 2023年2月15日</span>
+            </div>
+          </div>
+          <div class="project-card">
+            <h3>SF小説</h3>
+            <p class="project-synopsis">未来の宇宙を舞台にした人類と異星人の物語</p>
+            <div class="project-metadata">
+              <span>作成日: 2023年3月1日</span>
+              <span>更新日: 2023年3月20日</span>
+            </div>
+          </div>
+        </div>
+        <button class="create-project-button">新規プロジェクト作成</button>
+      </div>
+    "
+`;

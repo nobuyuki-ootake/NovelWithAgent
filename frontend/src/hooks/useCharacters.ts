@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRecoilState } from "recoil";
 import { currentProjectState } from "../store/atoms";
-import { Character, CustomField, CharacterTrait, Relationship } from "../types";
+import {
+  Character,
+  CustomField,
+  CharacterTrait,
+  Relationship,
+} from "../types/index";
 import { v4 as uuidv4 } from "uuid";
 import {
   NovelProject,
-  Character as IndexCharacter,
-  CharacterRelationship,
+  // IndexCharacter,
+  // CharacterRelationship,
 } from "../types/index";
 
 // 絵文字をデータURLに変換する関数
@@ -23,39 +28,16 @@ const dataUrlToEmoji = (dataUrl: string): string | null => {
 };
 
 // キャラクター型を変換する関数
-const convertToIndexCharacter = (character: Character): IndexCharacter => {
-  // 文字列配列としてのtraitsを作成
-  const stringTraits = (character.traits || []).map((trait) =>
-    typeof trait === "string" ? trait : trait.name
-  );
-
-  // リレーションシップをCharacterRelationship型に変換
-  const indexRelationships = (character.relationships || []).map((rel) => {
-    if ("targetCharacterId" in rel) {
-      return {
-        characterId: rel.targetCharacterId,
-        relationshipType: rel.type || "",
-        description: rel.description || "",
-      } as CharacterRelationship;
-    }
-    return rel as unknown as CharacterRelationship;
-  });
-
-  // IndexCharacterオブジェクトを作成して返す
+const convertToIndexCharacter = (character: Character): Character => {
+  // traitsはそのまま
+  const traits = character.traits || [];
+  // relationshipsもそのまま
+  const relationships = character.relationships || [];
   return {
-    id: character.id,
-    name: character.name,
-    role: character.role,
-    gender: character.gender,
-    birthDate: character.birthDate,
-    description: character.description || "",
-    background: character.background || "",
-    motivation: character.motivation || "",
-    traits: stringTraits,
-    relationships: indexRelationships,
-    imageUrl: character.imageUrl,
-    customFields: character.customFields,
-  } as unknown as IndexCharacter;
+    ...character,
+    traits,
+    relationships,
+  };
 };
 
 export function useCharacters() {
@@ -114,7 +96,7 @@ export function useCharacters() {
     if (currentProject?.characters) {
       // キャラクターデータの互換性を確保
       const convertedCharacters = currentProject.characters.map((character) => {
-        // traitsが文字列配列の場合、CharacterTrait配列に変換
+        // traitsがstring[]の場合はCharacterTrait[]に変換
         const traits = Array.isArray(character.traits)
           ? character.traits.map((trait) => {
               if (typeof trait === "string") {
@@ -124,42 +106,46 @@ export function useCharacters() {
                   value: "",
                 } as CharacterTrait;
               }
-              return trait as CharacterTrait;
+              // valueがundefinedの場合は空文字に補正
+              return {
+                ...trait,
+                value: trait.value ?? "",
+              } as CharacterTrait;
             })
           : [];
-
-        // 型を互換性のある形式に変換
-        const convertedChar = {
+        // relationshipsが旧型の場合はRelationship[]に変換
+        const relationships = Array.isArray(character.relationships)
+          ? character.relationships.map((rel) => {
+              if ("characterId" in rel) {
+                return {
+                  id: uuidv4(),
+                  targetCharacterId: rel.characterId,
+                  type:
+                    "type" in rel
+                      ? rel.type
+                      : "relationshipType" in rel
+                      ? (rel as { relationshipType?: string })
+                          .relationshipType ?? ""
+                      : "",
+                  description: rel.description || "",
+                } as Relationship;
+              }
+              return rel as Relationship;
+            })
+          : [];
+        return {
           ...character,
           traits,
-          // 必須フィールドにデフォルト値を設定
-          description: character.description || "",
-          background: character.background || "",
-          motivation: character.motivation || "",
-          relationships: (character.relationships || []).map((rel) => {
-            // CharacterRelationshipからRelationshipに変換
-            if ("characterId" in rel) {
-              return {
-                id: uuidv4(),
-                targetCharacterId: rel.characterId,
-                type: rel.relationshipType || "",
-                description: rel.description || "",
-              } as Relationship;
-            }
-            return rel as Relationship;
-          }),
-        };
-
-        return convertedChar as unknown as Character;
+          relationships,
+        } as Character;
       });
-
       setCharacters(convertedCharacters);
     }
   }, [currentProject]);
 
   // 表示モードの切り替え
   const handleViewModeChange = useCallback(
-    (event: React.MouseEvent<HTMLElement>, newMode: "list" | "grid" | null) => {
+    (_: React.MouseEvent<HTMLElement>, newMode: "list" | "grid" | null) => {
       if (newMode !== null) {
         setViewMode(newMode);
       }

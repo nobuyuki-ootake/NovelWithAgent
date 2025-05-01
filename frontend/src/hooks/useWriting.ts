@@ -218,6 +218,39 @@ export function useWriting() {
     }
   }, []);
 
+  // 現在の編集内容を手動で保存する関数
+  const handleSaveContent = useCallback(() => {
+    if (!currentChapter || !currentProject) return;
+
+    // 章の内容を更新
+    const updatedChapters = currentProject.chapters.map((chapter) =>
+      chapter.id === currentChapter.id
+        ? { ...chapter, content: serializeToText(editorValue) }
+        : chapter
+    );
+
+    // プロジェクトを更新
+    const updatedProject = {
+      ...currentProject,
+      chapters: updatedChapters,
+      updatedAt: new Date(),
+    };
+
+    setCurrentProject(updatedProject);
+
+    // ローカルストレージに保存
+    saveProject(updatedProject);
+
+    // ユーザーに通知（実際には通知コンポーネントなどを使うと良い）
+    alert("内容を保存しました");
+  }, [
+    currentChapter,
+    currentProject,
+    editorValue,
+    saveProject,
+    setCurrentProject,
+  ]);
+
   // イベントを章に追加する処理
   const handleAddEventToChapter = (eventId: string) => {
     if (!currentProject || !currentChapter) return;
@@ -316,6 +349,7 @@ export function useWriting() {
     handleCloseEventDetailDialog,
     handleAddEventToChapter,
     handleAddNewEvent,
+    handleSaveContent,
     serializeToText,
   };
 }

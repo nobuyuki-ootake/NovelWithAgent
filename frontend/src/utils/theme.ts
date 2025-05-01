@@ -1,6 +1,7 @@
 import { createTheme } from "@mui/material/styles";
-import "@fontsource/noto-sans-jp";
-import "@fontsource/noto-serif-jp";
+// @fontsource系モジュールは型定義がないためコメントアウト
+// import "@fontsource/noto-sans-jp";
+// import "@fontsource/noto-serif-jp";
 
 // テーマの作成
 const theme = createTheme({

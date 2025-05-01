@@ -1,0 +1,35 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SynopsisPage > DOMスナップショットの例 1`] = `
+"
+      <div class="synopsis-page">
+        <h1>あらすじ設定</h1>
+        <div class="synopsis-form">
+          <div class="field-group">
+            <label>物語のタイトル</label>
+            <div class="input-field">魔法学園の冒険</div>
+          </div>
+          <div class="field-group">
+            <label>物語のジャンル</label>
+            <div class="input-field">ファンタジー、アドベンチャー</div>
+          </div>
+          <div class="field-group big-field">
+            <label>あらすじ</label>
+            <div class="text-area">
+              <p>魔法が当たり前に存在する世界の学園を舞台にした物語。主人公の太郎は特殊な魔法の才能を持っており、
+              入学した魔法学園で様々な試練に立ち向かう。途中でヒロインの花子と出会い、共に成長していく。
+              しかし学園には秘密があり、それが次第に明らかになっていく...</p>
+            </div>
+          </div>
+          <div class="field-group">
+            <label>対象読者</label>
+            <div class="input-field">10代〜20代の若年層</div>
+          </div>
+          <div class="field-group">
+            <label>物語のテーマ</label>
+            <div class="input-field">成長、友情、冒険</div>
+          </div>
+        </div>
+      </div>
+    "
+`;

@@ -1,0 +1,25 @@
+{
+  "name": "novel-creation-agent",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run dev:frontend",
+    "dev:frontend": "cd frontend && pnpm run dev",
+    "dev:proxy": "cd proxy-server && pnpm run dev",
+    "build": "pnpm run build:frontend && pnpm run build:proxy",
+    "build:frontend": "cd frontend && pnpm run build",
+    "build:proxy": "cd proxy-server && pnpm run build",
+    "start": "pnpm run start:frontend",
+    "start:frontend": "cd frontend && pnpm run start",
+    "start:proxy": "cd proxy-server && pnpm run start",
+    "lint": "concurrently \"pnpm run lint:frontend\" \"pnpm run dev\"",
+    "lint:frontend": "cd frontend && pnpm run lint",
+    "lint:proxy": "cd proxy-server && pnpm run lint",
+    "storybook": "cd frontend && pnpm run storybook",
+    "build-storybook": "cd frontend && pnpm run build-storybook"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "concurrently": "^8.2.2"
+  }
+}

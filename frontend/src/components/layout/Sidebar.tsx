@@ -33,9 +33,10 @@ import {
 
 interface SidebarProps {
   open: boolean;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ open }) => {
+const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   const [appMode, setAppMode] = useRecoilState(appModeState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
   const [, setCurrentProject] = useRecoilState(currentProjectState);
@@ -53,11 +54,21 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
     // イベントがキャンセルされなかった場合はモードを変更
     if (proceedWithChange) {
       setAppMode(mode);
+      // モード変更時に創作メニューを閉じる
+      setSidebarOpen(false);
+      // 外部から提供されたonCloseが存在すれば実行
+      if (onClose) {
+        onClose();
+      }
     }
   };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+    // 外部から提供されたonCloseが存在すれば実行
+    if (onClose) {
+      onClose();
+    }
   };
 
   // ホームに戻る処理
@@ -112,9 +123,20 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 
   return (
     <Drawer
-      variant="persistent"
+      variant="temporary"
       anchor="left"
       open={open}
+      onClose={onClose}
+      ModalProps={{
+        keepMounted: true,
+        slotProps: {
+          backdrop: {
+            sx: {
+              backgroundColor: "rgba(0, 0, 0, 0.2)",
+            },
+          },
+        },
+      }}
       sx={{
         width: 240,
         flexShrink: 0,
@@ -123,6 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
+          transition: "transform 0.2s ease-in-out",
         },
       }}
     >
@@ -133,12 +156,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
           alignItems: "center",
           padding: 2,
           justifyContent: "space-between",
+          backgroundColor: "primary.main",
+          color: "primary.contrastText",
         }}
       >
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           創作メニュー
         </Typography>
-        <IconButton onClick={toggleSidebar}>
+        <IconButton onClick={toggleSidebar} color="inherit">
           <ChevronLeftIcon />
         </IconButton>
       </Box>

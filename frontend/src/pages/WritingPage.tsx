@@ -9,7 +9,8 @@ import {
   Button,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import VerticalEditor from "../components/editor/VerticalEditor";
+import SaveIcon from "@mui/icons-material/Save";
+import { VerticalContentEditorWrapper } from "../components/editor";
 import { useWriting } from "../hooks/useWriting";
 import ChapterList from "../components/writing/ChapterList";
 import WritingPreview from "../components/writing/WritingPreview";
@@ -49,6 +50,7 @@ const WritingPage: React.FC = () => {
     handleCloseEventDetailDialog,
     handleAddEventToChapter,
     handleAddNewEvent,
+    handleSaveContent,
     serializeToText,
   } = useWriting();
 
@@ -104,13 +106,25 @@ const WritingPage: React.FC = () => {
               </Typography>
             )}
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenNewChapterDialog}
-          >
-            新規章作成
-          </Button>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            {currentChapter && (
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveContent}
+              >
+                保存
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenNewChapterDialog}
+            >
+              新規章作成
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
@@ -148,10 +162,30 @@ const WritingPage: React.FC = () => {
               </Paper>
 
               {currentTabIndex === 0 && (
-                <VerticalEditor
-                  value={editorValue}
-                  onChange={handleEditorChange}
-                />
+                <Box sx={{ position: "relative" }}>
+                  <VerticalContentEditorWrapper
+                    value={editorValue}
+                    onChange={handleEditorChange}
+                  />
+                  <Box
+                    sx={{
+                      position: "fixed",
+                      bottom: 32,
+                      right: 32,
+                      zIndex: 100,
+                    }}
+                  >
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="large"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSaveContent}
+                    >
+                      保存
+                    </Button>
+                  </Box>
+                </Box>
               )}
 
               {currentTabIndex === 1 && (

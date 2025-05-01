@@ -15,7 +15,7 @@ import CharactersPage from "./pages/CharactersPage";
 import WorldBuildingPage from "./pages/WorldBuildingPage";
 import TimelinePage from "./pages/TimelinePage";
 import { appModeState, currentProjectState } from "./store/atoms";
-import { NovelProject } from "./types";
+import { NovelProject } from "./types/index";
 
 function MainContent() {
   const appMode = useRecoilValue(appModeState);

@@ -85,9 +85,16 @@
   - ユーザーメッセージと組み合わせて API リクエストを構成
 
 - **OpenAI/Claude API 活用**:
+
   - 選択された役割に応じた適切なシステムプロンプトを設定
   - Function Calling を活用して構造化された提案を生成
   - ストリーミングレスポンスで即時表示
+
+- **RDB（PostgreSQL/MySQL 等）によるユーザー・トークン・API キー管理**:
+  - ユーザーごとに API キーを暗号化して RDB に保存
+  - ユーザーの認証トークンも RDB で管理し、有効期限（例：30 日）を持たせる
+  - API リクエスト時はトークン検証 →OK なら RDB から API キーを取得し外部 API へリクエスト
+  - Redis はキャッシュ用途に限定
 
 ### 4.3 UI/UX 設計
 
@@ -159,8 +166,17 @@
   - フィードバックに基づく継続的改善
   - ドメイン特化テンプレート開発
 
+### 6.4 セキュリティ設計（追加）
+
+- API キーは RDB に**暗号化して保存**
+- トークンには**有効期限（例：30 日）**を持たせる
+- トークン検証に合格したユーザーのみ API キー取得・利用が可能
+- 暗号化鍵は環境変数で安全に管理
+- Redis はキャッシュ用途に限定
+
 ## 7. 将来的な拡張計画
 
+- **RDB による多様なユーザー管理・分析基盤**: ユーザー属性や利用履歴の分析、課金・権限管理なども RDB で拡張可能
 - **マルチモーダル対応**: 画像生成との連携（キャラクターイメージなど）
 - **協調型エージェント**: 複数エージェント間での議論機能
 - **学習機能**: ユーザー好みの学習と適応
@@ -265,7 +281,7 @@ AI エージェント実装のためには複数のアプローチが考えら�
 
 ## 10. LLM API 通信方法の比較分析
 
-AI エージェントと LLM API（OpenAI、Claude 等）の通信方法について、複数のアプローチを比較検討し、本プロジェクトに最適な方法を選定する。
+AI エージェントと LLM API（OpenAI、Claude、Google Gemini 等）の通信方法について、複数のアプローチを比較検討し、本プロジェクトに最適な方法を選定する。
 
 ### 10.1 フロントエンドでの API キー管理と直接通信
 
@@ -290,6 +306,7 @@ AI エージェントと LLM API（OpenAI、Claude 等）の通信方法につ�
 - リクエストの検証、フィルタリング、ログ記録が可能
 - 使用量の制限やモニタリングが容易
 - キャッシュ機能を実装して API コスト削減が可能
+- 複数の LLM API（OpenAI、Claude、Gemini）を統一的に扱える
 
 **デメリット**:
 
@@ -297,127 +314,34 @@ AI エージェントと LLM API（OpenAI、Claude 等）の通信方法につ�
 - すべてのユーザーが同じ API キーを共有する場合、コスト管理が複雑になる
 - サーバーのスケーリングが必要になる場合がある
 
-### 10.3 ハイブリッドアプローチ (バックエンドプロキシ + ユーザー固有 API キー)
-
-**メリット**:
-
-- ユーザー固有の API キーを使用しながらもセキュリティ対策が可能
-- バックエンドで API キーを検証してから転送できる
-- 使用量の制限やモニタリングが容易
-- ユーザーごとの使用量を分離・管理できる
-
-**デメリット**:
-
-- 実装が複雑になる
-- バックエンドサーバーの実装と維持が必要
-- ユーザーに API キーの取得と管理を要求する
-
-### 10.4 クラウドサービスを利用した管理 (AWS Lambda + API Gateway など)
-
-**メリット**:
-
-- サーバーレスでスケーリングが自動化される
-- セキュリティ対策が組み込まれている
-- 使用量に応じた課金で運用コストを最適化できる
-- クラウドサービスのセキュリティ機能を活用できる
-
-**デメリット**:
-
-- クラウドサービスの知識と経験が必要
-- ベンダーロックインのリスク
-- 設定の複雑さが増す可能性がある
-
-### 10.5 Edge Functions (Cloudflare Workers、Vercel Edge Functions など)
-
-**メリット**:
-
-- グローバルに分散したエッジで実行されるため高速
-- シンプルな実装で API キーの保護が可能
-- サーバーレスで管理の負担が少ない
-- コスト効率が良い
-
-**デメリット**:
-
-- 実行環境に制限がある場合がある
-- 複雑なロジックの実装が難しい場合がある
-- サービス依存のリスク
-
 ## 11. API 通信の推奨アプローチ
 
-現在の要件と状況を考慮し、**バックエンドプロキシを利用した通信方法**を推奨する。理由は以下の通り：
+現在の要件と状況を考慮し、**Mastra を活用したバックエンドプロキシ方式**を推奨する。理由は以下の通り：
 
-1. **セキュリティの確保**: ユーザーの API キーをフロントエンドで直接扱うことは重大なセキュリティリスクがある。バックエンドプロキシを使用することで、API キーを安全に管理できる。
+1. **セキュリティの確保**:
 
-2. **柔軟な拡張性**: 将来的に認証機能や使用量の制限などを追加する場合にも対応しやすくなる。
+   - API キーを安全に管理
+   - リクエストの検証とフィルタリング
+   - レート制限による過負荷防止
 
-3. **実装のシンプルさ**: 小規模な Express サーバーなどで簡単に実装でき、メンテナンスコストも比較的低く抑えられる。
+2. **パフォーマンスの最適化**:
 
-### 11.1 具体的な実装例
+   - レスポンスのキャッシュ機能
+   - データの整形と最適化
+   - 複数 API の統合管理
 
-```javascript
-// バックエンドのExpressサーバー例
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
-const app = express();
+3. **運用管理の効率化**:
 
-app.use(cors());
-app.use(express.json());
+   - 一元化されたログ管理
+   - モニタリングとアラート機能
+   - ヘルスチェックによる可用性確保
 
-app.post("/api/llm", async (req, res) => {
-  try {
-    const { apiKey, prompt, ...otherParams } = req.body;
+4. **拡張性の確保**:
+   - 新しい AI API の追加が容易
+   - 認証・認可機能の拡張
+   - カスタムミドルウェアの追加
 
-    // APIキーの検証
-    if (!apiKey || typeof apiKey !== "string") {
-      return res.status(400).json({ error: "APIキーが必要です" });
-    }
-
-    // LLM APIへのリクエスト
-    const response = await axios.post(
-      "https://api.openai.com/v1/completions",
-      {
-        prompt,
-        ...otherParams,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    // レスポンスの返却
-    res.json(response.data);
-  } catch (error) {
-    console.error("Error calling LLM API:", error);
-    res.status(500).json({
-      error: "LLM APIの呼び出し中にエラーが発生しました",
-      details: error.response?.data || error.message,
-    });
-  }
-});
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-```
-
-### 11.2 将来的な強化策
-
-将来的にセキュリティや機能を強化する場合は、以下の対策も検討する：
-
-1. **一時的なトークン発行**: API キーを直接使用する代わりに、限定的な権限と有効期限を持つ一時的なトークンを発行する仕組みを実装
-
-2. **使用量制限**: ユーザーごとにリクエスト数や使用量を制限する機能を追加
-
-3. **キャッシュ機能**: 同じリクエストに対する応答をキャッシュして、API 呼び出しのコストを削減
-
-4. **認証機能**: 必要に応じてユーザー認証を実装し、認証されたユーザーのみが API を利用できるようにする
-
-この方法であれば、ログイン機能を実装しなくてもセキュアに API キーを扱うことができる。
+### 11.1 Mastra の具体的な実装例
 
 ## 12. データベース導入に関する検討
 
@@ -482,3 +406,239 @@ app.listen(PORT, () => {
    - 課金システムを導入し、利用量に応じた料金体系を実装する場合
 
 現時点では、シンプルさとユーザー自身によるデータ管理の透明性を優先し、データベース不要のアプローチを採用する。これにより、開発コストの低減とプライバシー保護の両立を図る。
+
+## 13. RDB を用いた API キー管理・連携設計
+
+### 13.1 API エンドポイント設計
+
+| メソッド | パス                         | 概要                            | 備考     |
+| -------- | ---------------------------- | ------------------------------- | -------- |
+| GET      | /api/user/api-keys           | 登録済み API キー一覧取得       | 認証必須 |
+| POST     | /api/user/api-keys           | API キー登録・更新              | 認証必須 |
+| DELETE   | /api/user/api-keys/:provider | 指定プロバイダーの API キー削除 | 認証必須 |
+
+- すべての API キー管理エンドポイントは`Authorization: Bearer <token>`必須
+- トークンは RDB で有効期限付きで管理
+
+### 13.2 暗号化実装例（Node.js/TypeScript）
+
+```typescript
+import crypto from "crypto";
+
+const ENCRYPTION_KEY = process.env.API_KEY_SECRET!; // 32バイト
+const IV_LENGTH = 16;
+
+export function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(
+    "aes-256-cbc",
+    Buffer.from(ENCRYPTION_KEY),
+    iv
+  );
+  let encrypted = cipher.update(text, "utf8");
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+export function decrypt(text: string): string {
+  const [ivHex, encryptedHex] = text.split(":");
+  const iv = Buffer.from(ivHex, "hex");
+  const encryptedText = Buffer.from(encryptedHex, "hex");
+  const decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    Buffer.from(ENCRYPTION_KEY),
+    iv
+  );
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString("utf8");
+}
+```
+
+- `.env`に`API_KEY_SECRET=32文字のランダム英数字`を必ず設定
+
+### 13.3 バックエンド API 実装例（Express/TypeScript）
+
+```typescript
+// APIキー登録・更新
+app.post("/api/user/api-keys", authMiddleware, async (req, res) => {
+  const { provider, apiKey } = req.body;
+  const userId = req.user.id;
+  const encrypted = encrypt(apiKey);
+  await pool.query(
+    `INSERT INTO user_api_keys (user_id, provider, api_key)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, provider) DO UPDATE SET api_key = $3, updated_at = NOW()`,
+    [userId, provider, encrypted]
+  );
+  res.json({ success: true });
+});
+
+// APIキー取得
+app.get("/api/user/api-keys", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const result = await pool.query(
+    `SELECT provider, api_key FROM user_api_keys WHERE user_id = $1`,
+    [userId]
+  );
+  const keys = result.rows.map((row) => ({
+    provider: row.provider,
+    apiKey: decrypt(row.api_key),
+  }));
+  res.json(keys);
+});
+
+// APIキー削除
+app.delete("/api/user/api-keys/:provider", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const provider = req.params.provider;
+  await pool.query(
+    `DELETE FROM user_api_keys WHERE user_id = $1 AND provider = $2`,
+    [userId, provider]
+  );
+  res.json({ success: true });
+});
+```
+
+### 13.4 フロント連携設計
+
+- **マイページ/設定画面**に「API キー管理」セクション
+  - 各プロバイダー（OpenAI, Gemini, Claude 等）ごとに
+    - API キーの登録・更新フォーム
+    - 現在の登録状況表示
+    - 削除ボタン
+
+#### フロントエンドの API 呼び出し例（Next.js/React）
+
+```typescript
+// APIキー登録
+await fetch("/api/user/api-keys", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify({ provider: "openai", apiKey: "sk-..." }),
+});
+
+// APIキー取得
+const res = await fetch("/api/user/api-keys", {
+  headers: { Authorization: `Bearer ${token}` },
+});
+const keys = await res.json();
+
+// APIキー削除
+await fetch("/api/user/api-keys/openai", {
+  method: "DELETE",
+  headers: { Authorization: `Bearer ${token}` },
+});
+```
+
+### 13.5 セキュリティ・運用上の注意
+
+- 暗号化鍵（API_KEY_SECRET）は**絶対に Git 等に含めず、環境変数で管理**
+- API キーの復号は**必要な時のみ**（外部 API リクエスト直前のみ）
+- トークン失効・有効期限切れ時は**401 エラー**で即時拒否
+- 監査ログやアクセスログも必要に応じて実装
+
+## 14. DB マイグレーションスクリプト例
+
+### 14.1 PostgreSQL 用マイグレーション例
+
+```sql
+-- ユーザートークン管理テーブル
+CREATE TABLE user_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  token VARCHAR(256) NOT NULL,
+  expires_at TIMESTAMP NOT NULL, -- 30日後
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, token)
+);
+
+-- APIキー管理テーブル
+CREATE TABLE user_api_keys (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  provider VARCHAR(32) NOT NULL, -- 'openai', 'gemini', 'claude' など
+  api_key TEXT NOT NULL,         -- 暗号化済みAPIキー
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, provider)
+);
+```
+
+---
+
+## 15. フロントエンド UI 設計詳細
+
+### 15.1 API キー管理画面（マイページ/設定）
+
+- **セクション名例**：「外部 AI API キー管理」
+- **UI 要素例**：
+  - 各プロバイダーごとにカードまたはリスト表示
+    - プロバイダー名（OpenAI, Gemini, Claude など）
+    - API キー入力欄（type="password"、マスキング表示）
+    - 「登録/更新」ボタン
+    - 「削除」ボタン
+    - 現在の登録状況（例：「登録済み」「未登録」）
+  - API キーの説明・注意書き（例：「API キーは暗号化され安全に保存されます」）
+  - 保存・削除時はトースト通知でフィードバック
+
+#### 画面レイアウト例（擬似コード）
+
+```tsx
+// Next.js + React + shadcn/ui, Tailwind CSS想定
+
+<section className="max-w-xl mx-auto p-4">
+  <h2 className="text-lg font-bold mb-4">外部AI APIキー管理</h2>
+  {providers.map((provider) => (
+    <div key={provider} className="mb-6 border rounded p-4">
+      <div className="flex items-center mb-2">
+        <span className="font-semibold mr-2">{providerNameMap[provider]}</span>
+        {apiKeys[provider] ? (
+          <span className="text-green-600 text-xs">登録済み</span>
+        ) : (
+          <span className="text-gray-400 text-xs">未登録</span>
+        )}
+      </div>
+      <input
+        type="password"
+        className="input input-bordered w-full mb-2"
+        value={inputValues[provider] || ""}
+        onChange={(e) => setInputValue(provider, e.target.value)}
+        placeholder="APIキーを入力"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => handleSave(provider)}
+          className="btn btn-primary"
+        >
+          登録/更新
+        </button>
+        {apiKeys[provider] && (
+          <button
+            onClick={() => handleDelete(provider)}
+            className="btn btn-error"
+          >
+            削除
+          </button>
+        )}
+      </div>
+    </div>
+  ))}
+  <p className="text-xs text-gray-500 mt-4">
+    APIキーは暗号化され安全に保存されます。キーは必要な時のみ復号されます。
+  </p>
+</section>
+```
+
+- **UX ポイント**：
+  - 入力欄は type="password"でマスキング
+  - 保存・削除時はローディング/完了トースト表示
+  - API キーはフロントで保持せず、都度 API 経由で取得/更新/削除
+  - エラー時は明確なメッセージ表示
+
+---
+
+これにより、**DB マイグレーション・フロント UI 設計**もドキュメント化されました。

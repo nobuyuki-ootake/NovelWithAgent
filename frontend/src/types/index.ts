@@ -22,6 +22,21 @@ export interface PlotElement {
   status: "決定" | "検討中";
 }
 
+// キャラクターの特性（traits）の型定義
+export interface CharacterTrait {
+  id: string;
+  name: string;
+  value: string;
+}
+
+// キャラクター間の関係の型定義（UI用）
+export interface Relationship {
+  id: string;
+  targetCharacterId: string;
+  type: string;
+  description: string;
+}
+
 // キャラクターの型定義
 export interface Character {
   id: string;
@@ -32,17 +47,10 @@ export interface Character {
   description: string;
   background: string;
   motivation: string;
-  traits: string[];
-  relationships: CharacterRelationship[];
+  traits: CharacterTrait[];
+  relationships: Relationship[];
   imageUrl?: string;
   customFields?: CustomField[];
-}
-
-// キャラクター関係の型定義
-export interface CharacterRelationship {
-  characterId: string;
-  relationshipType: string;
-  description: string;
 }
 
 // 世界観設定の型定義
@@ -171,4 +179,18 @@ export interface CustomField {
   id: string;
   name: string;
   value: string;
+}
+
+// タイムライングループの型定義
+export interface TimelineGroup {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// タイムライン設定の型定義
+export interface TimelineSettings {
+  startDate: Date;
+  endDate: Date;
+  zoomLevel: number;
 }

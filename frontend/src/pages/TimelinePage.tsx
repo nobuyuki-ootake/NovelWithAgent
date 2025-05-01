@@ -1,5 +1,13 @@
 import React from "react";
-import { Box, Paper, Button, Snackbar, Alert } from "@mui/material";
+import {
+  Box,
+  Paper,
+  Button,
+  Snackbar,
+  Alert,
+  Typography,
+  Divider,
+} from "@mui/material";
 import { Settings as SettingsIcon } from "@mui/icons-material";
 import { useTimeline } from "../hooks/useTimeline";
 import TimelineEventDialog from "../components/timeline/TimelineEventDialog";
@@ -42,18 +50,29 @@ const TimelinePage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3, position: "relative" }}>
-        {/* 設定ボタン */}
-        <Box sx={{ position: "absolute", top: 16, right: 16 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<SettingsIcon />}
-            onClick={handleOpenSettingsDialog}
-            size="small"
+      <Paper sx={{ p: 3 }}>
+        {/* ページヘッダー */}
+        <Box sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
           >
-            タイムライン設定
-          </Button>
+            <Typography variant="h5">タイムライン</Typography>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<SettingsIcon />}
+              onClick={handleOpenSettingsDialog}
+              size="small"
+            >
+              タイムライン設定
+            </Button>
+          </Box>
+          <Divider />
         </Box>
 
         {/* イベント一覧セクション */}

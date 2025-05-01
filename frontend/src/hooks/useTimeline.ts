@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRecoilState } from "recoil";
 import { currentProjectState } from "../store/atoms";
-import { Character, Place } from "../types";
+import { Character, Place } from "../types/index";
 import { TimelineEvent, NovelProject } from "../types/index";
 import { v4 as uuidv4 } from "uuid";
 import moment from "moment";
@@ -494,20 +494,55 @@ export function useTimeline() {
     return result;
   }, [safeMinY, safeMaxY]);
 
-  // イベントの位置を計算する関数
+  // イベントの位置計算関数
   const calculateEventPosition = useCallback(
-    (placeId: string, dateValue: number) => {
-      // X座標（場所）の計算
-      const placeIndex = timelineGroups.findIndex((g) => g.id === placeId);
-      const xPos = placeIndex !== -1 ? placeIndex : 0;
+    (placeId: string, dateValue: number): { xPos: number; yPos: number } => {
+      // X軸（場所）位置: グループのインデックスを使用
+      const groupIndex = timelineGroups.findIndex((g) => g.id === placeId);
+      // 場所が見つからない場合は「未分類」（インデックス0）を使用
+      const xPos = groupIndex >= 0 ? groupIndex : 0;
 
-      // Y座標（日付）の計算
-      const dateRange = safeMaxY - safeMinY;
-      const yPos = (dateValue - safeMinY) / dateRange;
+      // Y軸（日付）位置: 日付範囲内の相対位置（0～1）を計算
+      let yPos = 0;
 
-      return { xPos, yPos: 1 - yPos }; // Y軸は上から下に向かって時間が進むので反転
+      if (dateArray.length >= 2) {
+        const minDate = dateArray[0].date;
+        const maxDate = dateArray[dateArray.length - 1].date;
+        const range = maxDate - minDate;
+
+        if (range > 0) {
+          // 正規化した位置（0～1の範囲）
+          yPos = (dateValue - minDate) / range;
+
+          // 時間軸の目盛り線に正確に合わせる
+          // 最も近い日付のインデックスを見つける
+          let closestIndex = 0;
+          let minDistance = Number.MAX_VALUE;
+
+          for (let i = 0; i < dateArray.length; i++) {
+            const distance = Math.abs(dateValue - dateArray[i].date);
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestIndex = i;
+            }
+          }
+
+          // 最も近い日付の位置を使用
+          yPos = closestIndex / (dateArray.length - 1);
+
+          // 範囲を超えないようにclamp
+          yPos = Math.max(0, Math.min(1, yPos));
+        }
+      }
+
+      // X軸位置に小数点以下の揺らぎを加える（各イベントが少しずれて表示されるように）
+      // パラメータとして日付の値を使用して、異なる日付のイベントが異なる位置になるようにする
+      const offset = (dateValue % 7) / 14 - 0.25; // -0.25～+0.25の範囲でオフセット
+      const adjustedXPos = xPos + offset;
+
+      return { xPos: adjustedXPos, yPos };
     },
-    [timelineGroups, safeMinY, safeMaxY]
+    [timelineGroups, dateArray]
   );
 
   // クリック位置からイベントを作成

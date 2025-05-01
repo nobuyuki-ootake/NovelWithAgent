@@ -25,21 +25,21 @@ import {
   Save as SaveIcon,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
-import { Character, CustomField } from "../../types";
+import { Character, CustomField, CharacterTrait } from "../../types";
 import {
   characterIcons,
   availableEmojis,
   emojiToDataUrl,
   dataUrlToEmoji,
 } from "./characterUtils";
+import type { SelectChangeEvent } from "@mui/material/Select";
 
 interface CharacterFormProps {
-  formData: Character;
+  formData: Omit<Character, "traits"> & { traits: CharacterTrait[] };
   setFormData: React.Dispatch<React.SetStateAction<Character>>;
   formErrors: Record<string, string>;
   onSave: () => void;
   onCancel: () => void;
-  editMode: boolean;
 }
 
 /**
@@ -51,7 +51,6 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   formErrors,
   onSave,
   onCancel,
-  editMode,
 }) => {
   const [tempImageUrl, setTempImageUrl] = useState<string>(
     formData.imageUrl || ""
@@ -75,11 +74,9 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   };
 
   // セレクト入力の処理
-  const handleSelectChange = (
-    e: React.ChangeEvent<{ name?: string; value: unknown }>
-  ) => {
-    const name = e.target.name as string;
-    const value = e.target.value as string;
+  const handleSelectChange = (event: SelectChangeEvent<string>) => {
+    const name = event.target.name as string;
+    const value = event.target.value as string;
     setFormData({ ...formData, [name]: value });
   };
 
@@ -116,14 +113,19 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   // 特性の追加
   const handleAddTrait = () => {
     if (!newTrait.trim()) return;
-    const updatedTraits = [...formData.traits, newTrait.trim()];
+    const updatedTraits: CharacterTrait[] = [
+      ...formData.traits,
+      { id: uuidv4(), name: newTrait.trim(), value: "" },
+    ];
     setFormData({ ...formData, traits: updatedTraits });
     setNewTrait("");
   };
 
   // 特性の削除
   const handleRemoveTrait = (index: number) => {
-    const updatedTraits = formData.traits.filter((_, i) => i !== index);
+    const updatedTraits: CharacterTrait[] = formData.traits.filter(
+      (_, i) => i !== index
+    );
     setFormData({ ...formData, traits: updatedTraits });
   };
 
@@ -355,7 +357,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
               </Typography>
               <Grid container spacing={1}>
                 {availableEmojis.map((emoji, index) => (
-                  <Grid key={index} item>
+                  <div key={index}>
                     <Tooltip title={`${emoji}を選択`}>
                       <Avatar
                         sx={{
@@ -382,7 +384,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                         {emoji}
                       </Avatar>
                     </Tooltip>
-                  </Grid>
+                  </div>
                 ))}
               </Grid>
             </Box>
@@ -410,16 +412,15 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
               </Button>
             </Box>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
-              {formData.traits.map((trait, index) => (
+              {formData.traits!.map((trait: CharacterTrait, index: number) => (
                 <Chip
-                  key={index}
-                  label={trait}
+                  key={trait.id}
+                  label={trait.name}
                   onDelete={() => handleRemoveTrait(index)}
-                  color="primary"
-                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
                 />
               ))}
-              {formData.traits.length === 0 && (
+              {formData.traits!.length === 0 && (
                 <Typography variant="body2" color="text.secondary">
                   特性がありません
                 </Typography>

@@ -142,7 +142,7 @@ const WorldBuildingPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, maxWidth: "1200px", mx: "auto" }}>
       <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
         <Typography variant="h4" gutterBottom>
           {currentProject.title}
@@ -152,23 +152,75 @@ const WorldBuildingPage: React.FC = () => {
         </Typography>
       </Paper>
 
-      <Paper sx={{ mb: 3 }}>
+      <Paper
+        sx={{
+          mb: 3,
+          borderRadius: "8px",
+          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          backgroundColor: "background.paper",
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
+          allowScrollButtonsMobile
           aria-label="world building tabs"
+          sx={{
+            ".MuiTabs-flexContainer": {
+              gap: 1,
+            },
+            ".MuiTab-root": {
+              minWidth: "120px",
+              px: 2,
+              whiteSpace: "nowrap",
+            },
+            ".MuiTabs-scrollButtons": {
+              "&.Mui-disabled": { opacity: 0.3 },
+            },
+            mb: 1,
+          }}
         >
-          <Tab label="ワールドマップ" />
-          <Tab label="世界観設定" />
-          <Tab label="ルール" />
-          <Tab label="地名" />
-          <Tab label="社会と文化" />
-          <Tab label="地理と環境" />
-          <Tab label="歴史と伝説" />
-          <Tab label="魔法と技術" />
-          <Tab label="自由入力" />
+          <Tab
+            label="ワールドマップ"
+            sx={{ fontWeight: tabValue === 0 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="世界観設定"
+            sx={{ fontWeight: tabValue === 1 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="ルール"
+            sx={{ fontWeight: tabValue === 2 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="地名"
+            sx={{ fontWeight: tabValue === 3 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="社会と文化"
+            sx={{ fontWeight: tabValue === 4 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="地理と環境"
+            sx={{ fontWeight: tabValue === 5 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="歴史と伝説"
+            sx={{ fontWeight: tabValue === 6 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="魔法と技術"
+            sx={{ fontWeight: tabValue === 7 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="自由入力"
+            sx={{ fontWeight: tabValue === 8 ? "bold" : "normal" }}
+          />
         </Tabs>
 
         {/* ワールドマップタブ */}

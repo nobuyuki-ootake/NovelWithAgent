@@ -146,7 +146,7 @@ export function useWorldBuilding() {
 
   // タブの切り替え
   const handleTabChange = useCallback(
-    (event: React.SyntheticEvent, newValue: number) => {
+    (_: React.SyntheticEvent, newValue: number) => {
       if (hasUnsavedChanges) {
         if (
           window.confirm(

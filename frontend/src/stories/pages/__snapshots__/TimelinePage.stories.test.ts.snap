@@ -1,0 +1,46 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TimelinePage > DOMスナップショットの例 1`] = `
+"
+      <div class="timeline-page">
+        <h1>タイムライン設定</h1>
+        <div class="timeline-container">
+          <div class="timeline-event">
+            <div class="timeline-date">4月1日</div>
+            <div class="timeline-content">
+              <h3>入学式</h3>
+              <p>主人公・太郎が魔法学園に入学。様々な生徒たちと出会う。</p>
+            </div>
+          </div>
+          <div class="timeline-event">
+            <div class="timeline-date">4月15日</div>
+            <div class="timeline-content">
+              <h3>最初の事件</h3>
+              <p>学園で最初の生徒が行方不明になる。校内に不安が広がる。</p>
+            </div>
+          </div>
+          <div class="timeline-event">
+            <div class="timeline-date">5月1日</div>
+            <div class="timeline-content">
+              <h3>ヒロインとの出会い</h3>
+              <p>特別授業でヒロイン・花子と出会い、共に事件について調査を始める。</p>
+            </div>
+          </div>
+          <div class="timeline-event">
+            <div class="timeline-date">5月20日</div>
+            <div class="timeline-content">
+              <h3>禁断の部屋の発見</h3>
+              <p>学園の地下に隠された秘密の部屋を発見する。</p>
+            </div>
+          </div>
+          <div class="timeline-event">
+            <div class="timeline-date">6月10日</div>
+            <div class="timeline-content">
+              <h3>真実の発覚と決戦</h3>
+              <p>校長の陰謀が明らかになり、最終決戦が行われる。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    "
+`;

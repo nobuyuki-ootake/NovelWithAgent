@@ -1,5 +1,5 @@
-import { Descendant } from "slate";
-import { CustomElement, CustomText } from "../types/editor";
+import { Descendant, Node } from "slate";
+import { CustomElement } from "../types/editor";
 
 // エディタの初期値を設定する関数
 export const createEmptyEditor = (): Descendant[] => {
@@ -16,13 +16,13 @@ export const createEditorValue = (content: string): Descendant[] => {
   if (!content) return createEmptyEditor();
 
   // 段落に分割して値を作成
-  return content.split("\n\n").map(
-    (paragraph) =>
-      ({
-        type: "paragraph",
-        children: [{ text: paragraph }],
-      } as CustomElement)
-  );
+  // 400文字ごとにページを分割する場合は、そのままテキストを流し込む
+  return [
+    {
+      type: "paragraph",
+      children: [{ text: content }],
+    } as CustomElement,
+  ];
 };
 
 // 編集不可能なプレーンテキストとしてのエディタ値を作成
@@ -37,13 +37,21 @@ export const createReadOnlyValue = (content: string): Descendant[] => {
 
 // エディタの値からプレーンテキストを抽出
 export const serializeToText = (nodes: Descendant[]): string => {
-  return nodes
-    .map((node) => {
-      const n = node as CustomElement;
-      const children = n.children
-        .map((child: CustomText) => child.text)
-        .join("");
-      return children;
-    })
-    .join("\n\n");
+  return nodes.map((n) => Node.string(n)).join("\n");
+};
+
+// 文字数を計算する関数
+export const countCharacters = (nodes: Descendant[]): number => {
+  return nodes.reduce((count, node) => {
+    return count + Node.string(node).length;
+  }, 0);
+};
+
+// 指定されたページの内容を取得する関数（20x20=400文字ごと）
+export const getPageContent = (
+  nodes: Descendant[],
+  pageIndex: number
+): string => {
+  const allText = serializeToText(nodes);
+  return allText.substring(pageIndex * 400, (pageIndex + 1) * 400);
 };

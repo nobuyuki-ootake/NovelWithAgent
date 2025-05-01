@@ -83,10 +83,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ open }) => {
         bgcolor: "background.paper",
         borderLeft: "1px solid",
         borderColor: "divider",
-        transition: "right 0.3s",
+        transition: "right 0.2s ease-in-out",
         display: "flex",
         flexDirection: "column",
         zIndex: 1200,
+        boxShadow: open ? "-4px 0 8px rgba(0, 0, 0, 0.05)" : "none",
       }}
     >
       {/* チャットパネルのトグルボタン */}

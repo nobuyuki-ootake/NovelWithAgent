@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Typography, Button } from "@mui/material";
-import { Add as AddIcon } from "@mui/icons-material";
+import { Box, Typography, Button, Paper } from "@mui/material";
+import { Add as AddIcon, Save as SaveIcon } from "@mui/icons-material";
 import TimelineEventCard from "./TimelineEventCard";
 import { TimelineItem } from "../../hooks/useTimeline";
 
@@ -20,7 +20,7 @@ const TimelineEventList: React.FC<TimelineEventListProps> = ({
   onSave,
 }) => {
   return (
-    <Box>
+    <Box sx={{ mb: 4 }}>
       <Box
         sx={{
           display: "flex",
@@ -36,42 +36,54 @@ const TimelineEventList: React.FC<TimelineEventListProps> = ({
             color="primary"
             startIcon={<AddIcon />}
             onClick={onAddEvent}
+            size="medium"
           >
             イベント追加
           </Button>
           <Button
             variant="outlined"
             color="primary"
+            startIcon={<SaveIcon />}
             onClick={onSave}
             disabled={!hasUnsavedChanges}
+            size="medium"
           >
             保存
           </Button>
         </Box>
       </Box>
 
-      {timelineItems.length === 0 ? (
-        <Typography
-          variant="body1"
-          color="text.secondary"
-          sx={{ mt: 4, textAlign: "center" }}
-        >
-          イベントはまだありません。「イベント追加」ボタンをクリックして最初のイベントを追加してください。
-        </Typography>
-      ) : (
-        <Box>
-          {/* 日付順に並び替え */}
-          {[...timelineItems]
-            .sort((a, b) => a.dateValue - b.dateValue)
-            .map((item) => (
-              <TimelineEventCard
-                key={item.id}
-                item={item}
-                onEdit={onEditEvent}
-              />
-            ))}
-        </Box>
-      )}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          bgcolor: "background.paper",
+          minHeight: "100px",
+        }}
+      >
+        {timelineItems.length === 0 ? (
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ textAlign: "center", py: 2 }}
+          >
+            イベントはまだありません。「イベント追加」ボタンをクリックして最初のイベントを追加してください。
+          </Typography>
+        ) : (
+          <Box>
+            {/* 日付順に並び替え */}
+            {[...timelineItems]
+              .sort((a, b) => a.dateValue - b.dateValue)
+              .map((item) => (
+                <TimelineEventCard
+                  key={item.id}
+                  item={item}
+                  onEdit={onEditEvent}
+                />
+              ))}
+          </Box>
+        )}
+      </Paper>
     </Box>
   );
 };

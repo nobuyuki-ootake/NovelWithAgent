@@ -30,23 +30,24 @@ const dummyProject: NovelProject = {
   plot: [
     {
       id: uuidv4(),
-      title: "序章：能力の発見",
-      description:
-        "主人公が自分の特殊能力に気づき、戸惑いながらもその力を試していく。",
+      title: "プロット1",
+      description: "説明1",
       order: 1,
+      status: "決定",
     },
     {
       id: uuidv4(),
-      title: "第一章：力の代償",
-      description: "能力を使うほど寿命が縮まることを知り、葛藤する主人公。",
+      title: "プロット2",
+      description: "説明2",
       order: 2,
+      status: "決定",
     },
     {
       id: uuidv4(),
-      title: "第二章：決断",
-      description:
-        "自分の命よりも大切なものを守るため、力を使うことを決意する。",
+      title: "プロット3",
+      description: "説明3",
       order: 3,
+      status: "決定",
     },
   ],
   characters: [
@@ -59,7 +60,12 @@ const dummyProject: NovelProject = {
       background:
         "両親は既に他界しており、一人暮らし。幼い頃から不思議な夢をよく見ていた。",
       motivation: "自分の命より大切な人たちの幸せを願う。",
-      traits: ["誠実", "優しい", "自己犠牲的", "内向的"],
+      traits: [
+        { id: uuidv4(), name: "誠実", value: "" },
+        { id: uuidv4(), name: "優しい", value: "" },
+        { id: uuidv4(), name: "自己犠牲的", value: "" },
+        { id: uuidv4(), name: "内向的", value: "" },
+      ],
       relationships: [],
       imageUrl: undefined,
     },

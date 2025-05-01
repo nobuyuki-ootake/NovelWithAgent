@@ -1,4 +1,3 @@
-import React from "react";
 import { Meta, StoryObj } from "@storybook/react";
 import { RecoilRoot } from "recoil";
 import { MemoryRouter } from "react-router-dom";
@@ -6,29 +5,69 @@ import HomePage from "../../pages/HomePage";
 import { NovelProject } from "../../types/index";
 import { v4 as uuidv4 } from "uuid";
 
-// useHome フックのモック
-jest.mock("../../hooks/useHome", () => {
-  return {
-    useHome: () => ({
-      projects: mockProjects,
-      currentProject: mockProjects[0] || null,
-      newProjectTitle: "",
-      setNewProjectTitle: () => {},
-      dialogOpen: false,
-      deleteDialogOpen: false,
-      handleOpenDialog: () => {},
-      handleCloseDialog: () => {},
-      handleCreateProject: () => {},
-      handleSelectProject: () => {},
-      handleOpenDeleteDialog: () => {},
-      handleCloseDeleteDialog: () => {},
-      handleDeleteProject: () => {},
-    }),
-  };
-});
-
 // モックプロジェクトデータ
-const mockProjects: NovelProject[] = [];
+const mockProjects: NovelProject[] = [
+  {
+    id: uuidv4(),
+    title: "ファンタジー小説",
+    createdAt: new Date("2023-01-01"),
+    updatedAt: new Date("2023-01-10"),
+    synopsis: "魔法の世界を冒険する若者の物語",
+    plot: [],
+    characters: [],
+    worldBuilding: {
+      id: uuidv4(),
+      setting: "",
+      rules: [],
+      places: [],
+      cultures: [],
+      history: "",
+    },
+    timeline: [],
+    chapters: [],
+    feedback: [],
+  },
+  {
+    id: uuidv4(),
+    title: "ミステリー小説",
+    createdAt: new Date("2023-02-01"),
+    updatedAt: new Date("2023-02-15"),
+    synopsis: "田舎町で起こった連続殺人事件の謎を追う刑事の物語",
+    plot: [],
+    characters: [],
+    worldBuilding: {
+      id: uuidv4(),
+      setting: "",
+      rules: [],
+      places: [],
+      cultures: [],
+      history: "",
+    },
+    timeline: [],
+    chapters: [],
+    feedback: [],
+  },
+  {
+    id: uuidv4(),
+    title: "SF小説",
+    createdAt: new Date("2023-03-01"),
+    updatedAt: new Date("2023-03-20"),
+    synopsis: "未来の宇宙を舞台にした人類と異星人の物語",
+    plot: [],
+    characters: [],
+    worldBuilding: {
+      id: uuidv4(),
+      setting: "",
+      rules: [],
+      places: [],
+      cultures: [],
+      history: "",
+    },
+    timeline: [],
+    chapters: [],
+    feedback: [],
+  },
+];
 
 const meta: Meta<typeof HomePage> = {
   title: "Pages/HomePage",
@@ -50,175 +89,16 @@ const meta: Meta<typeof HomePage> = {
 export default meta;
 type Story = StoryObj<typeof HomePage>;
 
-// プロジェクトがない状態
 export const NoProjects: Story = {
-  parameters: {
-    useHome: {
-      projects: [],
-    },
+  args: {
+    projects: [],
+    currentProject: null,
   },
 };
 
-// プロジェクトがある状態（標準画面サイズ）
 export const WithProjects: Story = {
-  parameters: {
-    useHome: {
-      projects: [
-        {
-          id: uuidv4(),
-          title: "ファンタジー小説",
-          createdAt: new Date("2023-01-01"),
-          updatedAt: new Date("2023-01-10"),
-          synopsis: "魔法の世界を冒険する若者の物語",
-          plot: [],
-          characters: [],
-          worldBuilding: {
-            id: uuidv4(),
-            setting: "",
-            rules: [],
-            places: [],
-            cultures: [],
-            history: "",
-          },
-          timeline: [],
-          chapters: [],
-          feedback: [],
-        },
-        {
-          id: uuidv4(),
-          title: "ミステリー小説",
-          createdAt: new Date("2023-02-01"),
-          updatedAt: new Date("2023-02-15"),
-          synopsis: "田舎町で起こった連続殺人事件の謎を追う刑事の物語",
-          plot: [],
-          characters: [],
-          worldBuilding: {
-            id: uuidv4(),
-            setting: "",
-            rules: [],
-            places: [],
-            cultures: [],
-            history: "",
-          },
-          timeline: [],
-          chapters: [],
-          feedback: [],
-        },
-        {
-          id: uuidv4(),
-          title: "SF小説",
-          createdAt: new Date("2023-03-01"),
-          updatedAt: new Date("2023-03-20"),
-          synopsis: "未来の宇宙を舞台にした人類と異星人の物語",
-          plot: [],
-          characters: [],
-          worldBuilding: {
-            id: uuidv4(),
-            setting: "",
-            rules: [],
-            places: [],
-            cultures: [],
-            history: "",
-          },
-          timeline: [],
-          chapters: [],
-          feedback: [],
-        },
-      ],
-      currentProject: {
-        id: uuidv4(),
-        title: "ファンタジー小説",
-        createdAt: new Date("2023-01-01"),
-        updatedAt: new Date("2023-01-10"),
-        synopsis: "魔法の世界を冒険する若者の物語",
-        plot: [],
-        characters: [],
-        worldBuilding: {
-          id: uuidv4(),
-          setting: "",
-          rules: [],
-          places: [],
-          cultures: [],
-          history: "",
-        },
-        timeline: [],
-        chapters: [],
-        feedback: [],
-      },
-    },
-  },
-};
-
-// モバイル表示
-export const Mobile: Story = {
-  parameters: {
-    viewport: {
-      defaultViewport: "mobile1",
-    },
-    useHome: {
-      projects: [
-        {
-          id: uuidv4(),
-          title: "ファンタジー小説",
-          createdAt: new Date("2023-01-01"),
-          updatedAt: new Date("2023-01-10"),
-          synopsis: "魔法の世界を冒険する若者の物語",
-          plot: [],
-          characters: [],
-          worldBuilding: {
-            id: uuidv4(),
-            setting: "",
-            rules: [],
-            places: [],
-            cultures: [],
-            history: "",
-          },
-          timeline: [],
-          chapters: [],
-          feedback: [],
-        },
-      ],
-    },
-  },
-};
-
-// ダイアログが開いている状態
-export const WithOpenDialog: Story = {
-  parameters: {
-    useHome: {
-      projects: [],
-      dialogOpen: true,
-    },
-  },
-};
-
-// 削除確認ダイアログが開いている状態
-export const WithDeleteDialog: Story = {
-  parameters: {
-    useHome: {
-      projects: [
-        {
-          id: uuidv4(),
-          title: "ファンタジー小説",
-          createdAt: new Date("2023-01-01"),
-          updatedAt: new Date("2023-01-10"),
-          synopsis: "魔法の世界を冒険する若者の物語",
-          plot: [],
-          characters: [],
-          worldBuilding: {
-            id: uuidv4(),
-            setting: "",
-            rules: [],
-            places: [],
-            cultures: [],
-            history: "",
-          },
-          timeline: [],
-          chapters: [],
-          feedback: [],
-        },
-      ],
-      deleteDialogOpen: true,
-    },
+  args: {
+    projects: mockProjects,
+    currentProject: mockProjects[0],
   },
 };

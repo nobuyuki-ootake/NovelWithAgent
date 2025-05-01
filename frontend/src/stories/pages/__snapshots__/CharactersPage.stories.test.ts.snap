@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CharactersPage > DOMスナップショットの例 1`] = `
+"
+      <div class="characters-page">
+        <h1>キャラクター設定</h1>
+        <div class="character-list">
+          <div class="character-card">
+            <h3>主人公：太郎</h3>
+            <div class="character-details">
+              <p class="character-age">年齢: 17歳</p>
+              <p class="character-role">役割: 主人公</p>
+              <p class="character-description">説明: 勇敢で正義感が強い少年。特殊な力を持っている。</p>
+            </div>
+          </div>
+          <div class="character-card">
+            <h3>ヒロイン：花子</h3>
+            <div class="character-details">
+              <p class="character-age">年齢: 16歳</p>
+              <p class="character-role">役割: ヒロイン</p>
+              <p class="character-description">説明: 聡明で優しい性格。秘密の能力を持っている。</p>
+            </div>
+          </div>
+        </div>
+        <div class="character-relationships">
+          <h2>キャラクター関係図</h2>
+          <p>太郎と花子は幼馴染で、互いに協力し合う関係にある。</p>
+        </div>
+      </div>
+    "
+`;

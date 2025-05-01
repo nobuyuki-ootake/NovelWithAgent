@@ -1,6 +1,6 @@
 import { selector } from "recoil";
 import { currentProjectState, currentChapterIdState } from "./atoms";
-import { Chapter } from "../types";
+import { Chapter } from "../types/index";
 
 // 現在選択されている章を取得するセレクタ
 export const currentChapterSelector = selector<Chapter | null>({
