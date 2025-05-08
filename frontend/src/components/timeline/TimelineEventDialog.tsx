@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Typography,
@@ -15,9 +15,36 @@ import {
   Chip,
   Avatar,
   SelectChangeEvent,
+  Stack,
+  Divider,
+  Autocomplete,
+  Paper,
 } from "@mui/material";
-import { Character, Place, TimelineEvent } from "../../types/index";
+import {
+  Character,
+  Place,
+  TimelineEvent,
+  CharacterStatus,
+} from "../../types/index";
 import { getCharacterIcon } from "./TimelineUtils";
+
+// デフォルトの状態を定義
+const defaultStatuses: CharacterStatus[] = [
+  {
+    id: "default_healthy",
+    name: "健康",
+    type: "life",
+    mobility: "normal",
+    description: "心身ともに問題ない状態。",
+  },
+  {
+    id: "default_dead",
+    name: "死亡",
+    type: "life",
+    mobility: "impossible",
+    description: "生命活動が停止した状態。",
+  },
+];
 
 interface TimelineEventDialogProps {
   open: boolean;
@@ -34,6 +61,11 @@ interface TimelineEventDialogProps {
   onPlacesChange: (event: SelectChangeEvent<string[]>) => void;
   getCharacterName: (id: string) => string;
   getPlaceName: (id: string) => string;
+  onPostEventStatusChange: (
+    characterId: string,
+    newStatuses: CharacterStatus[]
+  ) => void;
+  definedCharacterStatuses?: CharacterStatus[];
 }
 
 const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
@@ -49,14 +81,78 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
   onPlacesChange,
   getCharacterName,
   getPlaceName,
+  onPostEventStatusChange,
+  definedCharacterStatuses = [],
 }) => {
+  console.log(
+    "[TimelineEventDialog] definedCharacterStatuses (from props):",
+    definedCharacterStatuses
+  );
+
+  const availableStatuses = useMemo(() => {
+    const userDefinedIds = new Set(
+      (definedCharacterStatuses || []).map((s) => s.id)
+    );
+    const uniqueDefaultStatuses = defaultStatuses.filter(
+      (ds) => !userDefinedIds.has(ds.id)
+    );
+    const combined = [
+      ...uniqueDefaultStatuses,
+      ...(definedCharacterStatuses || []),
+    ];
+    console.log(
+      "[TimelineEventDialog] availableStatuses (combined):",
+      combined
+    );
+    return combined;
+  }, [definedCharacterStatuses]);
+
+  // キャラクターの状態をチップで表示するヘルパーコンポーネント (ローカルで定義)
+  const CharacterStatusChips: React.FC<{ statuses?: CharacterStatus[] }> = ({
+    statuses,
+  }) => {
+    if (!statuses || statuses.length === 0) {
+      return (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ lineHeight: "normal" }}
+        >
+          状態なし
+        </Typography>
+      );
+    }
+    return (
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+        {statuses.map((status) => (
+          <Chip
+            key={status.id}
+            label={status.name}
+            size="small"
+            variant="outlined"
+            color={
+              status.mobility === "normal"
+                ? "success"
+                : status.mobility === "slow"
+                ? "warning"
+                : status.mobility === "impossible"
+                ? "error"
+                : "default"
+            }
+            sx={{ mb: 0.5 }}
+          />
+        ))}
+      </Stack>
+    );
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         {isEditing ? "イベントを編集" : "新しいイベントを追加"}
       </DialogTitle>
-      <DialogContent>
-        <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+      <DialogContent dividers>
+        <Stack spacing={3} sx={{ pt: 1 }}>
           <TextField
             name="title"
             label="イベントタイトル"
@@ -80,7 +176,7 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
             name="description"
             label="説明"
             multiline
-            rows={4}
+            rows={3}
             fullWidth
             value={newEvent.description}
             onChange={onEventChange}
@@ -109,15 +205,20 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
                         key={value}
                         label={getCharacterName(value)}
                         size="small"
-                        color="secondary"
                         avatar={
                           character?.imageUrl ? (
-                            <Avatar src={character.imageUrl} />
+                            <Avatar
+                              src={character.imageUrl}
+                              sx={{ width: 20, height: 20 }}
+                            />
                           ) : (
                             <Avatar
                               sx={{
                                 bgcolor: color,
                                 color: "white",
+                                width: 20,
+                                height: 20,
+                                fontSize: "0.8rem",
                               }}
                             >
                               {emoji}
@@ -171,7 +272,6 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
                       key={value}
                       label={getPlaceName(value)}
                       size="small"
-                      color="primary"
                     />
                   ))}
                 </Box>
@@ -180,7 +280,7 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
               MenuProps={{
                 PaperProps: {
                   style: {
-                    maxHeight: 300,
+                    maxHeight: 250,
                   },
                 },
               }}
@@ -202,17 +302,121 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
               )}
             </Select>
           </FormControl>
-        </Box>
+
+          {newEvent.relatedCharacters &&
+            newEvent.relatedCharacters.length > 0 && (
+              <Box component={Paper} variant="outlined" sx={{ p: 2, mt: 1 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ mb: 1 }}>
+                  キャラクターの状態変更
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Stack spacing={2.5}>
+                  {newEvent.relatedCharacters.map((charId) => {
+                    const character = characters.find((c) => c.id === charId);
+                    if (!character) return null;
+
+                    const currentStatuses = character.statuses || [];
+                    const postEventStatusesForChar =
+                      newEvent.postEventCharacterStatuses?.[charId] || [];
+
+                    return (
+                      <Box
+                        key={charId}
+                        sx={{
+                          borderBottom: 1,
+                          borderColor: "divider",
+                          pb: 2,
+                          "&:last-child": { borderBottom: 0, pb: 0 },
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          gutterBottom
+                          component="div"
+                          sx={{ fontWeight: "medium" }}
+                        >
+                          {character.name}
+                        </Typography>
+                        <Stack spacing={1.5} sx={{ pl: 1 }}>
+                          <Box>
+                            <Typography
+                              variant="caption"
+                              display="block"
+                              color="text.secondary"
+                              gutterBottom
+                              sx={{ mb: 0.2 }}
+                            >
+                              イベント前の状態:
+                            </Typography>
+                            <CharacterStatusChips statuses={currentStatuses} />
+                          </Box>
+                          <Autocomplete
+                            multiple
+                            size="small"
+                            id={`post-status-${charId}`}
+                            options={availableStatuses}
+                            getOptionLabel={(option) => option?.name || ""}
+                            value={availableStatuses.filter((opt) =>
+                              postEventStatusesForChar.some(
+                                (s) => s.id === opt?.id
+                              )
+                            )}
+                            onChange={(_, selectedOptions) => {
+                              onPostEventStatusChange(
+                                charId,
+                                selectedOptions || []
+                              );
+                            }}
+                            isOptionEqualToValue={(option, value) =>
+                              option?.id === value?.id
+                            }
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                variant="outlined"
+                                label="イベント後の状態"
+                                placeholder="状態を選択"
+                              />
+                            )}
+                            renderTags={(value, getTagProps) =>
+                              value.map((option, index) =>
+                                option && option.id && option.name ? (
+                                  <Chip
+                                    {...getTagProps({ index })}
+                                    key={option.id}
+                                    label={option.name}
+                                    size="small"
+                                    color={
+                                      option.mobility === "normal"
+                                        ? "success"
+                                        : option.mobility === "slow"
+                                        ? "warning"
+                                        : option.mobility === "impossible"
+                                        ? "error"
+                                        : "default"
+                                    }
+                                  />
+                                ) : null
+                              )
+                            }
+                          />
+                        </Stack>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+        </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>キャンセル</Button>
         <Button
           onClick={onSave}
-          color="primary"
           variant="contained"
           disabled={!newEvent.title.trim() || !newEvent.date}
         >
-          {isEditing ? "更新" : "追加"}
+          {isEditing ? "更新" : "作成"}
         </Button>
       </DialogActions>
     </Dialog>

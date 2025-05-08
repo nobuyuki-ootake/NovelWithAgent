@@ -25,7 +25,7 @@ import {
   Save as SaveIcon,
 } from "@mui/icons-material";
 import { v4 as uuidv4 } from "uuid";
-import { Character, CustomField, CharacterTrait } from "../../types";
+import { Character, CustomField, CharacterTrait } from "../../types/index";
 import {
   characterIcons,
   availableEmojis,

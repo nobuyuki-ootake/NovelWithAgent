@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gemini APIテスト</title>
+    <style>
+      body {
+        font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+          "Noto Sans JP", sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+      }
+      .input-area {
+        margin-bottom: 20px;
+      }
+      textarea {
+        width: 100%;
+        height: 100px;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      button:hover {
+        background-color: #3367d6;
+      }
+      .result {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        min-height: 100px;
+        white-space: pre-wrap;
+      }
+      .loading {
+        display: none;
+        margin-top: 10px;
+        color: #666;
+      }
+      .context-item {
+        margin-bottom: 10px;
+      }
+      .context-container {
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: #eef;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Gemini APIテスト</h1>
+
+    <div class="context-container">
+      <h3>コンテキスト設定</h3>
+      <div class="context-item">
+        <label>
+          <input type="checkbox" id="use-title-context" checked />
+          タイトル情報を含める
+        </label>
+        <input
+          type="text"
+          id="title-input"
+          value="星空の王冠"
+          style="width: 300px; margin-left: 10px"
+        />
+      </div>
+    </div>
+
+    <div class="input-area">
+      <h3>AIへの質問/指示</h3>
+      <textarea id="prompt-input" placeholder="質問や指示を入力してください">
+この物語のあらすじを考えてください。魔法と冒険が含まれる物語がいいです。</textarea
+      >
+      <div>
+        <button id="send-button">送信</button>
+        <span class="loading" id="loading-indicator">処理中...</span>
+      </div>
+    </div>
+
+    <h3>結果</h3>
+    <div class="result" id="result-container">ここに結果が表示されます</div>
+
+    <script>
+      document
+        .getElementById("send-button")
+        .addEventListener("click", async () => {
+          const promptInput = document.getElementById("prompt-input");
+          const resultContainer = document.getElementById("result-container");
+          const loadingIndicator = document.getElementById("loading-indicator");
+          const useTitleContext =
+            document.getElementById("use-title-context").checked;
+          const titleInput = document.getElementById("title-input").value;
+
+          if (!promptInput.value.trim()) {
+            alert("質問や指示を入力してください");
+            return;
+          }
+
+          // コンテキスト要素の準備
+          const selectedElements = [];
+
+          // タイトル情報を含める場合
+          if (useTitleContext && titleInput.trim()) {
+            selectedElements.push({
+              type: "title",
+              id: "project-title",
+              name: "作品タイトル",
+              content: titleInput.trim(),
+            });
+          }
+
+          // リクエストデータの準備
+          const requestData = {
+            message: promptInput.value,
+            selectedElements: selectedElements,
+          };
+
+          // 処理中表示
+          loadingIndicator.style.display = "inline";
+          resultContainer.textContent = "処理中...";
+
+          try {
+            // プロキシサーバーにリクエスト
+            const response = await fetch(
+              "http://localhost:4001/api/ai/assist",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestData),
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`エラー: ${response.status}`);
+            }
+
+            const data = await response.json();
+            resultContainer.textContent =
+              data.response || "応答がありませんでした";
+          } catch (error) {
+            console.error("エラー:", error);
+            resultContainer.textContent = `エラーが発生しました: ${error.message}`;
+          } finally {
+            loadingIndicator.style.display = "none";
+          }
+        });
+    </script>
+  </body>
+</html>

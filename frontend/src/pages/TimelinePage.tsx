@@ -30,6 +30,7 @@ const TimelinePage: React.FC = () => {
     snackbarOpen,
     snackbarMessage,
     dateArray,
+    definedCharacterStatuses,
     handleOpenDialog,
     handleCloseDialog,
     handleEventChange,
@@ -46,7 +47,14 @@ const TimelinePage: React.FC = () => {
     getCharacterName,
     getPlaceName,
     calculateEventPosition,
+    handleReorderEvents,
+    handlePostEventStatusChange,
   } = useTimeline();
+
+  console.log(
+    "[TimelinePage] definedCharacterStatuses from useTimeline:",
+    definedCharacterStatuses
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -82,6 +90,7 @@ const TimelinePage: React.FC = () => {
           onEditEvent={handleEventClick}
           hasUnsavedChanges={hasUnsavedChanges}
           onSave={handleSave}
+          onReorder={handleReorderEvents}
         />
 
         {/* タイムラインチャート */}
@@ -108,6 +117,8 @@ const TimelinePage: React.FC = () => {
         onPlacesChange={handlePlacesChange}
         getCharacterName={getCharacterName}
         getPlaceName={getPlaceName}
+        onPostEventStatusChange={handlePostEventStatusChange}
+        definedCharacterStatuses={definedCharacterStatuses}
       />
 
       {/* タイムライン設定ダイアログ */}

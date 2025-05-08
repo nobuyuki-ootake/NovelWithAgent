@@ -1,14 +1,16 @@
-import React from "react";
-import { Box, Container, Fab, Tooltip } from "@mui/material";
+import React, { useState } from "react";
+import { Box, Container, Fab, Tooltip, IconButton } from "@mui/material";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
   currentProjectState,
   sidebarOpenState,
-  chatPanelOpenState,
+  aiChatPanelOpenState,
 } from "../../store/atoms";
 import Sidebar from "./Sidebar";
-import ChatPanel from "./ChatPanel";
+import AIChatPanel from "../ai/AIChatPanel";
+import { SettingsMenu } from "./SettingsMenu";
 import MenuIcon from "@mui/icons-material/Menu";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,7 +19,8 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const currentProject = useRecoilValue(currentProjectState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
-  const [chatPanelOpen] = useRecoilState(chatPanelOpenState);
+  const [aiChatPanelOpen] = useRecoilState(aiChatPanelOpenState);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
   // プロジェクトが選択されていない場合はシンプルなレイアウトを表示
   if (!currentProject) {
@@ -31,6 +34,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // サイドバーの切り替え
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  // 設定メニューの切り替え
+  const toggleSettingsMenu = () => {
+    setSettingsMenuOpen(!settingsMenuOpen);
   };
 
   // プロジェクトが選択されている場合はサイドバー付きのレイアウトを表示
@@ -55,13 +63,45 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           p: 3,
           transition: "all 0.2s ease-in-out",
           ml: 0,
-          mr: chatPanelOpen ? "320px" : 0,
+          mr: aiChatPanelOpen ? "320px" : 0,
           height: "100vh",
           overflow: "auto",
           position: "relative",
           backgroundColor: "background.default",
         }}
       >
+        {/* ヘッダーアクション */}
+        <Box
+          sx={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            zIndex: 100,
+            display: "flex",
+            gap: 1,
+          }}
+        >
+          {/* 設定メニューボタン */}
+          <IconButton
+            color="primary"
+            onClick={toggleSettingsMenu}
+            sx={{
+              backgroundColor: "white",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+
+          {/* 設定メニュー */}
+          <Box sx={{ position: "relative" }}>
+            <SettingsMenu
+              isOpen={settingsMenuOpen}
+              onClose={() => setSettingsMenuOpen(false)}
+            />
+          </Box>
+        </Box>
+
         {children}
 
         {/* フロート操作メニューボタン */}
@@ -87,8 +127,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </Tooltip>
       </Box>
 
-      {/* チャットパネル */}
-      <ChatPanel open={chatPanelOpen} />
+      {/* AIChatPanel */}
+      <AIChatPanel />
     </Box>
   );
 };

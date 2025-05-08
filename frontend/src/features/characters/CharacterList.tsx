@@ -18,7 +18,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import { Character } from "../../types";
+import { Character } from "../../types/index";
 import CharacterCard from "./CharacterCard";
 
 interface CharacterListProps {

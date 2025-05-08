@@ -7,6 +7,7 @@ import {
   Culture,
   WorldBuildingFreeField,
   NovelProject,
+  CharacterStatus,
 } from "../types/index";
 import { v4 as uuidv4 } from "uuid";
 
@@ -85,6 +86,15 @@ export function useWorldBuilding() {
   const [energySources, setEnergySources] = useState<string>("");
   const [transportation, setTransportation] = useState<string>("");
 
+  // キャラクター状態定義
+  const [definedCharacterStatuses, setDefinedCharacterStatuses] = useState<
+    CharacterStatus[]
+  >([]);
+  const [isEditingDefinedCharacterStatus, setIsEditingDefinedCharacterStatus] =
+    useState(false);
+  const [currentDefinedCharacterStatus, setCurrentDefinedCharacterStatus] =
+    useState<CharacterStatus | null>(null);
+
   // 世界観情報を取得
   useEffect(() => {
     if (currentProject?.worldBuilding) {
@@ -141,6 +151,11 @@ export function useWorldBuilding() {
       setInventions(currentProject.worldBuilding.inventions || "");
       setEnergySources(currentProject.worldBuilding.energySources || "");
       setTransportation(currentProject.worldBuilding.transportation || "");
+
+      // キャラクター状態定義をセット
+      setDefinedCharacterStatuses(
+        currentProject.definedCharacterStatuses || []
+      );
     }
   }, [currentProject]);
 
@@ -668,13 +683,11 @@ export function useWorldBuilding() {
   );
 
   // 変更を保存
-  const handleSave = useCallback(() => {
-    if (!worldBuilding || !currentProject) return;
+  const handleSaveWorldBuilding = useCallback(async () => {
+    if (!currentProject) return;
 
-    console.log("保存前のplaces:", places);
-
-    const updatedWorldBuilding: WorldBuilding = {
-      ...worldBuilding,
+    const updatedWorldBuildingData: WorldBuilding = {
+      id: currentProject.worldBuilding?.id || uuidv4(),
       mapImageUrl,
       setting: description,
       history,
@@ -721,26 +734,20 @@ export function useWorldBuilding() {
       transportation,
     };
 
-    console.log("更新後のworldBuilding:", updatedWorldBuilding);
-
-    setCurrentProject({
+    const updatedProject: NovelProject = {
       ...currentProject,
-      worldBuilding: updatedWorldBuilding,
-      updatedAt: new Date(),
-    });
+      worldBuilding: updatedWorldBuildingData,
+      definedCharacterStatuses: definedCharacterStatuses,
+    };
+
+    setCurrentProject(updatedProject);
 
     // ローカルストレージに保存（プロジェクトの永続化）
     const projectsStr = localStorage.getItem("novelProjects");
     if (projectsStr) {
       const projects: NovelProject[] = JSON.parse(projectsStr);
       const updatedProjects = projects.map((p) =>
-        p.id === currentProject.id
-          ? {
-              ...currentProject,
-              worldBuilding: updatedWorldBuilding,
-              updatedAt: new Date(),
-            }
-          : p
+        p.id === currentProject.id ? updatedProject : p
       );
       localStorage.setItem("novelProjects", JSON.stringify(updatedProjects));
       console.log("プロジェクトをローカルストレージに保存しました");
@@ -750,7 +757,6 @@ export function useWorldBuilding() {
     setSnackbarMessage("世界観設定を保存しました");
     setSnackbarOpen(true);
   }, [
-    worldBuilding,
     currentProject,
     mapImageUrl,
     description,
@@ -792,12 +798,60 @@ export function useWorldBuilding() {
     inventions,
     energySources,
     transportation,
+    definedCharacterStatuses,
     setCurrentProject,
   ]);
 
   // スナックバーを閉じる
   const handleCloseSnackbar = useCallback(() => {
     setSnackbarOpen(false);
+  }, []);
+
+  // 定義済みキャラクターステータスの保存
+  const handleSaveDefinedCharacterStatus = useCallback(
+    (status: CharacterStatus) => {
+      const newStatus = { ...status, id: status.id || uuidv4() };
+      setDefinedCharacterStatuses((prev) => {
+        const existingIndex = prev.findIndex((s) => s.id === newStatus.id);
+        if (existingIndex > -1) {
+          const updated = [...prev];
+          updated[existingIndex] = newStatus;
+          return updated;
+        }
+        return [...prev, newStatus];
+      });
+      setHasUnsavedChanges(true);
+      setCurrentDefinedCharacterStatus(null);
+      setIsEditingDefinedCharacterStatus(false);
+      setSnackbarMessage("状態を保存しました。");
+      setSnackbarOpen(true);
+    },
+    []
+  );
+
+  // 定義済みキャラクターステータスの削除
+  const handleDeleteDefinedCharacterStatus = useCallback((statusId: string) => {
+    setDefinedCharacterStatuses((prev) =>
+      prev.filter((s) => s.id !== statusId)
+    );
+    setHasUnsavedChanges(true);
+    setSnackbarMessage("状態を削除しました。");
+    setSnackbarOpen(true);
+  }, []);
+
+  // 定義済みキャラクターステータス編集開始
+  const handleEditDefinedCharacterStatus = useCallback(
+    (status: CharacterStatus) => {
+      setCurrentDefinedCharacterStatus(status);
+      setIsEditingDefinedCharacterStatus(true);
+    },
+    []
+  );
+
+  // 定義済みキャラクターステータス編集キャンセル
+  const handleCancelEditDefinedCharacterStatus = useCallback(() => {
+    setCurrentDefinedCharacterStatus(null);
+    setIsEditingDefinedCharacterStatus(false);
   }, []);
 
   return {
@@ -872,7 +926,7 @@ export function useWorldBuilding() {
     handleAddPlace,
     handleEditPlace,
     handleDeletePlace,
-    handleSave,
+    handleSaveWorldBuilding,
     handleCloseSnackbar,
     // 社会と文化のタブのハンドラ
     handleSocialStructureChange,
@@ -911,5 +965,13 @@ export function useWorldBuilding() {
     handleInventionsChange,
     handleEnergySourcesChange,
     handleTransportationChange,
+    // キャラクター状態定義関連
+    definedCharacterStatuses,
+    handleSaveDefinedCharacterStatus,
+    handleDeleteDefinedCharacterStatus,
+    isEditingDefinedCharacterStatus,
+    currentDefinedCharacterStatus,
+    handleEditDefinedCharacterStatus,
+    handleCancelEditDefinedCharacterStatus,
   };
 }

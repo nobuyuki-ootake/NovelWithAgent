@@ -19,6 +19,9 @@ import MagicTechnologyTab from "../components/worldbuilding/MagicTechnologyTab";
 import RulesTab from "../components/worldbuilding/RulesTab";
 import PlacesTab from "../components/worldbuilding/PlacesTab";
 import FreeFieldsTab from "../components/worldbuilding/FreeFieldsTab";
+import CharacterStatusList from "../components/characters/CharacterStatusList";
+import CharacterStatusEditorDialog from "../components/characters/CharacterStatusEditorDialog";
+import { CharacterStatus } from "../types/index";
 import { ExtendedPlace } from "../components/worldbuilding/PlacesTab";
 
 const WorldBuildingPage: React.FC = () => {
@@ -39,7 +42,6 @@ const WorldBuildingPage: React.FC = () => {
     hasUnsavedChanges,
     newPlace,
     isEditingPlace,
-    // 社会と文化のタブの状態
     socialStructure,
     government,
     economy,
@@ -49,7 +51,6 @@ const WorldBuildingPage: React.FC = () => {
     art,
     education,
     technology,
-    // 地理と環境のタブの状態
     geography,
     climate,
     flora,
@@ -58,7 +59,6 @@ const WorldBuildingPage: React.FC = () => {
     settlements,
     naturalDisasters,
     seasonalChanges,
-    // 歴史と伝説のタブの状態
     historicalEvents,
     ancientCivilizations,
     myths,
@@ -67,7 +67,6 @@ const WorldBuildingPage: React.FC = () => {
     religions,
     historicalFigures,
     conflicts,
-    // 魔法と技術のタブの状態
     magicSystem,
     magicRules,
     magicUsers,
@@ -76,7 +75,6 @@ const WorldBuildingPage: React.FC = () => {
     inventions,
     energySources,
     transportation,
-    // ハンドラ関数
     handleTabChange,
     handleMapImageUpload,
     handleSettingChange,
@@ -92,9 +90,8 @@ const WorldBuildingPage: React.FC = () => {
     handleAddPlace,
     handleEditPlace,
     handleDeletePlace,
-    handleSave,
+    handleSaveWorldBuilding,
     handleCloseSnackbar,
-    // 社会と文化のタブのハンドラ
     handleSocialStructureChange,
     handleGovernmentChange,
     handleEconomyChange,
@@ -104,7 +101,6 @@ const WorldBuildingPage: React.FC = () => {
     handleArtChange,
     handleEducationChange,
     handleTechnologyChange,
-    // 地理と環境のタブのハンドラ
     handleGeographyChange,
     handleClimateChange,
     handleFloraChange,
@@ -113,7 +109,6 @@ const WorldBuildingPage: React.FC = () => {
     handleSettlementsChange,
     handleNaturalDisastersChange,
     handleSeasonalChangesChange,
-    // 歴史と伝説のタブのハンドラ
     handleHistoricalEventsChange,
     handleAncientCivilizationsChange,
     handleMythsChange,
@@ -122,7 +117,6 @@ const WorldBuildingPage: React.FC = () => {
     handleReligionsChange,
     handleHistoricalFiguresChange,
     handleConflictsChange,
-    // 魔法と技術のタブのハンドラ
     handleMagicSystemChange,
     handleMagicRulesChange,
     handleMagicUsersChange,
@@ -131,6 +125,13 @@ const WorldBuildingPage: React.FC = () => {
     handleInventionsChange,
     handleEnergySourcesChange,
     handleTransportationChange,
+    definedCharacterStatuses,
+    handleSaveDefinedCharacterStatus,
+    handleDeleteDefinedCharacterStatus,
+    isEditingDefinedCharacterStatus,
+    currentDefinedCharacterStatus,
+    handleEditDefinedCharacterStatus,
+    handleCancelEditDefinedCharacterStatus,
   } = useWorldBuilding();
 
   if (!currentProject) {
@@ -218,8 +219,12 @@ const WorldBuildingPage: React.FC = () => {
             sx={{ fontWeight: tabValue === 7 ? "bold" : "normal" }}
           />
           <Tab
-            label="自由入力"
+            label="自由記述欄"
             sx={{ fontWeight: tabValue === 8 ? "bold" : "normal" }}
+          />
+          <Tab
+            label="状態定義"
+            sx={{ fontWeight: tabValue === 9 ? "bold" : "normal" }}
           />
         </Tabs>
 
@@ -355,7 +360,7 @@ const WorldBuildingPage: React.FC = () => {
           />
         </TabPanel>
 
-        {/* 自由入力タブ */}
+        {/* 自由記述欄タブ */}
         <TabPanel value={tabValue} index={8}>
           <FreeFieldsTab
             freeFields={freeFields}
@@ -367,6 +372,44 @@ const WorldBuildingPage: React.FC = () => {
             onDeleteFreeField={handleDeleteFreeField}
           />
         </TabPanel>
+
+        {/* 状態定義タブ */}
+        <TabPanel value={tabValue} index={9}>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              定義済みキャラクターステータス
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={() =>
+                handleEditDefinedCharacterStatus({
+                  id: "",
+                  name: "",
+                  type: "custom",
+                  mobility: "normal",
+                  description: "",
+                  effects: [],
+                } as CharacterStatus)
+              }
+              sx={{ mb: 2 }}
+            >
+              新しい状態を追加
+            </Button>
+            <CharacterStatusList
+              statuses={definedCharacterStatuses || []}
+              onEdit={handleEditDefinedCharacterStatus}
+              onDelete={handleDeleteDefinedCharacterStatus}
+            />
+            {isEditingDefinedCharacterStatus && (
+              <CharacterStatusEditorDialog
+                open={isEditingDefinedCharacterStatus}
+                onClose={handleCancelEditDefinedCharacterStatus}
+                onSave={handleSaveDefinedCharacterStatus}
+                editingStatus={currentDefinedCharacterStatus}
+              />
+            )}
+          </Box>
+        </TabPanel>
       </Paper>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
@@ -374,7 +417,7 @@ const WorldBuildingPage: React.FC = () => {
           variant="contained"
           color="primary"
           size="large"
-          onClick={handleSave}
+          onClick={handleSaveWorldBuilding}
           disabled={!hasUnsavedChanges}
         >
           保存

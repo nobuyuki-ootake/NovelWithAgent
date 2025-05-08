@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { RecoilRoot } from "recoil";
 import CharactersPage from "../../pages/CharactersPage";
-import { Character } from "../../types";
+import { Character } from "../../types/index";
 import { v4 as uuidv4 } from "uuid";
 
 // モックデータ

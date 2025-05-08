@@ -1,6 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box, TextField, Button, Typography, CardContent } from "@mui/material";
 import { Save as SaveIcon, Edit as EditIcon } from "@mui/icons-material";
+import { AIAssistButton } from "../ui/AIAssistButton";
+import { AIAssistModal } from "../modals/AIAssistModal";
+import { useAIAssist } from "../../hooks/useAIAssist";
+import { useRecoilValue } from "recoil";
+import { currentProjectState } from "../../store/atoms";
 
 interface SynopsisEditorProps {
   synopsis: string;
@@ -19,6 +24,54 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
   onSave,
   onChange,
 }) => {
+  const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
+  const currentProject = useRecoilValue(currentProjectState);
+  const projectTitle = currentProject?.title || "";
+
+  // AIアシスト機能
+  const { assistPlot, isLoading } = useAIAssist({
+    onSuccess: (result) => {
+      // AIの応答を処理してシノプシスに設定
+      if (result && result.response) {
+        // テキストフィールドの変更をシミュレートするためイベントオブジェクトを作成
+        const event = {
+          target: { value: result.response },
+        } as React.ChangeEvent<HTMLInputElement>;
+        onChange(event);
+      }
+    },
+  });
+
+  // AIアシストモーダルを開く
+  const handleOpenAIAssist = async () => {
+    // 編集モードでない場合は編集モードに切り替える
+    if (!isEditing) {
+      onEdit();
+    }
+    setAiAssistModalOpen(true);
+    return Promise.resolve();
+  };
+
+  // AIアシストリクエスト実行（タイトル情報も含める）
+  const handleAIAssist = async (message: string) => {
+    // タイトル情報を含むコンテキスト要素を作成
+    const titleContext = [
+      {
+        type: "title",
+        id: "project-title",
+        name: "作品タイトル",
+        content: projectTitle,
+      },
+    ];
+
+    // タイトル情報が存在する場合、それを考慮したメッセージを作成
+    const enhancedMessage = projectTitle
+      ? `タイトル「${projectTitle}」の小説について、${message}`
+      : message;
+
+    return await assistPlot(enhancedMessage, titleContext);
+  };
+
   return (
     <CardContent>
       <Box
@@ -52,14 +105,22 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
             </Button>
           </Box>
         ) : (
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<EditIcon />}
-            onClick={onEdit}
-          >
-            編集
-          </Button>
+          <Box>
+            <AIAssistButton
+              onAssist={handleOpenAIAssist}
+              text="AIに項目を埋めてもらう"
+              variant="outline"
+              className="mr-2"
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon />}
+              onClick={onEdit}
+            >
+              編集
+            </Button>
+          </Box>
         )}
       </Box>
 
@@ -76,6 +137,14 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
             variant="outlined"
             autoFocus
           />
+          <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
+            <AIAssistButton
+              onAssist={handleOpenAIAssist}
+              text="AIに項目を埋めてもらう"
+              variant="outline"
+              disabled={isLoading}
+            />
+          </Box>
         </Box>
       ) : (
         <Box sx={{ mt: 2 }}>
@@ -92,11 +161,28 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
               color="text.secondary"
               sx={{ fontStyle: "italic" }}
             >
-              まだあらすじが入力されていません。「編集」ボタンをクリックして、物語のあらすじを追加してください。
+              まだあらすじが入力されていません。「編集」ボタンをクリックして、物語のあらすじを追加してください。または「AIに項目を埋めてもらう」ボタンを使用することもできます。
             </Typography>
           )}
         </Box>
       )}
+
+      {/* AIアシストモーダル */}
+      <AIAssistModal
+        open={aiAssistModalOpen}
+        onClose={() => setAiAssistModalOpen(false)}
+        title="AIにあらすじを作成してもらう"
+        description={`${
+          projectTitle ? `「${projectTitle}」という` : ""
+        }物語のあらすじを作成します。ジャンルや主人公、設定などのアイデアを入力してください。`}
+        defaultMessage={`${
+          projectTitle ? `「${projectTitle}」` : "次のような物語"
+        }のあらすじを考えてください：`}
+        onAssistComplete={() => {
+          // モーダルは自動的に閉じる
+        }}
+        requestAssist={handleAIAssist}
+      />
     </CardContent>
   );
 };

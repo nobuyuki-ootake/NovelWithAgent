@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRecoilState } from "recoil";
 import { currentProjectState } from "../store/atoms";
-import { Character, Place } from "../types/index";
+import { Character, Place, CharacterStatus } from "../types/index";
 import { TimelineEvent, NovelProject } from "../types/index";
 import { v4 as uuidv4 } from "uuid";
 import moment from "moment";
@@ -64,6 +64,8 @@ export function useTimeline() {
     date: "",
     relatedCharacters: [],
     relatedPlaces: [],
+    order: 0,
+    postEventCharacterStatuses: {},
   });
 
   // ダイアログの状態
@@ -76,19 +78,25 @@ export function useTimeline() {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // プロジェクトで定義済みの状態リストをuseStateで管理
+  const [
+    definedCharacterStatusesForDialog,
+    setDefinedCharacterStatusesForDialog,
+  ] = useState<CharacterStatus[]>([]);
+
   // 初期データのロード
   useEffect(() => {
     if (currentProject) {
-      console.log("currentProject in Timeline:", currentProject);
-      setTimelineEvents(currentProject.timeline || []);
-      setCharacters(currentProject.characters || []);
+      console.log(
+        "[useTimeline] useEffect - START - currentProject.id:",
+        currentProject.id
+      );
+      console.log(
+        "[useTimeline] useEffect - START - currentProject.definedCharacterStatuses:",
+        currentProject.definedCharacterStatuses
+      );
 
-      // 設定を読み込み
-      if (currentProject.worldBuilding?.timelineSettings?.startDate) {
-        setTimelineSettings({
-          startDate: currentProject.worldBuilding.timelineSettings.startDate,
-        });
-      }
+      let projectDataToUse = { ...currentProject }; // Start with Recoil state
 
       // 最新のデータをローカルストレージから直接読み込み（優先的に使用）
       const projectId = currentProject.id;
@@ -96,50 +104,68 @@ export function useTimeline() {
       if (projectsStr) {
         try {
           const projects: NovelProject[] = JSON.parse(projectsStr);
-          const latestProject = projects.find((p) => p.id === projectId);
-          if (
-            latestProject &&
-            latestProject.worldBuilding &&
-            Array.isArray(latestProject.worldBuilding.places)
-          ) {
+          const latestProjectFromLocalStorage = projects.find(
+            (p) => p.id === projectId
+          );
+
+          if (latestProjectFromLocalStorage) {
             console.log(
-              "最新のplaces from localStorage:",
-              latestProject.worldBuilding.places
+              "[useTimeline] Found project in localStorage:",
+              latestProjectFromLocalStorage.id
             );
-            if (latestProject.worldBuilding.places.length > 0) {
-              setPlaces(latestProject.worldBuilding.places);
-              return; // ローカルストレージから取得できたら終了
+            console.log(
+              "[useTimeline] localStorage project.definedCharacterStatuses:",
+              latestProjectFromLocalStorage.definedCharacterStatuses
+            );
+            // 簡単な比較ロジック: ローカルストレージの方が新しいか、Recoil側が空ならローカルストレージを優先
+            if (
+              latestProjectFromLocalStorage.updatedAt >
+                projectDataToUse.updatedAt ||
+              (latestProjectFromLocalStorage.definedCharacterStatuses &&
+                latestProjectFromLocalStorage.definedCharacterStatuses.length >
+                  0 &&
+                (!projectDataToUse.definedCharacterStatuses ||
+                  projectDataToUse.definedCharacterStatuses.length === 0))
+            ) {
+              console.log(
+                "[useTimeline] Using project data from localStorage as it seems newer or more complete for statuses."
+              );
+              projectDataToUse = { ...latestProjectFromLocalStorage };
+              // Recoilのatomも更新する
+              setCurrentProject(projectDataToUse);
             }
           }
         } catch (error) {
-          console.error("LocalStorage parsing error:", error);
+          console.error("[useTimeline] LocalStorage parsing error:", error);
         }
       }
 
-      // ローカルストレージから取得できなかった場合はcurrentProjectから取得
-      if (currentProject.worldBuilding) {
-        console.log(
-          "places from worldBuilding:",
-          currentProject.worldBuilding.places
-        );
+      console.log(
+        "[useTimeline] useEffect - projectDataToUse.definedCharacterStatuses (after LS check):",
+        projectDataToUse.definedCharacterStatuses
+      );
 
-        // placesが配列であることを確認
-        if (Array.isArray(currentProject.worldBuilding.places)) {
-          console.log("Places set to:", currentProject.worldBuilding.places);
-          setPlaces(currentProject.worldBuilding.places);
-        } else {
-          console.warn(
-            "worldBuilding.places is not an array:",
-            currentProject.worldBuilding.places
-          );
-          setPlaces([]);
-        }
-      } else {
-        console.warn("worldBuilding is null or undefined");
-        setPlaces([]);
+      setTimelineEvents(projectDataToUse.timeline || []);
+      setCharacters(projectDataToUse.characters || []);
+      setPlaces(projectDataToUse.worldBuilding?.places || []);
+      setDefinedCharacterStatusesForDialog(
+        projectDataToUse.definedCharacterStatuses || []
+      ); // useStateで更新
+
+      // 設定を読み込み
+      if (projectDataToUse.worldBuilding?.timelineSettings?.startDate) {
+        setTimelineSettings({
+          startDate: projectDataToUse.worldBuilding.timelineSettings.startDate,
+        });
       }
+      console.log(
+        "[useTimeline] useEffect - END - currentProject.definedCharacterStatuses (Recoil state after potential update):",
+        currentProject?.definedCharacterStatuses // Log Recoil state again
+      );
+    } else {
+      console.log("[useTimeline] useEffect - currentProject is null");
     }
-  }, [currentProject]);
+  }, [currentProject]); // setCurrentProject を依存配列から削除
 
   // 地名（グループ）の更新
   useEffect(() => {
@@ -226,7 +252,11 @@ export function useTimeline() {
       console.log("Places when opening dialog:", places);
 
       if (event) {
-        setNewEvent({ ...event });
+        setNewEvent({
+          ...event,
+          order: event.order ?? 0,
+          postEventCharacterStatuses: event.postEventCharacterStatuses || {},
+        });
         setIsEditing(true);
         setCurrentEventId(event.id);
       } else {
@@ -234,16 +264,18 @@ export function useTimeline() {
           id: "",
           title: "",
           description: "",
-          date: new Date().toISOString().split("T")[0], // 今日の日付をデフォルトに
+          date: new Date().toISOString().split("T")[0],
           relatedCharacters: [],
           relatedPlaces: [],
+          order: timelineEvents.length, // 新規は末尾
+          postEventCharacterStatuses: {},
         });
         setIsEditing(false);
         setCurrentEventId("");
       }
       setDialogOpen(true);
     },
-    [places, currentProject]
+    [places, currentProject, timelineEvents]
   );
 
   // 設定ダイアログを開く
@@ -338,19 +370,26 @@ export function useTimeline() {
       return;
     }
 
+    let updatedEvent: TimelineEvent;
     if (isEditing) {
       // 既存のイベントを更新
+      updatedEvent = {
+        ...newEvent,
+        id: currentEventId,
+        order: newEvent.order ?? 0,
+      };
       const updatedEvents = timelineEvents.map((event) =>
-        event.id === currentEventId ? { ...newEvent } : event
+        event.id === currentEventId ? updatedEvent : event
       );
       setTimelineEvents(updatedEvents);
     } else {
       // 新しいイベントを追加
-      const eventWithId = {
+      updatedEvent = {
         ...newEvent,
         id: uuidv4(),
+        order: timelineEvents.length,
       };
-      setTimelineEvents([...timelineEvents, eventWithId]);
+      setTimelineEvents([...timelineEvents, updatedEvent]);
     }
 
     setHasUnsavedChanges(true);
@@ -565,6 +604,8 @@ export function useTimeline() {
         date: date,
         relatedCharacters: [],
         relatedPlaces: place ? [place.id] : ["unassigned"],
+        order: timelineEvents.length,
+        postEventCharacterStatuses: {},
       };
 
       setNewEvent(newEventAtGrid);
@@ -572,7 +613,39 @@ export function useTimeline() {
       setCurrentEventId("");
       setDialogOpen(true);
     },
-    [timelineGroups, safeMinY, safeMaxY]
+    [timelineGroups, safeMinY, safeMaxY, timelineEvents]
+  );
+
+  // イベントの順序を更新する
+  const handleReorderEvents = useCallback(
+    (reorderedItems: TimelineItem[]) => {
+      // TimelineItem[] から TimelineEvent[] への変換
+      // id順でマッチングし、orderプロパティをindexで更新
+      const updatedEvents = reorderedItems
+        .map((item, idx) => {
+          const original = timelineEvents.find((e) => e.id === item.id);
+          return original ? { ...original, order: idx } : null;
+        })
+        .filter((e): e is TimelineEvent => e !== null);
+      setTimelineEvents(updatedEvents);
+      setHasUnsavedChanges(true);
+    },
+    [timelineEvents]
+  );
+
+  // イベント後のキャラクター状態を更新するハンドラ
+  const handlePostEventStatusChange = useCallback(
+    (characterId: string, newStatuses: CharacterStatus[]) => {
+      setNewEvent((prevEvent) => ({
+        ...prevEvent,
+        postEventCharacterStatuses: {
+          ...(prevEvent.postEventCharacterStatuses || {}),
+          [characterId]: newStatuses,
+        },
+      }));
+      setHasUnsavedChanges(true);
+    },
+    []
   );
 
   return {
@@ -595,6 +668,7 @@ export function useTimeline() {
     safeMinY,
     safeMaxY,
     dateArray,
+    definedCharacterStatuses: definedCharacterStatusesForDialog, // useState版を返す
 
     // ハンドラー
     handleOpenDialog,
@@ -614,6 +688,8 @@ export function useTimeline() {
     getPlaceName,
     calculateEventPosition,
     createEventFromPosition,
+    handleReorderEvents,
+    handlePostEventStatusChange,
   };
 }
 

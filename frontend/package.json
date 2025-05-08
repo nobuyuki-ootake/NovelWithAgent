@@ -23,6 +23,9 @@
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/slate": "^0.47.16",
     "@types/slate-react": "^0.50.0",
+    "axios": "^1.9.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.508.0",
     "moment": "^2.30.1",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
@@ -35,6 +38,8 @@
     "slate-dom": "^0.112.2",
     "slate-history": "^0.113.1",
     "slate-react": "^0.112.1",
+    "sonner": "^2.0.3",
+    "tailwind-merge": "^3.2.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

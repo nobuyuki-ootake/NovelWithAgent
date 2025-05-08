@@ -11,6 +11,7 @@ export interface NovelProject {
   timeline: TimelineEvent[];
   chapters: Chapter[];
   feedback: Feedback[];
+  definedCharacterStatuses?: CharacterStatus[];
 }
 
 // プロット要素の型定義
@@ -37,6 +38,15 @@ export interface Relationship {
   description: string;
 }
 
+// キャラクターの状態（ステータス）型
+export interface CharacterStatus {
+  id: string;
+  name: string; // 例: 生存, 死亡, 毒, やけど, カスタム名
+  type: "life" | "abnormal" | "custom";
+  mobility: "normal" | "slow" | "impossible"; // 歩行可能/鈍足/不可
+  description?: string;
+}
+
 // キャラクターの型定義
 export interface Character {
   id: string;
@@ -51,6 +61,7 @@ export interface Character {
   relationships: Relationship[];
   imageUrl?: string;
   customFields?: CustomField[];
+  statuses?: CharacterStatus[];
 }
 
 // 世界観設定の型定義
@@ -139,6 +150,10 @@ export interface TimelineEvent {
   date: string;
   relatedCharacters: string[];
   relatedPlaces: string[];
+  order: number;
+  postEventCharacterStatuses?: {
+    [characterId: string]: CharacterStatus[];
+  };
 }
 
 // 章の型定義
@@ -193,4 +208,67 @@ export interface TimelineSettings {
   startDate: Date;
   endDate: Date;
   zoomLevel: number;
+}
+
+/**
+ * プロジェクトの状態を表す型 (project.ts オリジナル)
+ */
+export type ProjectStatus = "active" | "archived" | "template";
+
+/**
+ * プロジェクトのメタデータ (project.ts オリジナル)
+ */
+export interface ProjectMetadata {
+  version: string;
+  tags?: string[];
+  genre?: string[];
+  targetAudience?: string;
+  wordCountGoal?: number;
+  status: ProjectStatus;
+  lastBackupDate?: string;
+}
+
+/**
+ * タイムラインイベントの重要度 (project.ts オリジナル)
+ */
+export type EventImportance = 1 | 2 | 3 | 4 | 5;
+
+/**
+ * 章の状態 (project.ts オリジナル)
+ */
+export type ChapterStatus = "draft" | "inProgress" | "review" | "completed";
+
+/**
+ * セクション（章の中の小見出し） (project.ts オリジナル)
+ */
+export interface Section {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+}
+
+/**
+ * プロジェクト（小説の一つの作品） (project.ts オリジナル)
+ * NovelProject と内容が近いため、どちらかに寄せるか検討。一旦両方定義。
+ */
+export interface Project {
+  id: string;
+  name: string; // NovelProject の title と対応か
+  description?: string; // NovelProject の synopsis と対応か
+  createdAt: string; // NovelProject では Date 型
+  updatedAt: string; // NovelProject では Date 型
+  characters: Character[];
+  worldBuilding: WorldBuilding;
+  timeline: TimelineEvent[];
+  chapters: Chapter[];
+  metadata: ProjectMetadata;
+  notes?: {
+    id: string;
+    title: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+    tags?: string[];
+  }[];
 }

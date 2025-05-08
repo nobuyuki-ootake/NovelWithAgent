@@ -21,7 +21,6 @@ import CharacterList from "../features/characters/CharacterList";
 import CharacterForm from "../components/characters/CharacterForm";
 
 const CharactersPage: React.FC = () => {
-  // useCharactersフックを使用
   const {
     characters,
     viewMode,
@@ -53,6 +52,8 @@ const CharactersPage: React.FC = () => {
     handleDeleteCharacter,
     handleSaveCharacter,
     handleCloseSnackbar,
+    handleSaveStatus,
+    handleDeleteStatus,
   } = useCharacters();
 
   return (
@@ -109,6 +110,7 @@ const CharactersPage: React.FC = () => {
             description: rel.description || "",
           })),
           customFields: character.customFields ?? [],
+          statuses: character.statuses || [],
         }))}
         viewMode={viewMode}
         onAddCharacter={handleOpenDialog}
@@ -124,6 +126,7 @@ const CharactersPage: React.FC = () => {
               description: rel.description || "",
             })),
             customFields: character.customFields ?? [],
+            statuses: character.statuses || [],
           })
         }
         onDeleteCharacter={handleDeleteCharacter}
@@ -143,15 +146,6 @@ const CharactersPage: React.FC = () => {
           <CharacterForm
             formData={{
               ...formData,
-              description: formData.description || "",
-              background: formData.background || "",
-              motivation: formData.motivation || "",
-              traits: formData.traits ?? [],
-              relationships: (formData.relationships ?? []).map((rel) => ({
-                ...rel,
-                description: rel.description || "",
-              })),
-              customFields: formData.customFields ?? [],
             }}
             formErrors={formErrors}
             selectedEmoji={selectedEmoji}
@@ -170,6 +164,8 @@ const CharactersPage: React.FC = () => {
             onRemoveCustomField={handleRemoveCustomField}
             onSave={handleSaveCharacter}
             onCancel={handleCloseDialog}
+            onSaveStatus={handleSaveStatus}
+            onDeleteStatus={handleDeleteStatus}
           />
         </DialogContent>
       </Dialog>

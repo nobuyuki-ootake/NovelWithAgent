@@ -107,3 +107,10 @@ export const aiLoadingState = atom<boolean>({
   key: "aiLoading",
   default: false,
 });
+
+// AIチャットパネルのアクティブなタブ
+export type AIChatTabType = "chat" | "settings";
+export const aiChatTabState = atom<AIChatTabType>({
+  key: "aiChatTab",
+  default: "chat",
+});

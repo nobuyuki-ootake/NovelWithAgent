@@ -22,7 +22,7 @@ if (!("__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED" in React)) {
 // 開発用のダミーデータを作成
 const dummyProject: NovelProject = {
   id: uuidv4(),
-  title: "サンプルプロジェクト",
+  title: "テストプロジェクト",
   createdAt: new Date(),
   updatedAt: new Date(),
   synopsis:
@@ -98,24 +98,76 @@ const dummyProject: NovelProject = {
   feedback: [],
 };
 
-// ローカルストレージにデータを保存する関数
-const saveProjectToLocalStorage = (project: NovelProject) => {
-  localStorage.setItem("novelProject", JSON.stringify(project));
+// ローカルストレージにプロジェクトリストを保存する関数
+const saveProjectsToLocalStorage = (projects: NovelProject[]) => {
+  localStorage.setItem("novelProjects", JSON.stringify(projects));
 };
 
-// ローカルストレージからデータを読み込む関数
-const loadProjectFromLocalStorage = (): NovelProject | null => {
-  const data = localStorage.getItem("novelProject");
-  return data ? JSON.parse(data) : null;
+// ローカルストレージからプロジェクトリストを読み込む関数
+const loadProjectsFromLocalStorage = (): NovelProject[] => {
+  const data = localStorage.getItem("novelProjects");
+  return data ? JSON.parse(data) : [];
 };
 
-// 初期データがなければダミーデータを保存
-if (!loadProjectFromLocalStorage()) {
-  saveProjectToLocalStorage(dummyProject);
+// デバッグログを追加
+console.log("main.tsx実行中...");
+console.log("ルート要素:", document.getElementById("root"));
+
+// プロジェクトリストをチェックし、なければダミーデータを追加
+const projects = loadProjectsFromLocalStorage();
+if (projects.length === 0) {
+  console.log("ダミープロジェクトを追加します");
+  projects.push(dummyProject);
+  saveProjectsToLocalStorage(projects);
+
+  // LocalStorageManagerに対応する形式で保存
+  console.log("LocalStorageManager形式でも保存します");
+  const projectForManager = {
+    id: dummyProject.id,
+    name: dummyProject.title,
+    description: dummyProject.synopsis,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    characters: dummyProject.characters,
+    worldBuilding: dummyProject.worldBuilding,
+    timeline: dummyProject.timeline,
+    chapters: dummyProject.chapters,
+    metadata: {
+      version: "1.0",
+      status: "active",
+    },
+  };
+
+  // LocalStorageManagerのプロジェクトリストに追加
+  const projectList = localStorage.getItem("novel_project_list") || "[]";
+  const parsedList = JSON.parse(projectList);
+  parsedList.push({
+    id: dummyProject.id,
+    name: dummyProject.title,
+    updatedAt: new Date().toISOString(),
+  });
+  localStorage.setItem("novel_project_list", JSON.stringify(parsedList));
+
+  // プロジェクトデータも保存
+  localStorage.setItem(
+    `novel_project_${dummyProject.id}`,
+    JSON.stringify(projectForManager)
+  );
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+try {
+  console.log("Reactレンダリング開始");
+  const root = document.getElementById("root");
+  if (!root) {
+    console.error("ルート要素が見つかりません！");
+  } else {
+    ReactDOM.createRoot(root).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    console.log("レンダリング完了");
+  }
+} catch (error) {
+  console.error("レンダリングエラー:", error);
+}

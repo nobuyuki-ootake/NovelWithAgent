@@ -123,6 +123,7 @@ test.describe("世界観構築: 地名追加テスト", () => {
               return false;
             });
             console.log("タブをインデックスでクリックしました (方法3)");
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             console.log("すべての方法が失敗しました");
           }

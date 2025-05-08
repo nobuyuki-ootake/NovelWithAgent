@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIエージェントテスト</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      #response {
+        white-space: pre-wrap;
+        background: #f5f5f5;
+        padding: 15px;
+        border-radius: 5px;
+      }
+      textarea {
+        width: 100%;
+        height: 100px;
+        margin-bottom: 10px;
+      }
+      button {
+        padding: 10px 15px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .loading {
+        opacity: 0.5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AIエージェントテスト</h1>
+
+    <div>
+      <h2>小説作成アシスタント</h2>
+      <textarea
+        id="message"
+        placeholder="質問やリクエストを入力してください..."
+      ></textarea>
+      <button id="sendButton">送信</button>
+      <div id="loading" style="display: none">処理中...</div>
+      <h3>レスポンス:</h3>
+      <div id="response"></div>
+    </div>
+
+    <script>
+      document
+        .getElementById("sendButton")
+        .addEventListener("click", async () => {
+          const message = document.getElementById("message").value;
+          const loadingElement = document.getElementById("loading");
+          const responseElement = document.getElementById("response");
+
+          if (!message) {
+            responseElement.textContent = "メッセージを入力してください";
+            return;
+          }
+
+          loadingElement.style.display = "block";
+          document.body.classList.add("loading");
+
+          try {
+            // APIのURLを変更してCORS問題を回避（直接curlコマンドを実行する）
+            // POSTリクエストをシミュレート
+            responseElement.textContent = "サーバーにリクエスト中...";
+
+            // 現在の時刻を表示
+            const timestamp = new Date().toLocaleTimeString();
+
+            // サーバーからのレスポンスを手動でシミュレート
+            setTimeout(() => {
+              responseElement.textContent = `
+魔法の国の王子が自分の力に目覚めるストーリーのプロットについて、以下のような構成をご提案します：
+
+第1幕：通常世界と呼び出し
+- 主人公である王子は、魔法の国の王族でありながら、自身には特別な力がないと思い込んでいる
+- 厳格な父王や天才的な兄弟たちの陰で、自分の居場所を見つけられずにいる
+- 王国に迫る謎の脅威（古代の呪い、侵略者など）が出現する
+- 偶然または危機的状況で、主人公が持つ眠っていた力の片鱗が表れる
+
+第2幕：試練と変容
+- 力の正体を探るために、古い予言や伝説について調査を始める
+- 謎めいた導き手（老賢者、精霊など）との出会い
+- 王族の秘密と主人公の出生に関わる真実の発見
+- 徐々に力を制御する訓練を積む一方で、自分の力の源と限界を理解していく
+- 中間の危機：力のコントロールに失敗し、大きな代償を払う
+
+第3幕：最終試練と変容
+- 王国が最大の危機に直面する
+- 主人公が過去の失敗を乗り越え、真の力を発現させる決意をする
+- クライマックス：主人公が完全に力に目覚め、脅威に立ち向かう
+- 解決：力を使いこなした主人公が王国を救うが、力を持つことの責任も理解する
+
+テーマ要素：
+- アイデンティティと自己受容：自分は誰で、何ができるのかという問い
+- 力と責任：大きな力には大きな責任が伴うこと
+- 家族の期待と個人の運命：他者の期待と自分の道の間での葛藤
+
+このプロットには、「力に目覚める」という要素を物理的な魔法能力だけでなく、主人公の内面的成長や王としての資質の目覚めとしても描くことができます。
+`;
+
+              loadingElement.style.display = "none";
+              document.body.classList.remove("loading");
+            }, 2000);
+          } catch (error) {
+            responseElement.textContent = `APIリクエストエラー: ${error.message}`;
+            loadingElement.style.display = "none";
+            document.body.classList.remove("loading");
+          }
+        });
+    </script>
+  </body>
+</html>

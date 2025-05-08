@@ -1,183 +1,119 @@
-# AIプロキシサーバー for ノベル作成エージェント
+# ノベル作成AIエージェントプロキシ
 
-このプロキシサーバーは、ノベル作成エージェントアプリケーションのバックエンドとして機能し、APIキー管理、ユーザー認証、APIプロキシなどの機能を提供します。
+小説創作を支援するAIエージェントシステムのバックエンド実装です。このプロキシサーバーは各種AI APIへのアクセスを提供し、Mastraフレームワークを活用したインテリジェントなエージェントシステムを実装しています。
 
 ## 機能
 
-- **APIプロキシ**: OpenAI, Claude, Gemini APIへの安全なアクセス
-- **API キー管理**: ユーザーごとのAPIキーの暗号化保存と管理
-- **ユーザー認証**: JWT認証によるセキュアなアクセス制御
-- **レート制限**: 過剰なAPIリクエストの防止
-- **キャッシュ**: Redis によるレスポンスキャッシュ
+- Mastraフレームワークを使用した拡張可能なAIエージェントアーキテクチャ
+- OpenAI、Claude、Gemini APIへの統合的なアクセス
+- 各AIモデルのレスポンスキャッシング（Redis）
+- 複数のエージェント役割（プロットアドバイザー、キャラクターデザイナーなど）
+- エージェントネットワークによる最適な返答生成
 
 ## 技術スタック
 
-- **フレームワーク**: NestJS (Express 上に構築)
-- **データベース**: PostgreSQL (TypeORM による ORM)
-- **キャッシュ**: Redis
-- **認証**: JWT, Passport
-- **暗号化**: AES-256-GCM
-- **ドキュメント**: Swagger UI
+- TypeScript + Express.js
+- Mastra AIエージェントフレームワーク
+- Redis（キャッシング）
+- OpenAI API、Claude API、Gemini API
 
-## 開発環境のセットアップ
+## セットアップ
 
-### 前提条件
+### 必要条件
 
-- Node.js (v16以上)
-- yarn または npm
-- PostgreSQL
-- Redis (オプション)
+- Node.js 16+
+- npm または yarn
+- Redis（オプション）
 
 ### インストール
 
-1. リポジトリをクローン:
-
 ```bash
-git clone <repository-url>
-cd proxy-server
-```
-
-2. 依存関係をインストール:
-
-```bash
+# 依存パッケージのインストール
 npm install
-```
 
-3. 環境変数の設定:
-
-```bash
-# .envファイルをコピー
+# 環境変数の設定
 cp .env.example .env
-
-# 環境変数を編集
-nano .env  # または任意のエディタ
+# .envファイルを編集してAPIキーなどを設定
 ```
 
-4. 暗号化キーの生成:
+### 環境変数
+
+以下の環境変数を`.env`ファイルに設定します：
+
+- `PORT`: サーバーのポート（デフォルト: 3000）
+- `API_KEY`: APIアクセス用のキー
+- `ALLOWED_ORIGINS`: CORSで許可するオリジン
+- `REDIS_URL`: Redisサーバーの接続URL（オプション）
+- `OPENAI_API_KEY`: OpenAI APIキー
+- `ANTHROPIC_API_KEY`: Anthropic APIキー（Claude）
+- `GEMINI_API_KEY`: Google Gemini APIキー
+
+## 使い方
+
+### 開発モード
 
 ```bash
-# 暗号化キー生成スクリプトを作成
-nano scripts/generate-encryption-key.ts
-
-# 暗号化キーを生成
-npx ts-node scripts/generate-encryption-key.ts
+npm run dev
 ```
 
-出力された暗号化キーを`.env`ファイルの`ENCRYPTION_KEY`に設定します。
-
-5. PostgreSQLデータベースの作成:
-
-```bash
-createdb novel_agent  # PostgreSQLコマンドラインツール
-```
-
-6. データベースマイグレーションの実行:
-
-```bash
-npm run migration:run
-```
-
-7. (オプション) 開発用シードデータの追加:
-
-```bash
-npm run db:seed
-```
-
-## 実行
-
-開発サーバーの起動:
-
-```bash
-npm run start:dev
-```
-
-本番サーバーのビルドと起動:
+### ビルドと本番実行
 
 ```bash
 npm run build
-npm run start:prod
+npm start
 ```
 
-## API ドキュメント
+## APIエンドポイント
 
-Swagger UI ドキュメントは開発環境で自動的に生成され、以下のURLでアクセスできます:
+### AIエージェント
 
-http://localhost:4001/api-docs
+- `POST /api/agent/chat`: 汎用的なAIアシスタントチャット
+- `POST /api/agent/plot-advice`: プロット構造に関するアドバイス
+- `POST /api/agent/character-advice`: キャラクター設計に関するアドバイス
+- `POST /api/agent/style-advice`: 文章表現や文体に関するアドバイス
+- `POST /api/agent/worldbuilding-advice`: 世界観構築に関するアドバイス
 
-## API エンドポイント
+### AI APIプロキシ
 
-### 認証
+- `POST /api/openai`: OpenAI APIへの直接アクセス
+- `POST /api/claude`: Claude APIへの直接アクセス
+- `POST /api/gemini`: Gemini APIへの直接アクセス
 
-- `POST /auth/login` - ユーザーログイン
-- `POST /users/register` - ユーザー登録
+## フレームワーク拡張
 
-### ユーザー管理
+### 新しいエージェントの追加
 
-- `GET /users/profile` - ユーザープロフィール取得
-- `PUT /users/profile` - ユーザープロフィール更新
-- `DELETE /users/profile` - ユーザーアカウント削除
+`src/agents/index.ts`に新しいエージェント定義を追加します：
 
-### API キー管理
-
-- `GET /api-keys` - APIキー一覧取得
-- `POST /api-keys` - APIキーの追加
-- `DELETE /api-keys/:id` - APIキーの削除
-
-### AI プロキシ
-
-- `POST /ai-proxy/openai` - OpenAI API リクエスト
-- `POST /ai-proxy/claude` - Claude API リクエスト
-- `POST /ai-proxy/gemini` - Gemini API リクエスト
-
-## セキュリティ対策
-
-1. **API キーの暗号化**: すべてのAPI キーはAES-256-GCM で暗号化されて保存
-2. **JWT 認証**: すべてのエンドポイントはJWT トークンによる認証が必要
-3. **レート制限**: IP アドレスごとのリクエスト数制限
-4. **Helmet**: HTTP ヘッダーセキュリティの実装
-5. **CORS 設定**: 許可されたオリジンからのリクエストのみ受け付け
-
-## 開発者向け情報
-
-### ディレクトリ構造
-
-```
-proxy-server/
-├── src/
-│   ├── ai-proxy/      # AIプロキシ機能
-│   ├── api-keys/      # APIキー管理
-│   ├── auth/          # 認証機能
-│   ├── db/            # データベース関連
-│   ├── users/         # ユーザー管理
-│   ├── utils/         # ユーティリティ関数
-│   ├── app.module.ts  # アプリケーションモジュール
-│   └── main.ts        # アプリケーションエントリーポイント
-├── scripts/           # 開発用スクリプト
-├── tests/             # テストファイル
-└── .env.example       # 環境変数サンプル
+```typescript
+export const myNewAgent = mastra
+  .agent('my-new-agent')
+  .description('新しいエージェントの説明').systemMessage(`
+    エージェントの詳細な指示...
+  `);
 ```
 
-### デバッグ
+### 新しいツールの追加
 
-デバッグモードでの実行:
+`src/tools/index.ts`に新しいツール定義を追加します：
 
-```bash
-npm run start:debug
+```typescript
+export const myNewTool = mastra
+  .tool('my-new-tool')
+  .description('新しいツールの説明')
+  .schema({
+    input1: 'string',
+    input2: 'number?',
+  })
+  .handler(async ({ input1, input2 }) => {
+    // ツールのロジック実装
+    return { result: '何らかの結果' };
+  });
 ```
 
-### テスト
+### エージェントネットワークの拡張
 
-単体テストの実行:
-
-```bash
-npm run test
-```
-
-E2Eテストの実行:
-
-```bash
-npm run test:e2e
-```
+`src/networks/index.ts`で既存のネットワークを拡張するか、新しいネットワークを追加します。
 
 ## ライセンス
 

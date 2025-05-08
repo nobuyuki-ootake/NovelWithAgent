@@ -1,16 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
   TextField,
+  Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  SelectChangeEvent,
 } from "@mui/material";
+import { PlotElement } from "../../types/index";
+import { AIAssistButton } from "../ui/AIAssistButton";
+import { AIAssistModal } from "../modals/AIAssistModal";
+import { useAIAssist } from "../../hooks/useAIAssist";
+import { useRecoilValue } from "recoil";
+import { currentProjectState } from "../../store/atoms";
 
 interface PlotItemEditDialogProps {
   open: boolean;
@@ -35,58 +42,146 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
   onDescriptionChange,
   onStatusChange,
 }) => {
+  const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
+  const currentProject = useRecoilValue(currentProjectState);
+
+  // AIアシスト機能を使用
+  const { assistPlot, isLoading } = useAIAssist({
+    onSuccess: (result) => {
+      // AIの応答からプロット情報を抽出
+      if (result && result.response) {
+        applyAIPlotResponse(result.response);
+      }
+    },
+  });
+
+  // AIの応答をプロットフォームに適用する関数
+  const applyAIPlotResponse = (aiResponse: string) => {
+    // タイトルを抽出（最初の行や「タイトル:」などの形式から）
+    const titleMatch = aiResponse.match(/タイトル[：:]\s*(.+?)($|\n)/);
+    if (titleMatch && titleMatch[1]) {
+      onTitleChange(titleMatch[1].trim());
+    } else {
+      // タイトルが明示的になければ、最初の行をタイトルとして抽出
+      const firstLine = aiResponse.split("\n")[0].trim();
+      if (firstLine && firstLine.length < 50) {
+        // 短い文を想定
+        onTitleChange(firstLine);
+      }
+    }
+
+    // 詳細を抽出
+    const descriptionMatch = aiResponse.match(
+      /詳細[：:]\s*(.+?)(\n\n|\n[^:]|$)/s
+    );
+    if (descriptionMatch && descriptionMatch[1]) {
+      onDescriptionChange(descriptionMatch[1].trim());
+    } else {
+      // 詳細が明示的になければ、タイトル以外の内容を詳細として扱う
+      const lines = aiResponse.split("\n");
+      if (lines.length > 1) {
+        // 最初の行をスキップして残りを詳細として使用
+        onDescriptionChange(lines.slice(1).join("\n").trim());
+      } else if (!titleMatch) {
+        // 1行だけでタイトルとして使っていない場合は詳細として使用
+        onDescriptionChange(aiResponse.trim());
+      }
+    }
+  };
+
+  // AIアシスタントを開く
+  const handleOpenAIAssist = async () => {
+    setAiAssistModalOpen(true);
+    return Promise.resolve();
+  };
+
+  // AIアシストリクエスト実行
+  const handleAIAssist = async (message: string) => {
+    // あらすじを参照してプロットアイテム生成をリクエスト
+    const synopsis = currentProject?.synopsis || "";
+    const plotElements = currentProject?.plot || [];
+    return await assistPlot(message, [
+      { type: "synopsis", content: synopsis },
+      ...plotElements.map((item) => ({ type: "plotItem", content: item })),
+    ]);
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>プロットアイテムを編集</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          margin="dense"
-          label="タイトル"
-          fullWidth
-          variant="outlined"
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          sx={{ mb: 2, mt: 1 }}
-        />
-        <TextField
-          margin="dense"
-          label="詳細"
-          fullWidth
-          variant="outlined"
-          multiline
-          rows={3}
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          sx={{ mb: 2 }}
-        />
-        <FormControl fullWidth margin="dense">
-          <InputLabel id="edit-status-label">ステータス</InputLabel>
-          <Select
-            labelId="edit-status-label"
-            value={status}
-            label="ステータス"
-            onChange={(e) =>
-              onStatusChange(e.target.value as "決定" | "検討中")
-            }
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>プロットアイテム編集</DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="タイトル"
+            type="text"
+            fullWidth
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="詳細"
+            multiline
+            rows={4}
+            fullWidth
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="status-select-label">ステータス</InputLabel>
+            <Select
+              labelId="status-select-label"
+              value={status}
+              label="ステータス"
+              onChange={(e: SelectChangeEvent) =>
+                onStatusChange(e.target.value as "決定" | "検討中")
+              }
+            >
+              <MenuItem value="決定">決定</MenuItem>
+              <MenuItem value="検討中">検討中</MenuItem>
+            </Select>
+          </FormControl>
+          <AIAssistButton
+            onAssist={handleOpenAIAssist}
+            text="AIに項目を埋めてもらう"
+            variant="outline"
+            width="full"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="inherit">
+            キャンセル
+          </Button>
+          <Button
+            onClick={onUpdate}
+            color="primary"
+            variant="contained"
+            disabled={!title.trim()}
           >
-            <MenuItem value="決定">決定</MenuItem>
-            <MenuItem value="検討中">検討中</MenuItem>
-          </Select>
-        </FormControl>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>キャンセル</Button>
-        <Button
-          onClick={onUpdate}
-          variant="contained"
-          color="primary"
-          disabled={!title.trim()}
-        >
-          更新
-        </Button>
-      </DialogActions>
-    </Dialog>
+            更新
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* AIアシストモーダル */}
+      <AIAssistModal
+        open={aiAssistModalOpen}
+        onClose={() => setAiAssistModalOpen(false)}
+        title="AIにプロットアイテムを作成してもらう"
+        description="あらすじを参照して、物語のプロットアイテム（イベント、転換点など）を作成します。"
+        defaultMessage={`あらすじを参照して、物語に必要なプロットアイテムを考えてください。\nタイトルと詳細を含めてください。\n\n現在のあらすじ:\n${
+          currentProject?.synopsis || "（あらすじがありません）"
+        }`}
+        onAssistComplete={() => {
+          // モーダルは自動的に閉じる
+        }}
+        requestAssist={handleAIAssist}
+      />
+    </>
   );
 };
 

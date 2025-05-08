@@ -6,6 +6,7 @@ import {
   CustomField,
   CharacterTrait,
   Relationship,
+  CharacterStatus,
 } from "../types/index";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -78,6 +79,7 @@ export function useCharacters() {
     relationships: [],
     imageUrl: "",
     customFields: [],
+    statuses: [],
   };
 
   // フォーム入力用の状態
@@ -137,6 +139,7 @@ export function useCharacters() {
           ...character,
           traits,
           relationships,
+          statuses: character.statuses || [],
         } as Character;
       });
       setCharacters(convertedCharacters);
@@ -155,43 +158,54 @@ export function useCharacters() {
 
   // ダイアログを開く（新規作成）
   const handleOpenDialog = useCallback(() => {
-    setFormData({ ...(initialCharacterState as Character), id: uuidv4() });
+    setFormData({
+      ...(initialCharacterState as Character),
+      id: uuidv4(),
+      statuses: [],
+    });
     setTempImageUrl("");
     setSelectedEmoji("");
     setFormErrors({});
     setEditMode(false);
     setOpenDialog(true);
+    setHasUnsavedChanges(false);
   }, [initialCharacterState]);
 
   // ダイアログを開く（編集）
-  const handleEditCharacter = useCallback((character: Character) => {
-    // 必須フィールドを確保
-    const ensuredCharacter = {
-      ...character,
-      description: character.description || "",
-      background: character.background || "",
-      motivation: character.motivation || "",
-      relationships: character.relationships || [],
-      traits: character.traits || [],
-      customFields: character.customFields || [],
-    };
+  const handleEditCharacter = useCallback(
+    (character: Character) => {
+      // 必須フィールドを確保
+      const ensuredCharacter = {
+        ...initialCharacterState,
+        ...character,
+        description: character.description || "",
+        background: character.background || "",
+        motivation: character.motivation || "",
+        relationships: character.relationships || [],
+        traits: character.traits || [],
+        customFields: character.customFields || [],
+        statuses: character.statuses || [],
+      };
 
-    setFormData(ensuredCharacter);
-    setTempImageUrl(character.imageUrl || "");
-    // 画像URLが絵文字データURIの場合は選択絵文字を設定
-    if (
-      character.imageUrl &&
-      character.imageUrl.startsWith("data:text/plain;charset=utf-8,")
-    ) {
-      const emoji = dataUrlToEmoji(character.imageUrl);
-      if (emoji) setSelectedEmoji(emoji);
-    } else {
-      setSelectedEmoji("");
-    }
-    setFormErrors({});
-    setEditMode(true);
-    setOpenDialog(true);
-  }, []);
+      setFormData(ensuredCharacter);
+      setTempImageUrl(character.imageUrl || "");
+      // 画像URLが絵文字データURIの場合は選択絵文字を設定
+      if (
+        character.imageUrl &&
+        character.imageUrl.startsWith("data:text/plain;charset=utf-8,")
+      ) {
+        const emoji = dataUrlToEmoji(character.imageUrl);
+        if (emoji) setSelectedEmoji(emoji);
+      } else {
+        setSelectedEmoji("");
+      }
+      setFormErrors({});
+      setEditMode(true);
+      setOpenDialog(true);
+      setHasUnsavedChanges(false);
+    },
+    [initialCharacterState]
+  );
 
   // ダイアログを閉じる
   const handleCloseDialog = useCallback(() => {
@@ -388,34 +402,51 @@ export function useCharacters() {
   // キャラクターの保存
   const handleSaveCharacter = useCallback(async () => {
     // バリデーション
-    if (!validateForm()) return;
+    if (!validateForm() || !currentProject) return;
 
-    let newCharacters: Character[];
-    if (editMode) {
-      // 既存キャラクターの更新
-      newCharacters = characters.map((char) =>
-        char.id === formData.id ? formData : char
-      );
-    } else {
-      // 新規キャラクターの追加
-      newCharacters = [...characters, formData];
-    }
+    const characterToSave: Character = {
+      ...formData,
+      statuses: formData.statuses || [],
+    };
 
-    setCharacters(newCharacters);
+    const updatedCharacters = editMode
+      ? characters.map((char) =>
+          char.id === characterToSave.id ? characterToSave : char
+        )
+      : [...characters, characterToSave];
 
-    // Recoilの状態も更新
-    if (currentProject) {
-      // NovelProjectの型に合わせてキャラクターを変換
-      const indexCharacters = newCharacters.map(convertToIndexCharacter);
+    // currentProject に含まれる definedCharacterStatuses も含めて更新
+    const updatedProjectData = {
+      ...currentProject,
+      characters: updatedCharacters,
+      updatedAt: new Date(),
+    };
 
-      // 明示的にunknownを介して型変換
-      const updatedProject = {
-        ...currentProject,
-        characters: indexCharacters,
-        updatedAt: new Date(),
-      } as unknown as NovelProject;
+    // ここで unknown を介さずに直接 NovelProject 型を指定（型が一致している前提）
+    const updatedProject: NovelProject = updatedProjectData;
 
-      setCurrentProject(updatedProject);
+    setCurrentProject(updatedProject);
+
+    // ローカルストレージにも保存
+    const projectsStr = localStorage.getItem("novelProjects");
+    if (projectsStr) {
+      try {
+        // JSON.parseのエラーハンドリング追加
+        const projects = JSON.parse(projectsStr) as NovelProject[];
+        const projectIndex = projects.findIndex(
+          (p) => p.id === currentProject.id
+        );
+        if (projectIndex !== -1) {
+          projects[projectIndex] = updatedProject;
+          localStorage.setItem("novelProjects", JSON.stringify(projects));
+        }
+      } catch (e) {
+        console.error(
+          "Failed to parse or save novel projects to local storage",
+          e
+        );
+        // エラー通知などを検討
+      }
     }
 
     // ダイアログを閉じる
@@ -436,12 +467,12 @@ export function useCharacters() {
     setSnackbarSeverity("success");
     setSnackbarOpen(true);
   }, [
-    validateForm,
-    editMode,
-    characters,
-    formData,
     currentProject,
+    characters,
+    editMode,
+    formData,
     setCurrentProject,
+    validateForm,
     initialCharacterState,
   ]);
 
@@ -457,6 +488,72 @@ export function useCharacters() {
     },
     []
   );
+
+  // 状態管理ハンドラ
+  const handleSaveStatus = useCallback(
+    (statusToSave: CharacterStatus) => {
+      // 1. formData の statuses を更新
+      setFormData((prev) => {
+        const existingStatusIndex = (prev.statuses || []).findIndex(
+          (s) => s.id === statusToSave.id
+        );
+        const newStatuses = [...(prev.statuses || [])];
+        if (existingStatusIndex > -1) {
+          newStatuses[existingStatusIndex] = statusToSave;
+        } else {
+          newStatuses.push(statusToSave);
+        }
+        return { ...prev, statuses: newStatuses };
+      });
+
+      // 2. currentProject の definedCharacterStatuses を更新
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject; // プロジェクトがない場合は何もしない
+
+        const definedStatuses = [
+          ...(prevProject.definedCharacterStatuses || []),
+        ];
+        const existingDefinedIndex = definedStatuses.findIndex(
+          (s) => s.id === statusToSave.id
+        );
+
+        if (existingDefinedIndex > -1) {
+          // 既存の定義を更新
+          definedStatuses[existingDefinedIndex] = statusToSave;
+        } else {
+          // 新しい定義を追加
+          definedStatuses.push(statusToSave);
+        }
+
+        // プロジェクトの更新日時も変更
+        return {
+          ...prevProject,
+          definedCharacterStatuses: definedStatuses,
+          updatedAt: new Date(),
+        };
+      });
+
+      setHasUnsavedChanges(true);
+      // 注意: setCurrentProject は非同期の場合があるため、即時反映が必要なら useEffect などで監視が必要になる可能性
+      // ここでの変更は最終的に handleSaveCharacter でローカルストレージに保存される想定
+    },
+    [setCurrentProject]
+  ); // 依存配列に setCurrentProject を追加
+
+  const handleDeleteStatus = useCallback((statusId: string) => {
+    // formData から削除
+    setFormData((prev) => ({
+      ...prev,
+      statuses: (prev.statuses || []).filter((s) => s.id !== statusId),
+    }));
+
+    // TODO: definedCharacterStatuses からの削除ロジック (今回はスキップ)
+    // 必要なら、他のキャラクターやタイムラインイベントで使用されていないかチェックしてから削除する
+    // setCurrentProject(prevProject => { ... });
+
+    setHasUnsavedChanges(true);
+  }, []);
+  // --- 状態管理ハンドラ 変更ここまで ---
 
   return {
     characters,
@@ -489,6 +586,8 @@ export function useCharacters() {
     handleSaveCharacter,
     handleCloseSnackbar,
     handleNewTraitChange,
+    handleSaveStatus,
+    handleDeleteStatus,
     emojiToDataUrl,
     dataUrlToEmoji,
   };
