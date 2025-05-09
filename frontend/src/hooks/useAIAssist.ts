@@ -91,6 +91,29 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
   };
 
   /**
+   * あらすじ支援
+   */
+  const assistSynopsis = async (message: string, titleContext: any[] = []) => {
+    try {
+      updateLoading(true);
+      setError(null);
+
+      const result = await aiAgentApi.getSynopsisAdvice(message, titleContext);
+
+      setResponse(result);
+      options.onSuccess?.(result);
+      return result;
+    } catch (err: any) {
+      setError(err);
+      toast.error("あらすじ支援に失敗しました");
+      options.onError?.(err);
+      throw err;
+    } finally {
+      updateLoading(false);
+    }
+  };
+
+  /**
    * キャラクター支援
    */
   const assistCharacter = async (
@@ -112,6 +135,37 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
     } catch (err: any) {
       setError(err);
       toast.error("キャラクター支援に失敗しました");
+      options.onError?.(err);
+      throw err;
+    } finally {
+      updateLoading(false);
+    }
+  };
+
+  /**
+   * キャラクター生成
+   */
+  const generateCharacter = async (
+    message: string,
+    plotElements: any[] = [],
+    existingCharacters: any[] = []
+  ) => {
+    try {
+      updateLoading(true);
+      setError(null);
+
+      const result = await aiAgentApi.generateCharacter(
+        message,
+        plotElements,
+        existingCharacters
+      );
+
+      setResponse(result);
+      options.onSuccess?.(result);
+      return result;
+    } catch (err: any) {
+      setError(err);
+      toast.error("キャラクター生成に失敗しました");
       options.onError?.(err);
       throw err;
     } finally {
@@ -177,7 +231,9 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
     response,
     chat,
     assistPlot,
+    assistSynopsis,
     assistCharacter,
+    generateCharacter,
     assistStyle,
     assistWorldBuilding,
   };

@@ -11,6 +11,21 @@ export const Dialog: React.FC<DialogProps> = ({
   onOpenChange,
   children,
 }) => {
+  // onOpenChangeパラメータを使用する（ESCキー対応と一緒に）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (open && e.key === "Escape") {
+        onOpenChange(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onOpenChange]);
+
   if (!open) return null;
   return <div>{children}</div>;
 };
@@ -58,7 +73,7 @@ export const DialogContent: React.FC<DialogContentProps> = ({
         }}
       />
       <div
-        className={`fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg ${className}`}
+        className={`fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg sm:rounded-lg md:w-[90%] ${className}`}
         {...props}
       >
         {children}

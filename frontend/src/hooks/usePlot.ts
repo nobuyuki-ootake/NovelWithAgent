@@ -206,5 +206,7 @@ export function usePlot() {
     setEditItemTitle,
     setEditItemDescription,
     setEditItemStatus,
+    setPlotItems,
+    setHasUnsavedChanges,
   };
 }

@@ -41,12 +41,20 @@ export interface AIAssistModalProps {
   /**
    * AI応答後のコールバック関数
    */
-  onAssistComplete: (response: any) => void;
+  onAssistComplete: (response: {
+    response?: string;
+    agentUsed?: string;
+    steps?: unknown[];
+  }) => void;
 
   /**
    * AI応答のリクエスト関数
    */
-  requestAssist: (message: string) => Promise<any>;
+  requestAssist: (message: string) => Promise<{
+    response?: string;
+    agentUsed?: string;
+    steps?: unknown[];
+  }>;
 }
 
 /**
@@ -98,10 +106,12 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+      <DialogContent className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[900px] p-6 w-[95vw] max-h-[90vh] overflow-auto">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
+          <DialogDescription className="text-base mt-2">
+            {description}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
@@ -109,25 +119,26 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
             placeholder="AIへの指示を入力してください..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            rows={6}
-            className="resize-none"
+            rows={8}
+            className="resize-none text-base p-4 w-full"
             disabled={isLoading}
           />
 
           {isLoading && (
-            <div className="flex justify-center items-center gap-2 text-sm text-gray-500">
-              <Spinner className="h-4 w-4" />
-              AIが応答を生成中...
+            <div className="flex justify-center items-center gap-2 text-sm text-gray-500 py-2">
+              <Spinner className="h-5 w-5" />
+              <span>AIが応答を生成中...</span>
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-2 gap-2 sm:gap-4 flex-wrap">
           <Button
             type="button"
             variant="outline"
             onClick={handleCancel}
             disabled={isLoading}
+            className="px-5 py-2 min-w-[100px]"
           >
             キャンセル
           </Button>
@@ -135,6 +146,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
             type="submit"
             onClick={handleSubmit}
             disabled={isLoading || !message.trim()}
+            className="px-5 py-2 min-w-[120px]"
           >
             {isLoading ? <Spinner className="h-4 w-4 mr-2" /> : null}
             AIに送信

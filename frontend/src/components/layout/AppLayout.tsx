@@ -20,7 +20,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const currentProject = useRecoilValue(currentProjectState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
   const [aiChatPanelOpen] = useRecoilState(aiChatPanelOpenState);
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
   // プロジェクトが選択されていない場合はシンプルなレイアウトを表示
   if (!currentProject) {
@@ -34,11 +33,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   // サイドバーの切り替え
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
-  };
-
-  // 設定メニューの切り替え
-  const toggleSettingsMenu = () => {
-    setSettingsMenuOpen(!settingsMenuOpen);
   };
 
   // プロジェクトが選択されている場合はサイドバー付きのレイアウトを表示
@@ -70,40 +64,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           backgroundColor: "background.default",
         }}
       >
-        {/* ヘッダーアクション */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            zIndex: 100,
-            display: "flex",
-            gap: 1,
-          }}
-        >
-          {/* 設定メニューボタン */}
-          <IconButton
-            color="primary"
-            onClick={toggleSettingsMenu}
-            sx={{
-              backgroundColor: "white",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-            }}
-          >
-            <SettingsIcon />
-          </IconButton>
-
-          {/* 設定メニュー */}
-          <Box sx={{ position: "relative" }}>
-            <SettingsMenu
-              isOpen={settingsMenuOpen}
-              onClose={() => setSettingsMenuOpen(false)}
-            />
-          </Box>
-        </Box>
-
-        {children}
-
+        o{children}
         {/* フロート操作メニューボタン */}
         <Tooltip title="創作メニュー" placement="left">
           <Fab

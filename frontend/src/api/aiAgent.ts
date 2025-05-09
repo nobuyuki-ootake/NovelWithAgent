@@ -110,6 +110,27 @@ export const aiAgentApi = {
   },
 
   /**
+   * あらすじに関するアドバイスを取得
+   * @param message ユーザーのメッセージ
+   * @param titleContext タイトル情報など
+   */
+  getSynopsisAdvice: async (message: string, titleContext: any[] = []) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/ai-agent/synopsis-advice`,
+        {
+          message,
+          titleContext,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("あらすじアドバイスエラー:", error);
+      throw error;
+    }
+  },
+
+  /**
    * キャラクターに関するアドバイスを取得
    * @param message ユーザーのメッセージ
    * @param characterElements キャラクター要素
@@ -129,6 +150,33 @@ export const aiAgentApi = {
       return response.data;
     } catch (error) {
       console.error("キャラクターアドバイスエラー:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * キャラクター生成を行う
+   * @param message ユーザーのメッセージ
+   * @param plotElements プロット要素
+   * @param existingCharacters 既存のキャラクター
+   */
+  generateCharacter: async (
+    message: string,
+    plotElements: any[] = [],
+    existingCharacters: any[] = []
+  ) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/ai-agent/character-generation`,
+        {
+          message,
+          plotElements,
+          existingCharacters,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("キャラクター生成エラー:", error);
       throw error;
     }
   },

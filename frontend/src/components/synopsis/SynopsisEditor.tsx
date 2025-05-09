@@ -29,7 +29,7 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
   const projectTitle = currentProject?.title || "";
 
   // AIアシスト機能
-  const { assistPlot, isLoading } = useAIAssist({
+  const { assistSynopsis, isLoading } = useAIAssist({
     onSuccess: (result) => {
       // AIの応答を処理してシノプシスに設定
       if (result && result.response) {
@@ -69,7 +69,7 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
       ? `タイトル「${projectTitle}」の小説について、${message}`
       : message;
 
-    return await assistPlot(enhancedMessage, titleContext);
+    return await assistSynopsis(enhancedMessage, titleContext);
   };
 
   return (

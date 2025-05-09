@@ -307,6 +307,37 @@ router.post('/plot-advice', authMiddleware, async (req, res) => {
 });
 
 /**
+ * あらすじアドバイスを取得（あらすじ専用エンドポイント）
+ */
+router.post('/synopsis-advice', authMiddleware, async (req, res) => {
+  try {
+    const { message, titleContext = [] } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'メッセージは必須です' });
+    }
+
+    // 小説作成ネットワークを使用
+    const result = await novelCreationNetwork.run(message, {
+      context: { selectedElements: titleContext },
+      maxSteps: 5,
+    });
+
+    res.json({
+      response: result.output,
+      agentUsed: result.agentUsed,
+      steps: result.steps,
+    });
+  } catch (error) {
+    console.error('あらすじアドバイスエラー:', error);
+    res.status(500).json({
+      error: 'あらすじアドバイスリクエストに失敗しました',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
  * キャラクターアドバイスを取得
  */
 router.post('/character-advice', authMiddleware, async (req, res) => {
@@ -335,6 +366,40 @@ router.post('/character-advice', authMiddleware, async (req, res) => {
     console.error('キャラクターアドバイスエラー:', error);
     res.status(500).json({
       error: 'キャラクターアドバイスリクエストに失敗しました',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * キャラクター生成を行う専用エンドポイント
+ */
+router.post('/character-generation', authMiddleware, async (req, res) => {
+  try {
+    const { message, plotElements = [], existingCharacters = [] } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'メッセージは必須です' });
+    }
+
+    // キャラクターデザイナーを直接使用して生成
+    const result = await novelCreationNetwork.run(message, {
+      context: {
+        selectedElements: [...plotElements, ...existingCharacters],
+        forceAgent: 'character-designer',
+      },
+      maxSteps: 5,
+    });
+
+    res.json({
+      response: result.output,
+      agentUsed: result.agentUsed,
+      steps: result.steps,
+    });
+  } catch (error) {
+    console.error('キャラクター生成エラー:', error);
+    res.status(500).json({
+      error: 'キャラクター生成リクエストに失敗しました',
       message: error instanceof Error ? error.message : String(error),
     });
   }
