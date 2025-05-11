@@ -182,6 +182,68 @@ export const aiAgentApi = {
   },
 
   /**
+   * キャラクターの概要リストを生成する（分割リクエスト第1段階）
+   * @param message ユーザーのメッセージ
+   * @param plotElements プロット要素
+   * @param existingCharacters 既存のキャラクター
+   * @returns キャラクター名と役割のリスト
+   */
+  generateCharacterList: async (
+    message: string,
+    plotElements: any[] = [],
+    existingCharacters: any[] = []
+  ) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/ai-agent/character-list-generation`,
+        {
+          message,
+          plotElements,
+          existingCharacters,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("キャラクターリスト生成エラー:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * 特定のキャラクターの詳細情報を生成する（分割リクエスト第2段階）
+   * @param characterName キャラクター名
+   * @param characterRole キャラクターの役割
+   * @param message 追加の指示
+   * @param plotElements プロット要素
+   * @param existingCharacters 既存のキャラクター
+   * @returns キャラクターの詳細情報
+   */
+  generateCharacterDetail: async (
+    characterName: string,
+    characterRole: string,
+    message: string = "",
+    plotElements: any[] = [],
+    existingCharacters: any[] = []
+  ) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/ai-agent/character-detail-generation`,
+        {
+          characterName,
+          characterRole,
+          message,
+          plotElements,
+          existingCharacters,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("キャラクター詳細生成エラー:", error);
+      throw error;
+    }
+  },
+
+  /**
    * 文体に関するアドバイスを取得
    * @param message ユーザーのメッセージ（オプション）
    * @param textContent 分析対象のテキスト
@@ -222,6 +284,68 @@ export const aiAgentApi = {
       return response.data;
     } catch (error) {
       console.error("世界観構築アドバイスエラー:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * 世界観の要素リストを生成する（分割リクエスト第1段階）
+   * @param message ユーザーのメッセージ
+   * @param plotElements プロット要素
+   * @param charactersElements キャラクター要素
+   * @returns 世界観要素のリスト（場所や文化など）
+   */
+  generateWorldBuildingList: async (
+    message: string,
+    plotElements: any[] = [],
+    charactersElements: any[] = []
+  ) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/ai-agent/worldbuilding-list-generation`,
+        {
+          message,
+          plotElements,
+          charactersElements,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("世界観要素リスト生成エラー:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * 特定の世界観要素の詳細情報を生成する（分割リクエスト第2段階）
+   * @param elementName 要素名（場所名など）
+   * @param elementType 要素タイプ（place, culture, ruleなど）
+   * @param message 追加の指示
+   * @param plotElements プロット要素
+   * @param charactersElements キャラクター要素
+   * @returns 世界観要素の詳細情報
+   */
+  generateWorldBuildingDetail: async (
+    elementName: string,
+    elementType: string,
+    message: string = "",
+    plotElements: any[] = [],
+    charactersElements: any[] = []
+  ) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/ai-agent/worldbuilding-detail-generation`,
+        {
+          elementName,
+          elementType,
+          message,
+          plotElements,
+          charactersElements,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("世界観要素詳細生成エラー:", error);
       throw error;
     }
   },

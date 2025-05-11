@@ -406,6 +406,122 @@ router.post('/character-generation', authMiddleware, async (req, res) => {
 });
 
 /**
+ * キャラクターリスト生成を行う専用エンドポイント（分割リクエスト第1段階）
+ */
+router.post('/character-list-generation', authMiddleware, async (req, res) => {
+  try {
+    const { message, plotElements = [], existingCharacters = [] } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'メッセージは必須です' });
+    }
+
+    console.log('キャラクターリスト生成リクエスト:', {
+      messageLength: message.length,
+      plotElementsCount: plotElements.length,
+      existingCharactersCount: existingCharacters.length,
+    });
+
+    // キャラクターデザイナーを直接使用
+    const result = await novelCreationNetwork.run(message, {
+      context: {
+        selectedElements: [...plotElements, ...existingCharacters],
+        forceAgent: 'character-designer',
+        task: 'character-list', // リスト生成タスクを指定
+      },
+      maxSteps: 3, // リスト生成は少ないステップで十分
+    });
+
+    res.json({
+      response: result.output,
+      agentUsed: result.agentUsed,
+      steps: result.steps,
+    });
+  } catch (error) {
+    console.error('キャラクターリスト生成エラー:', error);
+    res.status(500).json({
+      error: 'キャラクターリスト生成リクエストに失敗しました',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * 特定のキャラクターの詳細生成を行う専用エンドポイント（分割リクエスト第2段階）
+ */
+router.post(
+  '/character-detail-generation',
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const {
+        characterName,
+        characterRole,
+        message = '',
+        plotElements = [],
+        existingCharacters = [],
+      } = req.body;
+
+      if (!characterName) {
+        return res.status(400).json({ error: 'キャラクター名は必須です' });
+      }
+
+      console.log('キャラクター詳細生成リクエスト:', {
+        characterName,
+        characterRole,
+        messageLength: message.length,
+      });
+
+      // 指示メッセージを構築
+      const detailPrompt = `
+「${characterName}」というキャラクターの詳細情報を以下の形式で作成してください。
+役割は「${characterRole}」です。
+
+名前: ${characterName}
+役割: ${characterRole}
+性別: [性別]
+年齢: [年齢]
+説明: [短い説明]
+背景: [背景情報]
+動機: [動機]
+特性: [特性1], [特性2], [特性3]
+アイコン: [絵文字]
+
+関係:
+- [他キャラ名]: [関係タイプ] - [関係の説明]
+- [他キャラ名]: [関係タイプ] - [関係の説明]
+
+${message}
+`;
+
+      // キャラクターデザイナーを直接使用して詳細生成
+      const result = await novelCreationNetwork.run(detailPrompt, {
+        context: {
+          selectedElements: [...plotElements, ...existingCharacters],
+          forceAgent: 'character-designer',
+          task: 'character-detail', // 詳細生成タスクを指定
+          characterName,
+          characterRole,
+        },
+        maxSteps: 3, // 詳細生成は少ないステップで十分
+      });
+
+      res.json({
+        response: result.output,
+        agentUsed: result.agentUsed,
+        steps: result.steps,
+      });
+    } catch (error) {
+      console.error('キャラクター詳細生成エラー:', error);
+      res.status(500).json({
+        error: 'キャラクター詳細生成リクエストに失敗しました',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  },
+);
+
+/**
  * 文体アドバイスを取得
  */
 router.post('/style-advice', authMiddleware, async (req, res) => {
@@ -481,5 +597,184 @@ router.post('/worldbuilding-advice', authMiddleware, async (req, res) => {
     });
   }
 });
+
+/**
+ * 世界観要素リストを生成する専用エンドポイント（分割リクエスト第1段階）
+ */
+router.post(
+  '/worldbuilding-list-generation',
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const { message, plotElements = [], charactersElements = [] } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: 'メッセージは必須です' });
+      }
+
+      console.log('世界観要素リスト生成リクエスト:', {
+        messageLength: message.length,
+        plotElementsCount: plotElements.length,
+        charactersElementsCount: charactersElements.length,
+      });
+
+      // 世界観構築アシスタントを直接使用
+      const result = await novelCreationNetwork.run(message, {
+        context: {
+          selectedElements: [...plotElements, ...charactersElements],
+          forceAgent: 'world-building',
+          task: 'worldbuilding-list', // リスト生成タスクを指定
+        },
+        maxSteps: 3, // リスト生成は少ないステップで十分
+      });
+
+      res.json({
+        response: result.output,
+        agentUsed: result.agentUsed,
+        steps: result.steps,
+      });
+    } catch (error) {
+      console.error('世界観要素リスト生成エラー:', error);
+      res.status(500).json({
+        error: '世界観要素リスト生成リクエストに失敗しました',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  },
+);
+
+/**
+ * 特定の世界観要素の詳細生成を行う専用エンドポイント（分割リクエスト第2段階）
+ */
+router.post(
+  '/worldbuilding-detail-generation',
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const {
+        elementName,
+        elementType,
+        message = '',
+        plotElements = [],
+        charactersElements = [],
+      } = req.body;
+
+      if (!elementName || !elementType) {
+        return res.status(400).json({ error: '要素名と要素タイプは必須です' });
+      }
+
+      console.log('世界観要素詳細生成リクエスト:', {
+        elementName,
+        elementType,
+        messageLength: message.length,
+      });
+
+      // 指示メッセージを構築
+      const detailPrompt = `
+「${elementName}」という${elementTypeToJapanese(
+        elementType,
+      )}の詳細情報を以下の形式で作成してください。
+
+名前: ${elementName}
+タイプ: ${elementTypeToJapanese(elementType)}
+説明: [詳細な説明]
+特徴: [主要な特徴]
+重要性: [物語における重要性]
+${
+  elementType === 'place'
+    ? '立地: [地理的な立地や環境]\n人口: [おおよその人口規模]\n文化的特徴: [この場所特有の文化]'
+    : ''
+}
+${
+  elementType === 'culture'
+    ? '習慣: [文化における重要な習慣]\n信念: [文化的な信念や価値観]\n歴史: [文化の簡単な歴史]'
+    : ''
+}
+${
+  elementType === 'rule'
+    ? '影響: [ルールが世界に与える影響]\n例外: [ルールの例外や制限]\n由来: [ルールの起源や理由]'
+    : ''
+}
+
+関連事項:
+- [関連する要素1]: [関係の説明]
+- [関連する要素2]: [関係の説明]
+
+${message}
+`;
+
+      // 世界観構築アシスタントを直接使用して詳細生成
+      const result = await novelCreationNetwork.run(detailPrompt, {
+        context: {
+          selectedElements: [...plotElements, ...charactersElements],
+          forceAgent: 'world-building',
+          task: 'worldbuilding-detail', // 詳細生成タスクを指定
+          elementName,
+          elementType,
+        },
+        maxSteps: 3, // 詳細生成は少ないステップで十分
+      });
+
+      res.json({
+        response: result.output,
+        agentUsed: result.agentUsed,
+        steps: result.steps,
+      });
+    } catch (error) {
+      console.error('世界観要素詳細生成エラー:', error);
+      res.status(500).json({
+        error: '世界観要素詳細生成リクエストに失敗しました',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  },
+);
+
+// 要素タイプを日本語に変換するヘルパー関数
+function elementTypeToJapanese(type: string): string {
+  const normalizedType = type.toLowerCase().trim();
+
+  switch (normalizedType) {
+    case 'place':
+    case '場所':
+      return '場所';
+    case 'culture':
+    case '文化':
+      return '文化';
+    case 'rule':
+    case 'ルール':
+      return 'ルール';
+    case 'history':
+    case '歴史':
+    case '歴史的出来事':
+      return '歴史的出来事';
+    case 'legend':
+    case '伝説':
+      return '伝説';
+    case 'technology':
+    case '技術':
+      return '技術';
+    case 'magic':
+    case '魔法':
+      return '魔法';
+    case 'religion':
+    case '宗教':
+      return '宗教';
+    case 'custom':
+    case '習慣':
+      return '習慣';
+    case 'geography':
+    case '地理':
+      return '地理';
+    case 'climate':
+    case '気候':
+      return '気候';
+    case 'language':
+    case '言語':
+      return '言語';
+    default:
+      return '要素';
+  }
+}
 
 export default router;

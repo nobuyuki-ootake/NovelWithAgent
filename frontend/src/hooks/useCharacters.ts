@@ -555,6 +555,101 @@ export function useCharacters() {
   }, []);
   // --- 状態管理ハンドラ 変更ここまで ---
 
+  // キャラクター即時追加
+  const addCharacter = useCallback(
+    (character: Character) => {
+      try {
+        console.log("キャラクター追加:", character.name); // デバッグ用
+
+        // IDが指定されているかを確認
+        if (!character.id) {
+          character.id = uuidv4(); // IDがなければ新しいIDを生成
+        }
+
+        // IDでキャラクターを検索（同じIDなら上書き）
+        const existingIndex = characters.findIndex(
+          (c) => c.id === character.id
+        );
+
+        // 同じ名前のキャラクターがすでに存在するか確認
+        const sameNameIndex = characters.findIndex(
+          (c) =>
+            c.name.trim().toLowerCase() ===
+              character.name.trim().toLowerCase() && c.id !== character.id
+        );
+
+        let updatedCharacters: Character[];
+        if (existingIndex >= 0) {
+          // 既存のキャラクターを更新
+          updatedCharacters = [...characters];
+          updatedCharacters[existingIndex] = {
+            ...character,
+            // IDはそのまま保持
+          };
+          console.log("既存キャラクターを更新:", character.name);
+        } else if (sameNameIndex >= 0) {
+          // 同じ名前のキャラクターが存在する場合、最新の情報で上書き
+          updatedCharacters = [...characters];
+          updatedCharacters[sameNameIndex] = {
+            ...character,
+            id: characters[sameNameIndex].id, // 既存のIDを保持
+          };
+          console.log("同名キャラクターを更新:", character.name);
+        } else {
+          // 全く新しいキャラクターとして追加
+          updatedCharacters = [...characters, character];
+          console.log("新規キャラクターを追加:", character.name);
+        }
+
+        if (currentProject) {
+          const updatedProject = {
+            ...currentProject,
+            characters: updatedCharacters,
+            updatedAt: new Date(),
+          };
+
+          setCurrentProject(updatedProject);
+          setCharacters(updatedCharacters);
+
+          // ローカルストレージも更新
+          const projectsStr = localStorage.getItem("novelProjects");
+          if (projectsStr) {
+            try {
+              const projects = JSON.parse(projectsStr) as Array<{
+                id: string;
+                [key: string]: any;
+              }>;
+              const projectIndex = projects.findIndex(
+                (p) => p.id === currentProject.id
+              );
+              if (projectIndex !== -1) {
+                projects[projectIndex] = updatedProject;
+                localStorage.setItem("novelProjects", JSON.stringify(projects));
+              }
+            } catch (e) {
+              console.error("Failed to update local storage projects", e);
+            }
+          }
+
+          const message =
+            existingIndex >= 0 || sameNameIndex >= 0
+              ? `キャラクター「${character.name}」を更新しました`
+              : `AI生成キャラクター「${character.name}」を追加しました`;
+
+          setSnackbarMessage(message);
+          setSnackbarSeverity("success");
+          setSnackbarOpen(true);
+        }
+      } catch (error) {
+        console.error("キャラクター追加/更新エラー:", error);
+        setSnackbarMessage("キャラクターの追加に失敗しました");
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
+      }
+    },
+    [characters, currentProject, setCurrentProject]
+  );
+
   return {
     characters,
     viewMode,
@@ -592,5 +687,6 @@ export function useCharacters() {
     emojiToDataUrl,
     dataUrlToEmoji,
     setFormData,
+    addCharacter,
   };
 }

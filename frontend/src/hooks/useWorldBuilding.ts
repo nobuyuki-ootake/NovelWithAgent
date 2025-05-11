@@ -254,22 +254,62 @@ export function useWorldBuilding() {
   const handleAddFreeField = useCallback(() => {
     if (!newFreeField.title.trim()) return;
 
+    let updatedFreeFields: WorldBuildingFreeField[] = [];
+
     if (isEditingFreeField) {
       // 既存のフィールドを更新
-      setFreeFields((prevFields) =>
-        prevFields.map((field) =>
-          field.id === currentFreeFieldId ? { ...newFreeField } : field
-        )
+      updatedFreeFields = freeFields.map((field) =>
+        field.id === currentFreeFieldId ? { ...newFreeField } : field
       );
-      setIsEditingFreeField(false);
-      setCurrentFreeFieldId("");
     } else {
       // 新しいフィールドを追加
       const newField = {
         ...newFreeField,
         id: uuidv4(),
       };
-      setFreeFields((prevFields) => [...prevFields, newField]);
+      updatedFreeFields = [...freeFields, newField];
+    }
+
+    // 状態を更新
+    setFreeFields(updatedFreeFields);
+
+    // worldBuilding状態も更新
+    if (worldBuilding) {
+      const updatedWorldBuilding = {
+        ...worldBuilding,
+        freeFields: updatedFreeFields,
+      };
+      setWorldBuilding(updatedWorldBuilding);
+
+      // currentProjectも更新
+      if (currentProject) {
+        const updatedProject = {
+          ...currentProject,
+          worldBuilding: updatedWorldBuilding,
+          updatedAt: new Date(),
+        };
+        setCurrentProject(updatedProject);
+
+        // ローカルストレージも更新
+        const projectsStr = localStorage.getItem("novelProjects");
+        if (projectsStr) {
+          try {
+            const projects: NovelProject[] = JSON.parse(projectsStr);
+            const updatedProjects = projects.map((p) =>
+              p.id === currentProject.id ? updatedProject : p
+            );
+            localStorage.setItem(
+              "novelProjects",
+              JSON.stringify(updatedProjects)
+            );
+            console.log(
+              "自由記述欄の追加/編集がローカルストレージに保存されました"
+            );
+          } catch (error) {
+            console.error("自由記述欄保存中にエラーが発生しました:", error);
+          }
+        }
+      }
     }
 
     setNewFreeField({
@@ -277,8 +317,17 @@ export function useWorldBuilding() {
       title: "",
       content: "",
     });
+    setIsEditingFreeField(false);
+    setCurrentFreeFieldId("");
     setHasUnsavedChanges(true);
-  }, [newFreeField, isEditingFreeField, currentFreeFieldId]);
+  }, [
+    newFreeField,
+    isEditingFreeField,
+    currentFreeFieldId,
+    freeFields,
+    worldBuilding,
+    currentProject,
+  ]);
 
   // 自由入力フィールドの編集
   const handleEditFreeField = useCallback((field: WorldBuildingFreeField) => {
@@ -340,14 +389,16 @@ export function useWorldBuilding() {
       };
       setWorldBuilding(updatedWorldBuilding);
 
-      // ローカルストレージへの即時保存（オプション）
+      // currentProjectも更新
       if (currentProject) {
         const updatedProject = {
           ...currentProject,
           worldBuilding: updatedWorldBuilding,
           updatedAt: new Date(),
         };
-        // ローカルストレージのプロジェクトも更新
+        setCurrentProject(updatedProject);
+
+        // ローカルストレージへの即時保存
         const projectsStr = localStorage.getItem("novelProjects");
         if (projectsStr) {
           try {

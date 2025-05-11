@@ -1,155 +1,247 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { toast } from "sonner";
 import { Spinner } from "../ui/spinner";
+import { Box, Tabs, Tab, LinearProgress } from "@mui/material";
 
-export interface AIAssistModalProps {
-  /**
-   * モーダルが開いているかどうか
-   */
+interface AIAssistModalProps {
   open: boolean;
-
-  /**
-   * モーダルを閉じる関数
-   */
   onClose: () => void;
-
-  /**
-   * AIアシスタントに送信するメッセージのデフォルト値
-   */
-  defaultMessage?: string;
-
-  /**
-   * モーダルのタイトル
-   */
-  title?: string;
-
-  /**
-   * モーダルの説明
-   */
+  title: string;
   description?: string;
-
-  /**
-   * AI応答後のコールバック関数
-   */
-  onAssistComplete: (response: {
-    response?: string;
-    agentUsed?: string;
-    steps?: unknown[];
-  }) => void;
-
-  /**
-   * AI応答のリクエスト関数
-   */
-  requestAssist: (message: string) => Promise<{
-    response?: string;
-    agentUsed?: string;
-    steps?: unknown[];
-  }>;
+  defaultMessage?: string;
+  requestAssist: (message: string) => Promise<any>;
+  onAssistComplete?: (result: any) => void;
+  supportsBatchGeneration?: boolean;
 }
 
-/**
- * AIアシスタントモーダルコンポーネント
- */
 export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   open,
   onClose,
+  title,
+  description,
   defaultMessage = "",
-  title = "AIアシスタント",
-  description = "AIに指示を出して項目を埋めてもらいましょう",
-  onAssistComplete,
   requestAssist,
+  onAssistComplete,
+  supportsBatchGeneration = false,
 }) => {
   const [message, setMessage] = useState(defaultMessage);
   const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState<any>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [activeTab, setActiveTab] = useState<"request" | "response">("request");
+  const [useBatchGeneration, setUseBatchGeneration] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
+  const [currentCharacter, setCurrentCharacter] = useState<
+    { name: string; role: string } | undefined
+  >(undefined);
+  const [totalCharacters, setTotalCharacters] = useState(0);
+  const [generatedCharacters, setGeneratedCharacters] = useState<any[]>([]);
 
-  // リセット処理
-  const handleReset = () => {
-    setMessage(defaultMessage);
-  };
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // キャンセル処理
-  const handleCancel = () => {
-    handleReset();
-    onClose();
-  };
-
-  // 送信処理
-  const handleSubmit = async () => {
-    if (!message.trim()) {
-      toast.error("メッセージを入力してください");
-      return;
+  useEffect(() => {
+    if (open && textareaRef.current) {
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
     }
 
+    if (open) {
+      setMessage(defaultMessage);
+      setResponse(null);
+      setError(null);
+      setActiveTab("request");
+      setBatchProgress(0);
+      setCurrentCharacter(undefined);
+      setTotalCharacters(0);
+      setGeneratedCharacters([]);
+    }
+  }, [open, defaultMessage]);
+
+  const handleSubmit = async () => {
+    if (!message.trim() || isLoading) return;
+
+    setIsLoading(true);
+    setError(null);
+    setResponse(null);
+    setActiveTab("response");
+
     try {
-      setIsLoading(true);
-      const response = await requestAssist(message);
-      onAssistComplete(response);
-      toast.success("AIが応答しました");
-      handleCancel();
-    } catch (error) {
-      console.error("AIアシスト処理エラー:", error);
-      toast.error("AIアシスタントとの通信に失敗しました");
+      const result = await requestAssist(message);
+      setResponse(result);
+
+      if (onAssistComplete) {
+        onAssistComplete(result);
+      }
+    } catch (err) {
+      console.error("AIアシスト実行エラー:", err);
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleBatchProgress = (
+    progress: number,
+    character?: { name: string; role: string },
+    total?: number
+  ) => {
+    setBatchProgress(progress * 100);
+    if (character) setCurrentCharacter(character);
+    if (total !== undefined) setTotalCharacters(total);
+  };
+
+  const handleCharacterGenerated = (character: any) => {
+    setGeneratedCharacters((prev) => [...prev, character]);
+  };
+
+  const handleCancel = () => {
+    if (!isLoading) {
+      onClose();
+    }
+  };
+
+  const handleTabChange = (
+    event: React.SyntheticEvent,
+    newValue: "request" | "response"
+  ) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
-      <DialogContent className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[900px] p-6 w-[95vw] max-h-[90vh] overflow-auto">
-        <DialogHeader className="pb-4">
+      <DialogContent
+        className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[900px] w-[95vw] max-h-[90vh] overflow-auto"
+        style={{ padding: "1.5rem" }}
+      >
+        <DialogHeader className="mb-4">
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           <DialogDescription className="text-base mt-2">
             {description}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <Textarea
-            placeholder="AIへの指示を入力してください..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={8}
-            className="resize-none text-base p-4 w-full"
-            disabled={isLoading}
-          />
+        <Box sx={{ width: "100%", mb: 2 }}>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            aria-label="AI Assist tabs"
+            sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
+          >
+            <Tab label="リクエスト" value="request" />
+            <Tab label="レスポンス" value="response" />
+          </Tabs>
+        </Box>
 
-          {isLoading && (
-            <div className="flex justify-center items-center gap-2 text-sm text-gray-500 py-2">
-              <Spinner className="h-5 w-5" />
-              <span>AIが応答を生成中...</span>
-            </div>
-          )}
-        </div>
+        {activeTab === "request" && (
+          <div>
+            <Textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={8}
+              className="resize-none text-base p-3 w-full"
+              style={{ minHeight: "150px" }}
+              disabled={isLoading}
+            />
 
-        <DialogFooter className="pt-2 gap-2 sm:gap-4 flex-wrap">
+            {supportsBatchGeneration && (
+              <div className="flex items-center space-x-2 mt-4">
+                <input
+                  type="checkbox"
+                  id="batch-generation"
+                  checked={useBatchGeneration}
+                  onChange={(e) => setUseBatchGeneration(e.target.checked)}
+                  disabled={isLoading}
+                />
+                <label htmlFor="batch-generation" className="text-sm">
+                  キャラクターを1人ずつ生成（より詳細な情報を取得）
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "response" && (
+          <div className="border rounded-md p-4 min-h-[200px] w-full bg-gray-50">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full py-6">
+                <Spinner className="h-8 w-8" />
+                <p className="mt-4 text-gray-600">処理中...</p>
+
+                {useBatchGeneration && batchProgress > 0 && (
+                  <div className="w-full mt-4 space-y-2">
+                    <LinearProgress
+                      variant="determinate"
+                      value={batchProgress}
+                      sx={{ width: "100%" }}
+                    />
+                    <p className="text-sm text-center">
+                      {currentCharacter
+                        ? `「${currentCharacter.name}」(${currentCharacter.role}) を生成中... ${generatedCharacters.length}/${totalCharacters}キャラクター完了`
+                        : `キャラクターリストを生成中...`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : error ? (
+              <div className="text-red-500 p-2 rounded-md">
+                <p className="font-medium">エラーが発生しました:</p>
+                <p>{error.message}</p>
+              </div>
+            ) : response ? (
+              <div className="p-4 border border-gray-200 rounded-md whitespace-pre-wrap font-mono text-sm">
+                {response.batchResponse ? (
+                  <div>
+                    <p className="font-bold mb-2">
+                      {totalCharacters}人のキャラクターが生成されました:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {generatedCharacters.map((char, index) => (
+                        <li key={index}>
+                          {char.response?.split("\n")[0] ||
+                            `キャラクター ${index + 1}`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  response.response || JSON.stringify(response, null, 2)
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-400 italic text-center py-10">
+                AIからの応答がここに表示されます
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="mt-4 flex justify-end gap-3 flex-wrap">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={handleCancel}
             disabled={isLoading}
-            className="px-5 py-2 min-w-[100px]"
           >
             キャンセル
           </Button>
           <Button
-            type="submit"
+            type="button"
+            variant="default"
             onClick={handleSubmit}
             disabled={isLoading || !message.trim()}
-            className="px-5 py-2 min-w-[120px]"
           >
-            {isLoading ? <Spinner className="h-4 w-4 mr-2" /> : null}
-            AIに送信
+            {isLoading ? <Spinner className="h-4 w-4 mr-2" /> : "生成"}
           </Button>
         </DialogFooter>
       </DialogContent>
