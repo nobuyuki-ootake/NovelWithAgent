@@ -17,9 +17,24 @@ const mockProject: NovelProject = {
     id: uuidv4(),
     setting: "魔法とドラゴンが存在する中世ファンタジー世界",
     rules: [
-      "魔法は魔力という資源を消費する",
-      "ドラゴンは知性を持ち人間語を話せる",
-      "魔法は血統により才能が決まる",
+      {
+        id: "rule1",
+        name: "魔力消費",
+        description: "魔法は魔力という資源を消費する",
+        significance: "魔法使いの能力に制限を設ける",
+      },
+      {
+        id: "rule2",
+        name: "知的ドラゴン",
+        description: "ドラゴンは知性を持ち人間語を話せる",
+        significance: "ドラゴンとの交渉や同盟が可能",
+      },
+      {
+        id: "rule3",
+        name: "血統魔法",
+        description: "魔法は血統により才能が決まる",
+        significance: "社会階級と魔法の関係性",
+      },
     ],
     places: [
       {
@@ -28,6 +43,7 @@ const mockProject: NovelProject = {
         description:
           "七つの王国の中で最も強大な国。豊かな森と肥沃な土地に恵まれた王国。",
         significance: "物語の主要な舞台。主人公の出身地。",
+        locationType: "city",
       },
     ],
     cultures: [],

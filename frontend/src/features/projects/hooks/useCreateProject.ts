@@ -33,9 +33,10 @@ export const useCreateProject = () => {
         updatedAt: now,
         characters: [],
         worldBuilding: {
+          id: uuidv4(),
           places: [],
           timelineSettings: {
-            startDate: now,
+            startDate: now.split("T")[0],
           },
         },
         timeline: [],

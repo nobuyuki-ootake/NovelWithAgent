@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import {
   Typography,
   Box,
@@ -11,15 +11,17 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
 import { VerticalContentEditorWrapper } from "../components/editor";
-import { useWriting } from "../hooks/useWriting";
 import ChapterList from "../components/writing/ChapterList";
 import WritingPreview from "../components/writing/WritingPreview";
 import NewChapterDialog from "../components/writing/NewChapterDialog";
 import AssignEventsDialog from "../components/writing/AssignEventsDialog";
 import EventDetailDialog from "../components/writing/EventDetailDialog";
 import RelatedEventsList from "../components/writing/RelatedEventsList";
+import { WritingProvider, useWritingContext } from "../contexts/WritingContext";
+import { NovelProject } from "../types";
 
-const WritingPage: React.FC = () => {
+// WritingPageの実装コンポーネント
+const WritingPageContent: React.FC = () => {
   const {
     editorValue,
     currentChapter,
@@ -52,27 +54,24 @@ const WritingPage: React.FC = () => {
     handleAddNewEvent,
     handleSaveContent,
     serializeToText,
-  } = useWriting();
+  } = useWritingContext();
 
   // キャラクター名を取得する関数
-  const getCharacterName = useCallback(
-    (characterId: string) => {
-      const characters = currentProject?.characters || [];
-      const character = characters.find((c) => c.id === characterId);
-      return character ? character.name : characterId;
-    },
-    [currentProject]
-  );
+  const getCharacterName = (characterId: string) => {
+    const characters = (currentProject as NovelProject)?.characters || [];
+    const character = characters.find(
+      (c: { id: string }) => c.id === characterId
+    );
+    return character ? character.name : characterId;
+  };
 
   // 場所名を取得する関数
-  const getPlaceName = useCallback(
-    (placeId: string) => {
-      const places = currentProject?.worldBuilding?.places || [];
-      const place = places.find((p) => p.id === placeId);
-      return place ? place.name : placeId;
-    },
-    [currentProject]
-  );
+  const getPlaceName = (placeId: string) => {
+    const places =
+      (currentProject as NovelProject)?.worldBuilding?.places || [];
+    const place = places.find((p: { id: string }) => p.id === placeId);
+    return place ? place.name : placeId;
+  };
 
   if (!currentProject) {
     return (
@@ -98,7 +97,7 @@ const WritingPage: React.FC = () => {
         >
           <Box>
             <Typography variant="h4" gutterBottom>
-              {currentProject.title}
+              {(currentProject as NovelProject).title}
             </Typography>
             {currentChapter && (
               <Typography variant="h5" color="text.secondary">
@@ -131,7 +130,7 @@ const WritingPage: React.FC = () => {
       <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
         <Box sx={{ width: { xs: "100%", md: "25%" } }}>
           <ChapterList
-            chapters={currentProject.chapters}
+            chapters={(currentProject as NovelProject).chapters}
             currentChapterId={currentChapterId}
             onSelectChapter={handleChapterSelect}
           />
@@ -227,8 +226,8 @@ const WritingPage: React.FC = () => {
         open={assignEventsDialogOpen}
         events={timelineEvents}
         selectedEvents={selectedEvents}
-        characters={currentProject.characters || []}
-        places={currentProject.worldBuilding?.places || []}
+        characters={(currentProject as NovelProject).characters || []}
+        places={(currentProject as NovelProject).worldBuilding?.places || []}
         onClose={handleCloseAssignEventsDialog}
         onToggle={handleToggleEvent}
         onSave={handleAssignEvents}
@@ -254,6 +253,15 @@ const WritingPage: React.FC = () => {
         getPlaceName={getPlaceName}
       />
     </Box>
+  );
+};
+
+// ラッパーコンポーネント
+const WritingPage: React.FC = () => {
+  return (
+    <WritingProvider>
+      <WritingPageContent />
+    </WritingProvider>
   );
 };
 

@@ -7,11 +7,26 @@ import { WorldBuildingElement } from "../types/worldBuilding";
  * @param aiResponse AIのレスポンステキスト
  */
 export const parseWorldBuildingElement = (
-  aiResponse: string
+  aiResponse: WorldBuildingElement
 ): WorldBuildingElement | null => {
   try {
+    // 前処理: マークダウン記法やコードブロックを除去
+    let cleanedResponse = aiResponse;
+
+    // コードブロックを除去 (```json...``` など)
+    cleanedResponse = cleanedResponse.replace(/```[a-z]*\n[\s\S]*?\n```/g, "");
+
+    // 特殊マーカー記号を除去 (** や ## など)
+    cleanedResponse = cleanedResponse.replace(/(\*\*|##|--|\*)/g, "");
+
+    console.log("[DEBUG] パース前のクリーニング処理:", {
+      beforeLength: aiResponse.length,
+      afterLength: cleanedResponse.length,
+      cleaned: cleanedResponse !== aiResponse,
+    });
+
     // 名前の抽出
-    const nameMatch = aiResponse.match(/名前[：:]\s*(.+?)($|\n)/);
+    const nameMatch = cleanedResponse.match(/名前[：:]\s*(.+?)($|\n)/);
     if (!nameMatch || !nameMatch[1]?.trim()) {
       console.log("要素名が見つかりませんでした");
       return null;
@@ -21,7 +36,7 @@ export const parseWorldBuildingElement = (
     console.log(`世界観要素「${name}」のパース処理開始`);
 
     // タイプの抽出
-    const typeMatch = aiResponse.match(/タイプ[：:]\s*(.+?)($|\n)/);
+    const typeMatch = cleanedResponse.match(/タイプ[：:]\s*(.+?)($|\n)/);
     const type = typeMatch && typeMatch[1] ? typeMatch[1].trim() : "place";
     console.log(`要素タイプ: ${type}`);
 
@@ -29,7 +44,7 @@ export const parseWorldBuildingElement = (
     const normalizedType = type.toLowerCase().trim();
 
     // 説明の抽出 - 複数行も考慮
-    const descriptionMatch = aiResponse.match(
+    const descriptionMatch = cleanedResponse.match(
       /説明[：:]\s*(.+?)(?=\n\n|\n(?:特徴|重要性|立地|習慣|影響|関連)[：:]|$)/s
     );
     const description =
@@ -37,7 +52,7 @@ export const parseWorldBuildingElement = (
     console.log(`説明: ${description ? "あり" : "なし"}`);
 
     // 特徴の抽出 - 複数行も考慮
-    const featuresMatch = aiResponse.match(
+    const featuresMatch = cleanedResponse.match(
       /特徴[：:]\s*(.+?)(?=\n\n|\n(?:重要性|立地|習慣|影響|関連)[：:]|$)/s
     );
     const features =
@@ -45,7 +60,7 @@ export const parseWorldBuildingElement = (
     console.log(`特徴: ${features ? "あり" : "なし"}`);
 
     // 重要性の抽出
-    const importanceMatch = aiResponse.match(
+    const importanceMatch = cleanedResponse.match(
       /重要性[：:]\s*(.+?)(?=\n\n|\n(?:立地|習慣|影響|関連)[：:]|$)/s
     );
     const importance =
@@ -59,21 +74,21 @@ export const parseWorldBuildingElement = (
 
     if (normalizedType.includes("場所") || normalizedType === "place") {
       // 立地の抽出
-      const locationMatch = aiResponse.match(
+      const locationMatch = cleanedResponse.match(
         /立地[：:]\s*(.+?)(?=\n\n|\n(?:人口|文化|関連)[：:]|$)/s
       );
       location =
         locationMatch && locationMatch[1] ? locationMatch[1].trim() : "";
 
       // 人口の抽出
-      const populationMatch = aiResponse.match(
+      const populationMatch = cleanedResponse.match(
         /人口[：:]\s*(.+?)(?=\n\n|\n(?:文化|関連)[：:]|$)/s
       );
       population =
         populationMatch && populationMatch[1] ? populationMatch[1].trim() : "";
 
       // 文化的特徴の抽出
-      const culturalMatch = aiResponse.match(
+      const culturalMatch = cleanedResponse.match(
         /文化的特徴[：:]\s*(.+?)(?=\n\n|\n(?:関連)[：:]|$)/s
       );
       culturalFeatures =
@@ -81,25 +96,18 @@ export const parseWorldBuildingElement = (
     }
 
     // 文化タイプ特有のフィールド
-    let customs = "";
     let beliefs = "";
     let history = "";
 
     if (normalizedType.includes("文化") || normalizedType === "culture") {
-      // 習慣の抽出
-      const customsMatch = aiResponse.match(
-        /習慣[：:]\s*(.+?)(?=\n\n|\n(?:信念|歴史|関連)[：:]|$)/s
-      );
-      customs = customsMatch && customsMatch[1] ? customsMatch[1].trim() : "";
-
       // 信念の抽出
-      const beliefsMatch = aiResponse.match(
+      const beliefsMatch = cleanedResponse.match(
         /信念[：:]\s*(.+?)(?=\n\n|\n(?:歴史|関連)[：:]|$)/s
       );
       beliefs = beliefsMatch && beliefsMatch[1] ? beliefsMatch[1].trim() : "";
 
       // 歴史の抽出
-      const historyMatch = aiResponse.match(
+      const historyMatch = cleanedResponse.match(
         /歴史[：:]\s*(.+?)(?=\n\n|\n(?:関連)[：:]|$)/s
       );
       history = historyMatch && historyMatch[1] ? historyMatch[1].trim() : "";
@@ -112,31 +120,31 @@ export const parseWorldBuildingElement = (
 
     if (normalizedType.includes("ルール") || normalizedType === "rule") {
       // 影響の抽出
-      const impactMatch = aiResponse.match(
+      const impactMatch = cleanedResponse.match(
         /影響[：:]\s*(.+?)(?=\n\n|\n(?:例外|由来|関連)[：:]|$)/s
       );
       impact = impactMatch && impactMatch[1] ? impactMatch[1].trim() : "";
 
       // 例外の抽出
-      const exceptionsMatch = aiResponse.match(
+      const exceptionsMatch = cleanedResponse.match(
         /例外[：:]\s*(.+?)(?=\n\n|\n(?:由来|関連)[：:]|$)/s
       );
       exceptions =
         exceptionsMatch && exceptionsMatch[1] ? exceptionsMatch[1].trim() : "";
 
       // 由来の抽出
-      const originMatch = aiResponse.match(
+      const originMatch = cleanedResponse.match(
         /由来[：:]\s*(.+?)(?=\n\n|\n(?:関連)[：:]|$)/s
       );
       origin = originMatch && originMatch[1] ? originMatch[1].trim() : "";
     }
 
     // 関連事項の抽出
-    const relationsMatch = aiResponse.match(/関連事項[：:]\s*(.+?)(?=\n\n|$)/s);
+    const relationsMatch = cleanedResponse.match(/関連事項[：:]([\s\S]*?)$/);
     const relations =
       relationsMatch && relationsMatch[1] ? relationsMatch[1].trim() : "";
 
-    // 標準化されたタイプを設定（日本語の場合も英語に統一）
+    // 標準化されたタイプ
     let standardizedType = "element"; // デフォルト値
 
     if (normalizedType.includes("場所") || normalizedType === "place") {
@@ -177,7 +185,6 @@ export const parseWorldBuildingElement = (
       population,
       culturalFeatures,
       // 文化特有のフィールド
-      customs,
       beliefs,
       history,
       // ルール特有のフィールド
@@ -197,8 +204,8 @@ export const parseWorldBuildingElement = (
 };
 
 /**
- * AIのレスポンスからキャラクターデータに変換する関数
- * @param aiResponse AIレスポンステキスト
+ * AIのレスポンスをキャラクターデータに変換する関数
+ * 単一のキャラクターデータを返す
  */
 export const parseAIResponseToCharacter = (
   aiResponse: string
@@ -519,4 +526,124 @@ export const parseAIResponseToCharacters = (
 
   console.log("最終的なキャラクター数:", characters.length); // デバッグ用
   return characters;
+};
+
+/**
+ * AIからの応答テキストをプロットアイテム配列に変換する関数
+ */
+export const parseAIResponseToPlotItems = (
+  text: string
+): { title: string; description: string }[] => {
+  const items: { title: string; description: string }[] = [];
+
+  // セクション区切りの可能性のあるパターン
+  const sectionDelimiters = [
+    /^(\d+\.\s.*?)(?=\d+\.\s|\n\n\d+\.|\n*$)/gms, // 1. タイトル
+    /^(第\d+章.*?)(?=第\d+章|\n\n第|\n*$)/gms, // 第1章 タイトル
+    /^(シーン\d+.*?)(?=シーン\d+|\n\nシーン|\n*$)/gms, // シーン1
+    /^(プロット\d+.*?)(?=プロット\d+|\n\nプロット|\n*$)/gms, // プロット1
+  ];
+
+  // 複数のプロット項目に分割を試みる
+  let sections: string[] = [];
+
+  // 区切りパターンのいずれかにマッチするか試みる
+  for (const delimiter of sectionDelimiters) {
+    const matches = Array.from(text.matchAll(delimiter));
+    if (matches.length > 1) {
+      // 複数のセクションが見つかった
+      sections = matches.map((match) => match[1].trim());
+      break;
+    }
+  }
+
+  // 区切りパターンでの分割が成功しなかった場合、空行で分割を試みる
+  if (sections.length === 0) {
+    // 2つの連続した改行で分割
+    sections = text
+      .split(/\n\s*\n+/)
+      .filter((section) => section.trim().length > 0);
+  }
+
+  // セクションごとにタイトルと詳細を抽出
+  if (sections.length > 0) {
+    for (const section of sections) {
+      const lines = section.split("\n");
+      let title = "";
+      let description = "";
+
+      // タイトルと詳細を抽出
+      const titleMatch = section.match(/タイトル[：:]\s*(.+?)($|\n)/);
+      const descriptionMatch = section.match(
+        /詳細[：:]\s*(.+?)(\n\n|\n[^:]|$)/s
+      );
+
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].trim();
+
+        if (descriptionMatch && descriptionMatch[1]) {
+          description = descriptionMatch[1].trim();
+        } else {
+          // 詳細が明示的でない場合、タイトル以外のテキストを詳細とする
+          const nonTitleLines = lines.filter(
+            (line) =>
+              !line.includes("タイトル:") && !line.includes("タイトル：")
+          );
+          description = nonTitleLines.join("\n").trim();
+        }
+      } else {
+        // タイトル: が明示的でない場合
+        // 番号付きの最初の行をタイトルとして扱う
+        const numberMatch = lines[0].match(
+          /^(\d+\.|第\d+章|シーン\d+|プロット\d+)(.*)/
+        );
+        if (numberMatch) {
+          title = numberMatch[2].trim() || numberMatch[0].trim();
+          description = lines.slice(1).join("\n").trim();
+        } else {
+          // 単純に最初の行をタイトルとして扱う
+          title = lines[0].trim();
+          description = lines.slice(1).join("\n").trim();
+        }
+      }
+
+      if (title) {
+        items.push({ title, description });
+      }
+    }
+  } else {
+    // 分割できない場合は、単一のプロットアイテムとして処理
+    const lines = text.split("\n");
+    const titleMatch = text.match(/タイトル[：:]\s*(.+?)($|\n)/);
+
+    if (titleMatch && titleMatch[1]) {
+      const title = titleMatch[1].trim();
+      const descriptionMatch = text.match(/詳細[：:]\s*(.+?)(\n\n|\n[^:]|$)/s);
+
+      let description = "";
+      if (descriptionMatch && descriptionMatch[1]) {
+        description = descriptionMatch[1].trim();
+      } else {
+        const nonTitleLines = lines.filter(
+          (line) => !line.includes("タイトル:") && !line.includes("タイトル：")
+        );
+        description = nonTitleLines.join("\n").trim();
+      }
+
+      items.push({ title, description });
+    } else if (lines.length > 0) {
+      // タイトル/詳細の明示的な区切りがない場合
+      const firstLine = lines[0].trim();
+      const remainingLines = lines.slice(1).join("\n").trim();
+
+      if (firstLine) {
+        items.push({
+          title: firstLine,
+          description: remainingLines || "",
+        });
+      }
+    }
+  }
+
+  return items;
 };

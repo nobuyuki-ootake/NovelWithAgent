@@ -6,16 +6,15 @@ import {
   DialogActions,
   TextField,
   Button,
+  MenuItem,
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
   SelectChangeEvent,
 } from "@mui/material";
-import { PlotElement } from "../../types/index";
+import { useAIAssist } from "../../hooks/useAIAssist";
 import { AIAssistButton } from "../ui/AIAssistButton";
 import { AIAssistModal } from "../modals/AIAssistModal";
-import { useAIAssist } from "../../hooks/useAIAssist";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../../store/atoms";
 
@@ -45,18 +44,17 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
   const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
   const currentProject = useRecoilValue(currentProjectState);
 
-  // AIアシスト機能を使用
+  // AIアシスト機能
   const { assistPlot, isLoading } = useAIAssist({
-    onSuccess: (result) => {
-      // AIの応答からプロット情報を抽出
+    onPlotSuccess: (result) => {
       if (result && result.response) {
-        applyAIPlotResponse(result.response);
+        applyAIResponse(result.response);
       }
     },
   });
 
   // AIの応答をプロットフォームに適用する関数
-  const applyAIPlotResponse = (aiResponse: string) => {
+  const applyAIResponse = (aiResponse: string) => {
     // タイトルを抽出（最初の行や「タイトル:」などの形式から）
     const titleMatch = aiResponse.match(/タイトル[：:]\s*(.+?)($|\n)/);
     if (titleMatch && titleMatch[1]) {
@@ -89,7 +87,7 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
     }
   };
 
-  // AIアシスタントを開く
+  // AIアシストモーダルを開く
   const handleOpenAIAssist = async () => {
     setAiAssistModalOpen(true);
     return Promise.resolve();
@@ -97,13 +95,22 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
 
   // AIアシストリクエスト実行
   const handleAIAssist = async (message: string) => {
-    // あらすじを参照してプロットアイテム生成をリクエスト
-    const synopsis = currentProject?.synopsis || "";
-    const plotElements = currentProject?.plot || [];
-    return await assistPlot(message, [
-      { type: "synopsis", content: synopsis },
-      ...plotElements.map((item) => ({ type: "plotItem", content: item })),
-    ]);
+    // AIが処理中の場合は実行しない
+    if (isLoading) return { response: "", batchResponse: false };
+
+    // プロット要素と一緒にリクエスト
+    try {
+      const result = await assistPlot(message, [
+        { type: "synopsis", content: currentProject?.synopsis || "" } as any,
+        ...(currentProject?.plot || []).map(
+          (item) => ({ type: "plotItem", content: item } as any)
+        ),
+      ]);
+      return result;
+    } catch (error) {
+      console.error("プロット支援エラー:", error);
+      return { response: "エラーが発生しました", batchResponse: false };
+    }
   };
 
   return (

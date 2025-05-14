@@ -1,4 +1,4 @@
-import { Project } from "../types/project";
+import { Project, Chapter, Section } from "../types";
 
 /**
  * プロジェクトエクスポート用のユーティリティクラス
@@ -91,16 +91,27 @@ export class ExportUtil {
 
       // 各章のテキストを追加
       project.chapters
-        .sort((a, b) => a.order - b.order)
-        .forEach((chapter) => {
-          novelText += `## ${chapter.title}\n\n${chapter.content}\n\n`;
+        .sort((a: Chapter, b: Chapter) => {
+          const aOrder = typeof a.order === "number" ? a.order : 0;
+          const bOrder = typeof b.order === "number" ? b.order : 0;
+          return aOrder - bOrder;
+        })
+        .forEach((chapter: Chapter) => {
+          novelText += `## ${chapter.title}\n\n${chapter.content || ""}\n\n`;
 
-          // セクションがある場合は追加
-          if (chapter.sections && chapter.sections.length > 0) {
-            chapter.sections
-              .sort((a, b) => a.order - b.order)
-              .forEach((section) => {
-                novelText += `### ${section.title}\n\n${section.content}\n\n`;
+          // セクションがあれば追加
+          const sections = (chapter as any).sections;
+          if (sections && Array.isArray(sections) && sections.length > 0) {
+            sections
+              .sort((a: Section, b: Section) => {
+                const aOrder = typeof a.order === "number" ? a.order : 0;
+                const bOrder = typeof b.order === "number" ? b.order : 0;
+                return aOrder - bOrder;
+              })
+              .forEach((section: Section) => {
+                novelText += `### ${section.title}\n\n${
+                  section.content || ""
+                }\n\n`;
               });
           }
         });
@@ -141,24 +152,30 @@ export class ExportUtil {
     let totalCharCount = 0;
     let totalWordCount = 0;
 
-    project.chapters.forEach((chapter) => {
-      // 章の本文の文字数
-      totalCharCount += chapter.content.length;
+    // チャプターごとに文字数をカウント
+    project.chapters.forEach((chapter: Chapter) => {
+      const chapterContent = chapter.content || "";
+      totalCharCount += chapterContent.toString().length;
 
-      // おおよその単語数（スペースで区切られた単語数）
-      const words = chapter.content
+      // 単語数をカウント（簡易的な実装）
+      const words = chapterContent
+        .toString()
         .split(/\s+/)
-        .filter((word) => word.length > 0);
+        .filter((word: string) => word.length > 0);
       totalWordCount += words.length;
 
-      // セクションがある場合はその文字数も追加
-      if (chapter.sections && chapter.sections.length > 0) {
-        chapter.sections.forEach((section) => {
-          totalCharCount += section.content.length;
-          const sectionWords = section.content
+      // セクションがあれば処理
+      const sections = (chapter as any).sections;
+      if (sections && Array.isArray(sections) && sections.length > 0) {
+        sections.forEach((section: Section) => {
+          const sectionContent = section.content || "";
+          totalCharCount += sectionContent.toString().length;
+
+          const words = sectionContent
+            .toString()
             .split(/\s+/)
-            .filter((word) => word.length > 0);
-          totalWordCount += sectionWords.length;
+            .filter((word: string) => word.length > 0);
+          totalWordCount += words.length;
         });
       }
     });
@@ -174,7 +191,11 @@ export class ExportUtil {
     )}\n\n`;
 
     stats += `キャラクター数: ${project.characters.length}名\n`;
-    stats += `場所数: ${project.worldBuilding.places.length}箇所\n`;
+
+    // 場所数を安全に取得
+    const placeCount = project.worldBuilding?.places?.length || 0;
+    stats += `場所数: ${placeCount}箇所\n`;
+
     stats += `タイムラインイベント数: ${project.timeline.length}件\n`;
     stats += `章数: ${project.chapters.length}章\n\n`;
 

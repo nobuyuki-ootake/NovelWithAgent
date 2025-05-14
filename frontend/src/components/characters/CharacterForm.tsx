@@ -11,22 +11,14 @@ import {
   Chip,
   Avatar,
   FormHelperText,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
   Tooltip,
-  Stack,
-  Divider,
 } from "@mui/material";
 import {
-  Delete as DeleteIcon,
   Image as ImageIcon,
   Save as SaveIcon,
   Add as AddIcon,
-  AutoAwesome as AutoAwesomeIcon,
 } from "@mui/icons-material";
-import { Character, CustomField, CharacterStatus } from "../../types/index";
+import { Character, CharacterStatus } from "../../types/index";
 import CharacterStatusList from "./CharacterStatusList";
 import CharacterStatusEditorDialog from "./CharacterStatusEditorDialog";
 import { AIAssistModal } from "../modals/AIAssistModal";
@@ -97,7 +89,6 @@ interface CharacterFormProps {
   selectedEmoji: string;
   tempImageUrl: string;
   newTrait: string;
-  newCustomField: CustomField;
   onInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void;
@@ -107,11 +98,6 @@ interface CharacterFormProps {
   onNewTraitChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAddTrait: (trait: { value: string; source: string }) => void;
   onRemoveTrait: (index: number) => void;
-  onCustomFieldChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => void;
-  onAddCustomField: () => void;
-  onRemoveCustomField: (id: string) => void;
   onSave: () => void;
   onCancel: () => void;
   onSaveStatus: (status: CharacterStatus) => void;
@@ -124,7 +110,6 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   selectedEmoji,
   tempImageUrl,
   newTrait,
-  newCustomField,
   onInputChange,
   onSelectChange,
   onImageUpload,
@@ -132,9 +117,6 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   onNewTraitChange,
   onAddTrait,
   onRemoveTrait,
-  onCustomFieldChange,
-  onAddCustomField,
-  onRemoveCustomField,
   onSave,
   onCancel,
   onSaveStatus,
@@ -152,7 +134,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
 
   // AIアシスト機能
   const { assistCharacter, isLoading } = useAIAssist({
-    onSuccess: (result) => {
+    onCharacterSuccess: (result) => {
       if (result && result.response) {
         applyAIResponse(result.response, aiAssistTarget);
       }
@@ -169,19 +151,33 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
 
   // AIアシストリクエスト実行
   const handleAIAssist = async (message: string) => {
+    // AIが処理中の場合は実行しない
+    if (isLoading) return { response: "", batchResponse: false };
+
     // あらすじとプロットを参照してキャラクター生成をリクエスト
     const synopsis = currentProject?.synopsis || "";
     const plotElements = currentProject?.plot || [];
     const existingCharacters = currentProject?.characters || [];
 
-    return await assistCharacter(message, [
-      { type: "synopsis", content: synopsis },
-      ...plotElements.map((item) => ({ type: "plotItem", content: item })),
-      ...existingCharacters.map((char) => ({
-        type: "character",
-        content: char,
-      })),
-    ]);
+    try {
+      const result = await assistCharacter(message, [
+        { type: "synopsis", content: synopsis } as any,
+        ...plotElements.map(
+          (item) => ({ type: "plotItem", content: item } as any)
+        ),
+        ...existingCharacters.map(
+          (char) =>
+            ({
+              type: "character",
+              content: char,
+            } as any)
+        ),
+      ]);
+      return result;
+    } catch (error) {
+      console.error("キャラクター支援エラー:", error);
+      return { response: "エラーが発生しました", batchResponse: false };
+    }
   };
 
   // AIの応答を適用する関数

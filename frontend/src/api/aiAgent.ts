@@ -1,4 +1,6 @@
 import axios from "axios";
+import { WorldBuildingApiResponse } from "../types/apiResponse";
+import { WorldBuildingElementType } from "../types";
 
 // APIのベースURL
 const API_BASE_URL =
@@ -293,12 +295,18 @@ export const aiAgentApi = {
    * @param message ユーザーのメッセージ
    * @param plotElements プロット要素
    * @param charactersElements キャラクター要素
+   * @param model 使用するAIモデル（省略時はGemini Pro 1.5を使用）
+   * @param format レスポンス形式（json/yaml、デフォルトはjson）
+   * @param elementType 生成する要素タイプ（places/cultures）
    * @returns 世界観要素のリスト（場所や文化など）
    */
   generateWorldBuildingList: async (
     message: string,
     plotElements: any[] = [],
-    charactersElements: any[] = []
+    charactersElements: any[] = [],
+    model: string = "gemini-1.5-pro",
+    format: string = "json",
+    elementType: string = "places"
   ) => {
     try {
       const response = await axios.post(
@@ -307,6 +315,9 @@ export const aiAgentApi = {
           message,
           plotElements,
           charactersElements,
+          model,
+          format,
+          elementType,
         }
       );
       return response.data;
@@ -323,6 +334,7 @@ export const aiAgentApi = {
    * @param message 追加の指示
    * @param plotElements プロット要素
    * @param charactersElements キャラクター要素
+   * @param format レスポンス形式（json/yaml、デフォルトはjson）
    * @returns 世界観要素の詳細情報
    */
   generateWorldBuildingDetail: async (
@@ -330,19 +342,44 @@ export const aiAgentApi = {
     elementType: string,
     message: string = "",
     plotElements: any[] = [],
-    charactersElements: any[] = []
-  ) => {
+    charactersElements: any[] = [],
+    format: string = "json"
+  ): Promise<WorldBuildingApiResponse> => {
     try {
-      const response = await axios.post(
+      // 要素タイプの正規化（小文字に変換）
+      const normalizedElementType =
+        elementType?.toLowerCase() || WorldBuildingElementType.FREE_TEXT;
+
+      // APIリクエストを送信（プロンプト生成はバックエンド側で行われる）
+      const response = await axios.post<WorldBuildingApiResponse>(
         `${API_BASE_URL}/ai-agent/worldbuilding-detail-generation`,
         {
           elementName,
-          elementType,
-          message,
+          elementType: normalizedElementType,
+          message, // 追加指示はそのままバックエンドに渡す
           plotElements,
           charactersElements,
+          format,
         }
       );
+
+      // 型の検証
+      if (!isWorldBuildingApiResponse(response.data)) {
+        console.error("期待される型: WorldBuildingApiResponse", {
+          status: "string",
+          data: "Record<string, unknown>",
+          rawContent: "string",
+          metadata: {
+            model: "string",
+            processingTime: "number",
+            requestType: "string",
+            format: "string",
+          },
+        });
+        console.error("実際のレスポンス:", response.data);
+        throw new Error("レスポンスの型が不正です");
+      }
+
       return response.data;
     } catch (error) {
       console.error("世界観要素詳細生成エラー:", error);
@@ -423,3 +460,21 @@ const encryptApiKey = async (apiKey: string): Promise<string> => {
   // 実際の実装ではAES-256などの強力な暗号化を使用するべき
   return btoa(apiKey);
 };
+
+// 型ガード関数の作成
+function isWorldBuildingApiResponse(
+  data: any
+): data is WorldBuildingApiResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    typeof data.status === "string" &&
+    typeof data.data === "object" &&
+    typeof data.rawContent === "string" &&
+    typeof data.metadata === "object" &&
+    typeof data.metadata.model === "string" &&
+    typeof data.metadata.processingTime === "number" &&
+    typeof data.metadata.requestType === "string" &&
+    typeof data.metadata.format === "string"
+  );
+}

@@ -72,11 +72,27 @@ const dummyProject: NovelProject = {
   ],
   worldBuilding: {
     id: uuidv4(),
-    setting: "現代の日本、東京",
+    setting:
+      "現代日本とよく似ているが、「願い」の力を持つ人間がごく稀に存在する世界",
     rules: [
-      "思ったことが現実になる能力がある",
-      "その能力を使うほど、使用者の寿命は縮まる",
-      "一度実現したことは元に戻せない",
+      {
+        id: "rule1",
+        name: "思考実現能力",
+        description: "思ったことが現実になる能力がある",
+        significance: "物語の中核となる超能力",
+      },
+      {
+        id: "rule2",
+        name: "寿命の代償",
+        description: "その能力を使うほど、使用者の寿命は縮まる",
+        significance: "能力の使用に関する制約と代償",
+      },
+      {
+        id: "rule3",
+        name: "不可逆性",
+        description: "一度実現したことは元に戻せない",
+        significance: "物語における緊張感と取り返しのつかない決断の重要性",
+      },
     ],
     places: [],
     cultures: [],

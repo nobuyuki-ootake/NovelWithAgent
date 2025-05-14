@@ -7,21 +7,15 @@ interface TabPanelProps {
   value: number;
 }
 
-const TabPanel: React.FC<TabPanelProps> = ({
-  children,
-  value,
-  index,
-  ...other
-}) => {
+const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
   return (
     <div
       role="tabpanel"
       hidden={value !== index}
       id={`worldbuilding-tabpanel-${index}`}
       aria-labelledby={`worldbuilding-tab-${index}`}
-      {...other}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
     </div>
   );
 };

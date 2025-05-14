@@ -2,7 +2,6 @@
  * Mastraモックライブラリによる対話型AIエージェントシステムの設定と初期化
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import OpenAI from 'openai';
 import dotenv from 'dotenv';
 
 // 環境変数の読み込み
@@ -12,18 +11,12 @@ dotenv.config();
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
+    console.error(
+      'ERROR: Gemini APIキーが設定されていません。環境変数 GEMINI_API_KEY を設定してください。',
+    );
     throw new Error('Gemini APIキーが設定されていません');
   }
   return new GoogleGenerativeAI(apiKey);
-};
-
-// OpenAIクライアントの初期化
-const getOpenAIClient = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OpenAI APIキーが設定されていません');
-  }
-  return new OpenAI({ apiKey });
 };
 
 // 簡易化したMastraのモッククラス
@@ -161,8 +154,52 @@ class MastraMock {
             ],
           };
         } catch (error) {
-          console.error('ネットワーク実行エラー:', error);
-          throw error;
+          // 詳細なエラー情報をコンソールに出力
+          console.error('[NETWORK ERROR] ネットワーク実行エラー:');
+          console.error(JSON.stringify(error, null, 2));
+
+          // エラー情報を構造化
+          let errorType = 'GENERAL_ERROR';
+          let errorDetails = {};
+
+          if (typeof error === 'object') {
+            if (error.type) {
+              errorType = error.type;
+            }
+
+            if (error.details) {
+              errorDetails = error.details;
+            } else if (error instanceof Error) {
+              errorDetails = {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              };
+            } else {
+              errorDetails = { ...error };
+            }
+          }
+
+          // 明示的なエラー情報を含む応答を返す
+          return {
+            status: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : error.message || 'リクエスト処理中にエラーが発生しました',
+            error: {
+              type: errorType,
+              details: errorDetails,
+              timestamp: new Date().toISOString(),
+            },
+            // デバッグ情報を含める
+            debug: {
+              input: input.substring(0, 50) + (input.length > 50 ? '...' : ''),
+              context: context
+                ? JSON.stringify(context).substring(0, 100)
+                : 'なし',
+            },
+          };
         }
       },
     };
@@ -244,62 +281,64 @@ ${
         const response = result.response;
         return response.text();
       } catch (apiError) {
-        console.error('Gemini API実行エラー:', apiError);
+        // 詳細なエラー情報を出力（デバッグ用）
+        console.error('[GEMINI ERROR] API実行エラー:', apiError);
+        console.error('[GEMINI ERROR] リクエスト内容:');
+        console.error('- エージェント:', agent.name);
+        console.error(
+          '- システムプロンプト（一部）:',
+          systemPrompt.substring(0, 100) + '...',
+        );
+        console.error(
+          '- ユーザー入力（一部）:',
+          input.substring(0, 50) + '...',
+        );
 
-        // APIエラーの場合、フォールバックとしてOpenAIを試みる
-        console.log('Gemini APIが失敗したため、OpenAIにフォールバックします');
+        // エラー詳細情報を構築
+        const errorDetail = {
+          message:
+            apiError instanceof Error ? apiError.message : '不明なエラー',
+          name: apiError instanceof Error ? apiError.name : 'Unknown',
+          stack: apiError instanceof Error ? apiError.stack : undefined,
+          agentName: agent.name,
+          inputLength: input.length,
+        };
 
-        try {
-          // OpenAI APIによるフォールバック処理
-          const openai = getOpenAIClient();
-
-          // OpenAIリクエストを作成
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            temperature: 0.7,
-            max_tokens: 1000,
-          });
-
-          // レスポンスを返す
-          return (
-            completion.choices[0]?.message?.content ||
-            '申し訳ありません。応答の生成中に問題が発生しました。'
-          );
-        } catch (fallbackError) {
-          console.error('フォールバック処理エラー:', fallbackError);
-          return `申し訳ありません。リクエストの処理中にエラーが発生しました。
-しばらく経ってから再度お試しください。`;
-        }
+        // エラーを再スロー（握りつぶさない）
+        throw {
+          type: 'GEMINI_API_ERROR',
+          message: 'Gemini APIでのリクエスト処理中にエラーが発生しました',
+          details: errorDetail,
+          timestamp: new Date().toISOString(),
+        };
       }
     } catch (error) {
-      console.error('エージェント実行エラー:', error);
+      // 詳細なエラー情報を出力（デバッグ用）
+      console.error('[CRITICAL ERROR] エージェント実行エラー:');
+      console.error(JSON.stringify(error, null, 2));
+
+      // エラーを再スロー（握りつぶさない）
       throw error;
     }
   }
 }
 
 // Gemini APIクライアントの初期化
-const gemini = getGeminiClient();
-// OpenAI APIクライアントの初期化
-const openai = getOpenAIClient();
+let gemini;
+try {
+  gemini = getGeminiClient();
+  console.log('Gemini APIクライアントが正常に初期化されました');
+} catch (error) {
+  console.error('Gemini APIクライアントの初期化に失敗しました:', error);
+  throw error; // エラーを握りつぶさず再スロー
+}
 
-// LLMプロバイダーの設定
+// LLMプロバイダーの設定（OpenAI関連を削除）
 const providers = {
   gemini: {
     client: gemini,
     config: {
       model: 'gemini-1.5-pro',
-      temperature: 0.7,
-    },
-  },
-  openai: {
-    client: openai,
-    config: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.7,
     },
   },

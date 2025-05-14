@@ -114,3 +114,15 @@ export const aiChatTabState = atom<AIChatTabType>({
   key: "aiChatTab",
   default: "chat",
 });
+
+// 世界観構築画面のタブ更新状態を管理するアトム
+export const worldBuildingUpdatedTabsState = atom<{ [key: number]: boolean }>({
+  key: "worldBuildingUpdatedTabsState",
+  default: {},
+});
+
+// 世界観構築画面の強制更新カウンターを管理するアトム
+export const worldBuildingForceUpdateCounterState = atom<number>({
+  key: "worldBuildingForceUpdateCounterState",
+  default: 0,
+});

@@ -12,6 +12,5 @@ export default defineConfig({
     port: 5173,
     host: "localhost",
     open: true,
-    historyApiFallback: true,
   },
 });

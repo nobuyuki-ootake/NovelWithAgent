@@ -12,6 +12,7 @@ import NewProjectPage from "./pages/NewProjectPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import { appModeState, currentProjectState } from "./store/atoms";
 import { Toaster } from "sonner";
+import { WorldBuildingProvider } from "./contexts/WorldBuildingContext";
 
 // メインコンテンツを表示するコンポーネント
 const MainContent = () => {
@@ -52,18 +53,21 @@ function App() {
     <RecoilRoot>
       <Router>
         <Toaster position="bottom-right" richColors />
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <AppLayout>
-                <MainContent />
-              </AppLayout>
-            }
-          />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/new" element={<NewProjectPage />} />
-        </Routes>
+        <WorldBuildingProvider>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <AppLayout>
+                  <MainContent />
+                </AppLayout>
+              }
+            />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/new" element={<NewProjectPage />} />
+            <Route path="/worldbuilding" element={<WorldBuildingPage />} />
+          </Routes>
+        </WorldBuildingProvider>
       </Router>
     </RecoilRoot>
   );

@@ -30,7 +30,7 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
 
   // AIアシスト機能
   const { assistSynopsis, isLoading } = useAIAssist({
-    onSuccess: (result) => {
+    onSynopsisSuccess: (result) => {
       // AIの応答を処理してシノプシスに設定
       if (result && result.response) {
         // テキストフィールドの変更をシミュレートするためイベントオブジェクトを作成
@@ -57,10 +57,8 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
     // タイトル情報を含むコンテキスト要素を作成
     const titleContext = [
       {
-        type: "title",
-        id: "project-title",
-        name: "作品タイトル",
-        content: projectTitle,
+        title: projectTitle,
+        genre: undefined,
       },
     ];
 

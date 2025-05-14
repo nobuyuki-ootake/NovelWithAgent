@@ -12,14 +12,29 @@ import { Textarea } from "../ui/textarea";
 import { Spinner } from "../ui/spinner";
 import { Box, Tabs, Tab, LinearProgress } from "@mui/material";
 
+// レスポンス型の定義
+export interface ResponseData {
+  response?: string;
+  batchResponse?: boolean;
+  [key: string]: unknown;
+}
+
+// キャラクター型の定義
+export interface Character {
+  name?: string;
+  role?: string;
+  response?: string;
+  [key: string]: unknown;
+}
+
 interface AIAssistModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
   defaultMessage?: string;
-  requestAssist: (message: string) => Promise<any>;
-  onAssistComplete?: (result: any) => void;
+  requestAssist: (message: string) => Promise<ResponseData> | Promise<void>;
+  onAssistComplete?: (result: ResponseData) => void;
   supportsBatchGeneration?: boolean;
 }
 
@@ -33,18 +48,18 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   onAssistComplete,
   supportsBatchGeneration = false,
 }) => {
-  const [message, setMessage] = useState(defaultMessage);
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<any>(null);
+  const [message, setMessage] = useState(defaultMessage || "");
   const [error, setError] = useState<Error | null>(null);
-  const [activeTab, setActiveTab] = useState<"request" | "response">("request");
+  const [response, setResponse] = useState<ResponseData | null>(null);
+  const [activeTab, setActiveTab] = useState<"input" | "response">("input");
   const [useBatchGeneration, setUseBatchGeneration] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
-  const [currentCharacter, setCurrentCharacter] = useState<
-    { name: string; role: string } | undefined
-  >(undefined);
+  const [currentCharacter, setCurrentCharacter] = useState<Character>({});
   const [totalCharacters, setTotalCharacters] = useState(0);
-  const [generatedCharacters, setGeneratedCharacters] = useState<any[]>([]);
+  const [generatedCharacters, setGeneratedCharacters] = useState<Character[]>(
+    []
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -59,13 +74,17 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
       setMessage(defaultMessage);
       setResponse(null);
       setError(null);
-      setActiveTab("request");
+      setActiveTab("input");
       setBatchProgress(0);
-      setCurrentCharacter(undefined);
+      setCurrentCharacter({});
       setTotalCharacters(0);
       setGeneratedCharacters([]);
     }
   }, [open, defaultMessage]);
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+  };
 
   const handleSubmit = async () => {
     if (!message.trim() || isLoading) return;
@@ -90,19 +109,23 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
     }
   };
 
-  const handleBatchProgress = (
-    progress: number,
-    character?: { name: string; role: string },
-    total?: number
-  ) => {
-    setBatchProgress(progress * 100);
-    if (character) setCurrentCharacter(character);
-    if (total !== undefined) setTotalCharacters(total);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
 
-  const handleCharacterGenerated = (character: any) => {
-    setGeneratedCharacters((prev) => [...prev, character]);
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
   };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [message]);
 
   const handleCancel = () => {
     if (!isLoading) {
@@ -111,10 +134,16 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   };
 
   const handleTabChange = (
-    event: React.SyntheticEvent,
-    newValue: "request" | "response"
+    _event: React.SyntheticEvent,
+    newValue: "input" | "response"
   ) => {
     setActiveTab(newValue);
+  };
+
+  const handleBatchGenerationToggle = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setUseBatchGeneration(event.target.checked);
   };
 
   return (
@@ -137,17 +166,18 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
             aria-label="AI Assist tabs"
             sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
           >
-            <Tab label="リクエスト" value="request" />
+            <Tab label="リクエスト" value="input" />
             <Tab label="レスポンス" value="response" />
           </Tabs>
         </Box>
 
-        {activeTab === "request" && (
+        {activeTab === "input" && (
           <div>
             <Textarea
               ref={textareaRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleMessageChange}
+              onKeyDown={handleKeyDown}
               rows={8}
               className="resize-none text-base p-3 w-full"
               style={{ minHeight: "150px" }}
@@ -160,7 +190,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
                   type="checkbox"
                   id="batch-generation"
                   checked={useBatchGeneration}
-                  onChange={(e) => setUseBatchGeneration(e.target.checked)}
+                  onChange={handleBatchGenerationToggle}
                   disabled={isLoading}
                 />
                 <label htmlFor="batch-generation" className="text-sm">
@@ -186,7 +216,9 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
                       sx={{ width: "100%" }}
                     />
                     <p className="text-sm text-center">
-                      {currentCharacter
+                      {currentCharacter &&
+                      currentCharacter.name &&
+                      currentCharacter.role
                         ? `「${currentCharacter.name}」(${currentCharacter.role}) を生成中... ${generatedCharacters.length}/${totalCharacters}キャラクター完了`
                         : `キャラクターリストを生成中...`}
                     </p>

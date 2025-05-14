@@ -60,6 +60,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
     date: new Date().toISOString().split("T")[0],
     relatedCharacters: [],
     relatedPlaces: [],
+    order: 0,
   });
 
   // イベント作成ダイアログを開く
@@ -71,6 +72,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
       date: new Date().toISOString().split("T")[0],
       relatedCharacters: [],
       relatedPlaces: [],
+      order: 0,
     });
     setIsEditing(false);
     setEventDialogOpen(true);
@@ -178,6 +180,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
           onPlacesChange={handlePlacesChange}
           getCharacterName={getCharacterName}
           getPlaceName={getPlaceName}
+          onPostEventStatusChange={() => {}}
         />
       </Dialog>
     );
@@ -281,6 +284,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
         onPlacesChange={handlePlacesChange}
         getCharacterName={getCharacterName}
         getPlaceName={getPlaceName}
+        onPostEventStatusChange={() => {}}
       />
     </Dialog>
   );

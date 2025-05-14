@@ -1,19 +1,68 @@
 import { useState } from "react";
 import { aiAgentApi } from "../api/aiAgent";
 import { toast } from "sonner";
+import {
+  AgentResponse,
+  CharacterBatchResponse,
+  WorldBuildingApiResponse,
+  WorldBuildingBatchResponse,
+  WorldBuildingElementResponse,
+} from "../types/apiResponse";
+import {
+  Character,
+  PlotElement,
+  WorldBuildingElement,
+  WorldBuildingElementData,
+} from "../types";
 
 interface UseAIAssistOptions {
   /**
-   * AI応答後のコールバック関数
-   * @param response AI応答
+   * あらすじ支援専用のコールバック関数
+   * @param response あらすじ支援AI応答
    */
-  onSuccess?: (response: any) => void;
+  onSynopsisSuccess?: (response: AgentResponse) => void;
+
+  /**
+   * プロット支援専用のコールバック関数
+   * @param response プロット支援AI応答
+   */
+  onPlotSuccess?: (response: AgentResponse) => void;
+
+  /**
+   * キャラクター支援専用のコールバック関数
+   * @param response キャラクター支援AI応答
+   */
+  onCharacterSuccess?: (response: AgentResponse) => void;
+
+  /**
+   * 世界観支援専用のコールバック関数
+   * @param response 世界観支援AI応答
+   */
+  onWorldBuildingSuccess?: (response: WorldBuildingElementResponse) => void;
+
+  /**
+   * 世界観バッチ生成専用のコールバック関数
+   * @param response 世界観バッチ生成応答
+   */
+  onWorldBuildingBatchSuccess?: (response: WorldBuildingBatchResponse) => void;
+
+  /**
+   * キャラクターバッチ生成専用のコールバック関数
+   * @param response キャラクターバッチ生成応答
+   */
+  onCharacterBatchSuccess?: (response: CharacterBatchResponse) => void;
+
+  /**
+   * 文体支援専用のコールバック関数
+   * @param response 文体支援AI応答
+   */
+  onStyleSuccess?: (response: AgentResponse) => void;
 
   /**
    * エラー発生時のコールバック関数
    * @param error エラー
    */
-  onError?: (error: any) => void;
+  onError?: (error: Error) => void;
 
   /**
    * ロード中ステータスが変わったときのコールバック関数
@@ -37,13 +86,15 @@ interface UseAIAssistOptions {
    * 個別キャラクターが生成された時のコールバック関数
    * @param character 生成されたキャラクター情報
    */
-  onCharacterGenerated?: (character: any) => void;
+  onCharacterGenerated?: (character: AgentResponse) => void;
 
   /**
    * 世界観構築要素が生成された時のコールバック関数
    * @param element 生成された世界観要素情報
    */
-  onWorldBuildingElementGenerated?: (element: any) => void;
+  onWorldBuildingElementGenerated?: (
+    element: WorldBuildingElementResponse
+  ) => void;
 }
 
 /**
@@ -52,7 +103,9 @@ interface UseAIAssistOptions {
 export function useAIAssist(options: UseAIAssistOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [response, setResponse] = useState<any>(null);
+  const [response, setResponse] = useState<
+    AgentResponse | CharacterBatchResponse | WorldBuildingBatchResponse | null
+  >(null);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [currentCharacter, setCurrentCharacter] = useState<
     { name: string; role: string } | undefined
@@ -84,8 +137,8 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
    */
   const chat = async (
     message: string,
-    selectedElements: any[] = [],
-    networkType?: any
+    selectedElements: (Character | PlotElement | WorldBuildingElement)[] = [],
+    networkType?: "novel-creation" | "plot-development" | "writing-improvement"
   ) => {
     try {
       updateLoading(true);
@@ -97,13 +150,12 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
         networkType
       );
 
-      setResponse(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
+      setResponse(result as AgentResponse);
+      return result as AgentResponse;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error("AIアシスタントとの通信に失敗しました");
-      options.onError?.(err);
+      options.onError?.(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
       updateLoading(false);
@@ -113,20 +165,26 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
   /**
    * プロット支援
    */
-  const assistPlot = async (message: string, plotElements: any[] = []) => {
+  const assistPlot = async (
+    message: string,
+    plotElements: PlotElement[] = []
+  ) => {
     try {
       updateLoading(true);
       setError(null);
 
       const result = await aiAgentApi.getPlotAdvice(message, plotElements);
 
-      setResponse(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
+      setResponse(result as AgentResponse);
+      // 専用コールバックを使用
+      if (options.onPlotSuccess) {
+        options.onPlotSuccess(result as AgentResponse);
+      }
+      return result as AgentResponse;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error("プロット支援に失敗しました");
-      options.onError?.(err);
+      options.onError?.(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
       updateLoading(false);
@@ -136,20 +194,26 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
   /**
    * あらすじ支援
    */
-  const assistSynopsis = async (message: string, titleContext: any[] = []) => {
+  const assistSynopsis = async (
+    message: string,
+    titleContext: { title?: string; genre?: string }[] = []
+  ) => {
     try {
       updateLoading(true);
       setError(null);
 
       const result = await aiAgentApi.getSynopsisAdvice(message, titleContext);
 
-      setResponse(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
+      setResponse(result as AgentResponse);
+      // 専用コールバックを使用
+      if (options.onSynopsisSuccess) {
+        options.onSynopsisSuccess(result as AgentResponse);
+      }
+      return result as AgentResponse;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error("あらすじ支援に失敗しました");
-      options.onError?.(err);
+      options.onError?.(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
       updateLoading(false);
@@ -161,7 +225,7 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
    */
   const assistCharacter = async (
     message: string,
-    characterElements: any[] = []
+    characterElements: Character[] = []
   ) => {
     try {
       updateLoading(true);
@@ -172,13 +236,16 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
         characterElements
       );
 
-      setResponse(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
+      setResponse(result as AgentResponse);
+      // 専用コールバックを使用
+      if (options.onCharacterSuccess) {
+        options.onCharacterSuccess(result as AgentResponse);
+      }
+      return result as AgentResponse;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error("キャラクター支援に失敗しました");
-      options.onError?.(err);
+      options.onError?.(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
       updateLoading(false);
@@ -190,8 +257,8 @@ export function useAIAssist(options: UseAIAssistOptions = {}) {
    */
   const generateCharactersBatch = async (
     message: string,
-    plotElements: any[] = [],
-    existingCharacters: any[] = []
+    plotElements: PlotElement[] = [],
+    existingCharacters: Character[] = []
   ) => {
     try {
       updateLoading(true);
@@ -250,7 +317,7 @@ ${message}`;
       updateProgress(0.1, characterList[0], total);
 
       // ステップ2: 各キャラクターの詳細を生成
-      const generatedCharacters = [];
+      const generatedCharacters: AgentResponse[] = [];
       let currentIndex = 0;
 
       for (const charInfo of characterList) {
@@ -311,39 +378,34 @@ ${message}`;
 
           // 個別キャラクターが生成されたことを通知（コールバック）
           if (options.onCharacterGenerated) {
-            options.onCharacterGenerated(detailResult);
+            options.onCharacterGenerated(detailResult as AgentResponse);
           }
         }
 
         currentIndex++;
       }
 
-      // 最終的な結果を設定
-      const finalResult = {
+      // 結果を返す
+      const finalResult: CharacterBatchResponse = {
         batchResponse: true,
         characters: generatedCharacters,
-        totalCharacters: total,
+        totalCharacters: characterList.length,
       };
 
-      setResponse(finalResult);
-      updateProgress(1.0);
-
-      // 全キャラクター生成完了を通知
-      toast.success(`${total}人のキャラクター生成が完了しました！`);
-
-      // 成功コールバックを呼び出し
-      if (options.onSuccess) {
-        options.onSuccess(finalResult);
+      // バッチ成功コールバックがあれば呼び出し
+      if (options.onCharacterBatchSuccess) {
+        options.onCharacterBatchSuccess(finalResult);
       }
 
       return finalResult;
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error(
-        "キャラクター生成に失敗しました: " + (err.message || "不明なエラー")
+        "キャラクター生成に失敗しました: " +
+          (err instanceof Error ? err.message : "不明なエラー")
       );
       if (options.onError) {
-        options.onError(err);
+        options.onError(err instanceof Error ? err : new Error(String(err)));
       }
       throw err;
     } finally {
@@ -356,8 +418,8 @@ ${message}`;
    */
   const generateCharacter = async (
     message: string,
-    plotElements: any[] = [],
-    existingCharacters: any[] = []
+    plotElements: PlotElement[] = [],
+    existingCharacters: Character[] = []
   ) => {
     try {
       updateLoading(true);
@@ -393,12 +455,12 @@ ${message}`;
         existingCharacters
       );
 
-      setResponse(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
+      setResponse(result as AgentResponse);
+      return result as AgentResponse;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error("キャラクター生成に失敗しました");
-      options.onError?.(err);
+      options.onError?.(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
       updateLoading(false);
@@ -415,13 +477,15 @@ ${message}`;
 
       const result = await aiAgentApi.getStyleAdvice(textContent, message);
 
-      setResponse(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
+      setResponse(result as AgentResponse);
+      if (options.onStyleSuccess) {
+        options.onStyleSuccess(result as AgentResponse);
+      }
+      return result as AgentResponse;
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error("文体支援に失敗しました");
-      options.onError?.(err);
+      options.onError?.(err instanceof Error ? err : new Error(String(err)));
       throw err;
     } finally {
       updateLoading(false);
@@ -429,41 +493,12 @@ ${message}`;
   };
 
   /**
-   * 世界観構築支援
-   */
-  const assistWorldBuilding = async (
-    message: string,
-    worldElements: any[] = []
-  ) => {
-    try {
-      updateLoading(true);
-      setError(null);
-
-      const result = await aiAgentApi.getWorldBuildingAdvice(
-        message,
-        worldElements
-      );
-
-      setResponse(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err: any) {
-      setError(err);
-      toast.error("世界観構築支援に失敗しました");
-      options.onError?.(err);
-      throw err;
-    } finally {
-      updateLoading(false);
-    }
-  };
-
-  /**
-   * 世界観生成（分割リクエスト実装）
+   * 世界観構築要素のバッチ生成
    */
   const generateWorldBuildingBatch = async (
     message: string,
-    plotElements: any[] = [],
-    characterElements: any[] = []
+    plotElements: PlotElement[] = [],
+    characterElements: Character[] = []
   ) => {
     try {
       updateLoading(true);
@@ -484,31 +519,66 @@ ${message}`;
   {"name": "ルール名1", "type": "rule"}
 ]
 
+重要な注意:
+- 特殊なマーカー記号（**、##、-- など）は名前や説明に付けないでください
+- 名前はシンプルで直接的に記述してください（例: "紅蓮の砂漠"、"** 紅蓮の砂漠" ではなく）
+- 純粋なテキストのみを使用してください
+
 少なくとも3つの主要な場所を含めてください。
 ${message}`;
 
       const listResult = await aiAgentApi.generateWorldBuildingList(
         enhancedListMessage,
         plotElements,
-        characterElements
+        characterElements,
+        "gemini-1.5-pro",
+        "json", // 明示的にJSON形式を指定
+        "places" // 明示的に場所として指定
       );
 
       // レスポンスから世界観要素一覧を抽出
       let elementList: { name: string; type: string }[] = [];
       try {
-        const response = listResult.response || "";
-        // JSONパターンを見つける
-        const jsonMatch = response.match(/\[\s*\{.*\}\s*\]/s);
-        if (jsonMatch) {
-          elementList = JSON.parse(jsonMatch[0]);
+        // まずレスポンスのデータプロパティを直接使用（最も信頼性が高い方法）
+        if (listResult && listResult.data && Array.isArray(listResult.data)) {
+          elementList = listResult.data;
+          console.log("[DEBUG] APIから直接JSON配列を取得:", elementList);
           toast.success(
             `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
           );
-        } else {
-          throw new Error("JSON形式の世界観要素リストが見つかりませんでした");
+        }
+        // 直接データがない場合はレスポンス文字列から抽出を試みる
+        else {
+          console.log("[DEBUG] 応答からJSON抽出を試みます:", listResult);
+          const response = listResult.response || "";
+
+          // より堅牢な正規表現で配列部分を検出
+          const jsonMatch = response.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const jsonStr = jsonMatch[0];
+            console.log("[DEBUG] 検出されたJSON文字列:", jsonStr);
+
+            // 抽出したJSON文字列をパース
+            elementList = JSON.parse(jsonStr);
+            console.log("[DEBUG] パース成功:", elementList);
+            toast.success(
+              `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
+            );
+          } else {
+            console.error(
+              "[DEBUG] JSON配列パターンが見つかりません:",
+              response
+            );
+            throw new Error("JSON形式の世界観要素リストが見つかりませんでした");
+          }
         }
       } catch (e) {
-        console.error("世界観要素リストのパースに失敗:", e);
+        console.error(
+          "世界観要素リストのパースに失敗:",
+          e,
+          "元データ:",
+          listResult
+        );
         toast.error("世界観要素リストの解析に失敗しました");
         throw e;
       }
@@ -529,7 +599,7 @@ ${message}`;
       );
 
       // ステップ2: 各要素の詳細を生成
-      const generatedElements = [];
+      const generatedElements: WorldBuildingElementResponse[] = [];
       let currentIndex = 0;
 
       for (const elementInfo of elementList) {
@@ -551,6 +621,11 @@ ${message}`;
         // 要素詳細のリクエスト用メッセージを構築
         const detailMessage = `
 以下の厳密なフォーマットに従って、「${elementInfo.name}」という${elementInfo.type}の詳細情報を作成してください。
+
+重要な注意:
+- 特殊なマーカー記号（**、##、-- など）は名前や説明に付けないでください
+- 純粋なテキストのみを使用してください
+- 装飾や強調のための記号は使わないでください
 `;
 
         // 要素詳細を取得
@@ -559,19 +634,41 @@ ${message}`;
           elementInfo.type,
           detailMessage,
           plotElements,
-          characterElements
+          characterElements,
+          "json" // フォーマットをJSON形式に明示的に指定
         );
 
         // 結果を保存
-        if (detailResult && detailResult.response) {
+        if (detailResult && detailResult.data) {
+          console.log(
+            `[DEBUG] ${elementInfo.name}の詳細データ:`,
+            detailResult.data
+          );
+
+          // データが直接利用可能な場合
+          const elementData: WorldBuildingElementData = {
+            name: elementInfo.name,
+            type: elementInfo.type,
+            // その他の情報も保持
+            rawData: detailResult.data,
+          };
+
+          console.log("[DEBUG] 生成された要素:", detailResult);
+
           // パース結果を追加
           generatedElements.push({
-            response: detailResult.response,
+            type: elementInfo.type,
+            name: elementInfo.name,
+            response: detailResult.response || "",
             agentUsed: detailResult.agentUsed,
             steps: detailResult.steps,
             elementName: elementInfo.name,
             elementType: elementInfo.type,
-          });
+            // 構造化データも保存
+            elementData: elementData,
+          } as WorldBuildingElementResponse);
+
+          console.log("[DEBUG] パース結果:", generatedElements);
 
           // 要素が生成されたことを通知
           toast.success(
@@ -580,41 +677,109 @@ ${message}`;
             }/${total})`
           );
 
+          console.log(
+            `「${elementInfo.name}」を生成しました (${
+              currentIndex + 1
+            }/${total})`
+          );
+
           // 個別要素が生成されたことを通知（コールバック）
           if (options.onWorldBuildingElementGenerated) {
-            options.onWorldBuildingElementGenerated(detailResult);
+            console.log("[DEBUG] コールバックの開始");
+
+            // コールバックに構造化データを含めて送信
+            const enhancedResult: WorldBuildingElementResponse = {
+              type: elementInfo.type,
+              name: elementInfo.name,
+              response: detailResult.response || "",
+              agentUsed: detailResult.agentUsed,
+              steps: detailResult.steps,
+              elementName: elementInfo.name,
+              elementType: elementInfo.type,
+              elementData: elementData,
+            };
+
+            console.log(
+              "[DEBUG] コールバックするオブジェクト:",
+              enhancedResult
+            );
+            options.onWorldBuildingElementGenerated(enhancedResult);
+          }
+        } else if (detailResult && detailResult.response) {
+          // データが直接利用できない場合はレスポンスを使用
+          console.log(
+            `[DEBUG] ${elementInfo.name}のレスポンスデータを使用:`,
+            detailResult.response
+          );
+
+          // パース結果を追加
+          generatedElements.push({
+            type: elementInfo.type,
+            name: elementInfo.name,
+            response: detailResult.response || "",
+            agentUsed: detailResult.agentUsed,
+            steps: detailResult.steps,
+            elementName: elementInfo.name,
+            elementType: elementInfo.type,
+          } as WorldBuildingElementResponse);
+
+          // 要素が生成されたことを通知
+          toast.success(
+            `「${elementInfo.name}」を生成しました (${
+              currentIndex + 1
+            }/${total})`
+          );
+          console.log(
+            `「${elementInfo.name}」を生成しました (${
+              currentIndex + 1
+            }/${total})`
+          );
+
+          // 個別要素が生成されたことを通知（コールバック）
+          if (options.onWorldBuildingElementGenerated) {
+            console.log("[DEBUG] コールバックの開始");
+            const elementResponse: WorldBuildingElementResponse = {
+              type: elementInfo.type,
+              name: elementInfo.name,
+              response: detailResult.response || "",
+              agentUsed: detailResult.agentUsed,
+              steps: detailResult.steps,
+              elementName: elementInfo.name,
+              elementType: elementInfo.type,
+            };
+
+            console.log(
+              "[DEBUG] コールバックするオブジェクト:",
+              elementResponse
+            );
+            options.onWorldBuildingElementGenerated(elementResponse);
           }
         }
 
         currentIndex++;
       }
 
-      // 最終的な結果を設定
-      const finalResult = {
+      // 結果を返す
+      const finalResult: WorldBuildingBatchResponse = {
         batchResponse: true,
         elements: generatedElements,
-        totalElements: total,
+        totalElements: elementList.length,
       };
 
-      setResponse(finalResult);
-      updateProgress(1.0);
-
-      // 全要素生成完了を通知
-      toast.success(`${total}件の世界観要素生成が完了しました！`);
-
-      // 成功コールバックを呼び出し
-      if (options.onSuccess) {
-        options.onSuccess(finalResult);
+      // バッチ成功コールバックがあれば呼び出し
+      if (options.onWorldBuildingBatchSuccess) {
+        options.onWorldBuildingBatchSuccess(finalResult);
       }
 
       return finalResult;
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       toast.error(
-        "世界観要素生成に失敗しました: " + (err.message || "不明なエラー")
+        "世界観要素生成に失敗しました: " +
+          (err instanceof Error ? err.message : "不明なエラー")
       );
       if (options.onError) {
-        options.onError(err);
+        options.onError(err instanceof Error ? err : new Error(String(err)));
       }
       throw err;
     } finally {
@@ -636,7 +801,6 @@ ${message}`;
     generateCharacter,
     generateCharactersBatch,
     assistStyle,
-    assistWorldBuilding,
     generateWorldBuildingBatch,
   };
 }

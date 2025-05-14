@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Project } from "../../../types/project";
+import { Project } from "../../../types";
 import { LocalStorageManager } from "../../../utils/localStorage";
 import { ExportUtil } from "../../../utils/exportUtil";
 
@@ -35,13 +35,15 @@ export const useProjectExport = () => {
       let result = false;
       switch (format) {
         case "json":
-          result = ExportUtil.exportProjectAsJson(project);
+          result = ExportUtil.exportProjectAsJson(
+            project as unknown as Project
+          );
           break;
         case "text":
-          result = ExportUtil.exportNovelText(project);
+          result = ExportUtil.exportNovelText(project as unknown as Project);
           break;
         case "stats":
-          result = ExportUtil.exportProjectStats(project);
+          result = ExportUtil.exportProjectStats(project as unknown as Project);
           break;
         default:
           throw new Error("サポートされていないエクスポート形式です");

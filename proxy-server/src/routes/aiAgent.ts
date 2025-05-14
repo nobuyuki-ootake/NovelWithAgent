@@ -1,779 +1,579 @@
 import express from 'express';
+import { processAIRequest } from '../services/aiIntegration';
+import { StandardAIRequest } from '../utils/aiRequestStandard';
+import templateManager from '../utils/aiTemplateManager';
+import { PLOT_DEVELOPER, WORLD_BUILDER } from '../utils/systemPrompts';
+import * as yaml from 'js-yaml';
 import {
-  novelCreationNetwork,
-  plotDevelopmentNetwork,
-  writingImprovementNetwork,
-} from '../networks';
-import { SystemRoles } from '../utils/systemPrompts';
-import { mastra } from '../mastra';
+  WorldBuildingElementType,
+  generateElementPrompt,
+  WorldBuildingElementData,
+} from '../utils/worldBuildingSchemas';
 
 const router = express.Router();
 
-// 認証ミドルウェア
-const authMiddleware = (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-) => {
-  // APIキーを環境変数から取得
-  const API_KEY = process.env.API_KEY;
-
-  // 開発環境ではAPIキー認証をスキップ
-  if (process.env.NODE_ENV === 'development') {
-    return next();
-  }
-
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey || apiKey !== API_KEY) {
-    return res.status(401).json({ error: '認証が必要です' });
-  }
-
-  next();
-};
-
-// 暗号化されたAPIキーを復号化する関数（実際の実装ではもっと強力な方法を使用すべき）
-const decryptApiKey = (encryptedKey: string): string => {
-  try {
-    // Base64デコード（デモ実装）
-    return Buffer.from(encryptedKey, 'base64').toString('utf-8');
-  } catch (error) {
-    console.error('APIキーの復号化に失敗:', error);
-    throw new Error('APIキーの復号化に失敗しました');
-  }
-};
-
 /**
- * ステータスエンドポイント - AIエージェントのヘルスチェック
+ * 世界観要素の詳細生成エンドポイント
+ * 特定の世界観要素（場所、文化、ルールなど）の詳細を生成します
  */
-router.get('/status', (req, res) => {
-  try {
-    // Mastraのステータスを確認
-    const status = {
-      status: 'ready',
-      version: 'v1',
-      providers: Object.keys(mastra['providers'] || {}),
-      timestamp: new Date().toISOString(),
-    };
-
-    res.json(status);
-  } catch (error) {
-    console.error('ステータス確認エラー:', error);
-    res.status(500).json({
-      error: 'AIエージェントステータスの取得に失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * AI設定を保存するエンドポイント
- */
-router.post('/settings', authMiddleware, async (req, res) => {
-  try {
-    const { provider, apiKey: encryptedKey, modelName, parameters } = req.body;
-
-    if (!provider || !encryptedKey || !modelName) {
-      return res.status(400).json({ error: '必須項目が不足しています' });
-    }
-
-    const apiKey = decryptApiKey(encryptedKey);
-
-    // 環境変数ファイルに保存するために適切な名前に変換
-    const envVarName = provider.toUpperCase() + '_API_KEY';
-
-    // 本来は安全な方法（環境変数など）で保存すべき
-    // このデモでは簡易的に実装
-    process.env[envVarName] = apiKey;
-
-    // TODO: モデル名やパラメータを設定に保存
-    console.log(`${provider} の設定を保存しました`);
-
-    res.json({
-      success: true,
-      message: '設定を保存しました',
-    });
-  } catch (error) {
-    console.error('設定保存エラー:', error);
-    res.status(500).json({
-      error: '設定の保存に失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * API設定を取得するエンドポイント
- */
-router.get('/settings', authMiddleware, async (req, res) => {
-  try {
-    // 実際の実装では、データベースやファイルから設定を読み込む
-    // このデモでは簡易的に実装
-
-    // 設定データの例
-    const settings = {
-      openai: process.env.OPENAI_API_KEY
-        ? {
-            provider: 'openai',
-            apiKey: '********', // マスクした値を返す
-            modelName: 'gpt-3.5-turbo',
-            parameters: {
-              temperature: 0.7,
-              maxTokens: 2000,
-            },
-          }
-        : undefined,
-
-      anthropic: process.env.ANTHROPIC_API_KEY
-        ? {
-            provider: 'anthropic',
-            apiKey: '********',
-            modelName: 'claude-3-haiku',
-            parameters: {
-              temperature: 0.7,
-              maxTokens: 4000,
-            },
-          }
-        : undefined,
-
-      gemini: process.env.GEMINI_API_KEY
-        ? {
-            provider: 'gemini',
-            apiKey: '********',
-            modelName: 'gemini-1.5-pro',
-            parameters: {
-              temperature: 0.7,
-              maxTokens: 8000,
-            },
-          }
-        : undefined,
-
-      custom: undefined,
-    };
-
-    res.json(settings);
-  } catch (error) {
-    console.error('設定取得エラー:', error);
-    res.status(500).json({
-      error: '設定の取得に失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * APIキーをテストするエンドポイント
- */
-router.post('/test-key', authMiddleware, async (req, res) => {
-  try {
-    const { provider, apiKey: encryptedKey, modelName } = req.body;
-
-    if (!provider || !encryptedKey) {
-      return res.status(400).json({ error: '必須項目が不足しています' });
-    }
-
-    const apiKey = decryptApiKey(encryptedKey);
-
-    // 実際にAPIに接続してキーをテスト
-    let isValid = false;
-
-    try {
-      // プロバイダーごとのテスト実装
-      switch (provider) {
-        case 'openai':
-          // OpenAIのAPIテスト
-          isValid = true; // 実際はOpenAI APIへの接続テスト
-          break;
-
-        case 'anthropic':
-          // AnthropicのAPIテスト
-          isValid = true; // 実際はAnthropic APIへの接続テスト
-          break;
-
-        case 'gemini':
-          // GoogleのGemini APIテスト
-          isValid = true; // 実際はGemini APIへの接続テスト
-          break;
-
-        case 'custom':
-          // カスタムエンドポイントテスト
-          isValid = true; // 実際はエンドポイントへの接続テスト
-          break;
-
-        default:
-          throw new Error('未対応のプロバイダーです');
-      }
-    } catch (testError) {
-      console.error(`${provider} APIのテストに失敗:`, testError);
-      isValid = false;
-    }
-
-    res.json({
-      valid: isValid,
-      message: isValid
-        ? 'APIキーは有効です'
-        : 'APIキーが無効か、接続に問題があります',
-    });
-  } catch (error) {
-    console.error('APIキーテストエラー:', error);
-    res.status(500).json({
-      error: 'APIキーのテストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-      valid: false,
-    });
-  }
-});
-
-/**
- * 小説作成アシスタントへのチャットエンドポイント
- */
-router.post('/chat', authMiddleware, async (req, res) => {
+router.post('/worldbuilding-detail-generation', async (req, res) => {
   try {
     const {
+      elementName,
+      elementType,
       message,
-      selectedElements = [],
-      networkType = 'novel-creation',
-      maxSteps = 10,
+      plotElements,
+      charactersElements,
     } = req.body;
+    const format = req.body.format || 'json'; // デフォルトをJSONに変更
+    const model = req.body.model || 'gemini-1.5-pro';
 
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
-
-    // 選択されたネットワークに基づいた処理
-    let network;
-    switch (networkType) {
-      case 'plot-development':
-        network = plotDevelopmentNetwork;
-        break;
-      case 'writing-improvement':
-        network = writingImprovementNetwork;
-        break;
-      case 'novel-creation':
-      default:
-        network = novelCreationNetwork;
-        break;
-    }
-
-    // エージェントネットワークを実行
-    const result = await network.run(message, {
-      context: { selectedElements },
-      maxSteps,
-    });
-
-    // 結果を返す
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('AIエージェントエラー:', error);
-    res.status(500).json({
-      error: 'AIエージェントリクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * プロットアドバイスを取得
- */
-router.post('/plot-advice', authMiddleware, async (req, res) => {
-  try {
-    const { message, plotElements = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
-
-    // プロット開発ネットワークを使用
-    const result = await plotDevelopmentNetwork.run(message, {
-      context: { selectedElements: plotElements },
-      maxSteps: 5,
-    });
-
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('プロットアドバイスエラー:', error);
-    res.status(500).json({
-      error: 'プロットアドバイスリクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * あらすじアドバイスを取得（あらすじ専用エンドポイント）
- */
-router.post('/synopsis-advice', authMiddleware, async (req, res) => {
-  try {
-    const { message, titleContext = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
-
-    // 小説作成ネットワークを使用
-    const result = await novelCreationNetwork.run(message, {
-      context: { selectedElements: titleContext },
-      maxSteps: 5,
-    });
-
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('あらすじアドバイスエラー:', error);
-    res.status(500).json({
-      error: 'あらすじアドバイスリクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * キャラクターアドバイスを取得
- */
-router.post('/character-advice', authMiddleware, async (req, res) => {
-  try {
-    const { message, characterElements = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
-
-    // キャラクターデザイナーを直接使用
-    const result = await novelCreationNetwork.run(message, {
-      context: {
-        selectedElements: characterElements,
-        forceAgent: 'character-designer',
-      },
-      maxSteps: 5,
-    });
-
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('キャラクターアドバイスエラー:', error);
-    res.status(500).json({
-      error: 'キャラクターアドバイスリクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * キャラクター生成を行う専用エンドポイント
- */
-router.post('/character-generation', authMiddleware, async (req, res) => {
-  try {
-    const { message, plotElements = [], existingCharacters = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
-
-    // キャラクターデザイナーを直接使用して生成
-    const result = await novelCreationNetwork.run(message, {
-      context: {
-        selectedElements: [...plotElements, ...existingCharacters],
-        forceAgent: 'character-designer',
-      },
-      maxSteps: 5,
-    });
-
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('キャラクター生成エラー:', error);
-    res.status(500).json({
-      error: 'キャラクター生成リクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * キャラクターリスト生成を行う専用エンドポイント（分割リクエスト第1段階）
- */
-router.post('/character-list-generation', authMiddleware, async (req, res) => {
-  try {
-    const { message, plotElements = [], existingCharacters = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
-
-    console.log('キャラクターリスト生成リクエスト:', {
-      messageLength: message.length,
-      plotElementsCount: plotElements.length,
-      existingCharactersCount: existingCharacters.length,
-    });
-
-    // キャラクターデザイナーを直接使用
-    const result = await novelCreationNetwork.run(message, {
-      context: {
-        selectedElements: [...plotElements, ...existingCharacters],
-        forceAgent: 'character-designer',
-        task: 'character-list', // リスト生成タスクを指定
-      },
-      maxSteps: 3, // リスト生成は少ないステップで十分
-    });
-
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('キャラクターリスト生成エラー:', error);
-    res.status(500).json({
-      error: 'キャラクターリスト生成リクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-/**
- * 特定のキャラクターの詳細生成を行う専用エンドポイント（分割リクエスト第2段階）
- */
-router.post(
-  '/character-detail-generation',
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const {
-        characterName,
-        characterRole,
-        message = '',
-        plotElements = [],
-        existingCharacters = [],
-      } = req.body;
-
-      if (!characterName) {
-        return res.status(400).json({ error: 'キャラクター名は必須です' });
-      }
-
-      console.log('キャラクター詳細生成リクエスト:', {
-        characterName,
-        characterRole,
-        messageLength: message.length,
-      });
-
-      // 指示メッセージを構築
-      const detailPrompt = `
-「${characterName}」というキャラクターの詳細情報を以下の形式で作成してください。
-役割は「${characterRole}」です。
-
-名前: ${characterName}
-役割: ${characterRole}
-性別: [性別]
-年齢: [年齢]
-説明: [短い説明]
-背景: [背景情報]
-動機: [動機]
-特性: [特性1], [特性2], [特性3]
-アイコン: [絵文字]
-
-関係:
-- [他キャラ名]: [関係タイプ] - [関係の説明]
-- [他キャラ名]: [関係タイプ] - [関係の説明]
-
-${message}
-`;
-
-      // キャラクターデザイナーを直接使用して詳細生成
-      const result = await novelCreationNetwork.run(detailPrompt, {
-        context: {
-          selectedElements: [...plotElements, ...existingCharacters],
-          forceAgent: 'character-designer',
-          task: 'character-detail', // 詳細生成タスクを指定
-          characterName,
-          characterRole,
-        },
-        maxSteps: 3, // 詳細生成は少ないステップで十分
-      });
-
-      res.json({
-        response: result.output,
-        agentUsed: result.agentUsed,
-        steps: result.steps,
-      });
-    } catch (error) {
-      console.error('キャラクター詳細生成エラー:', error);
-      res.status(500).json({
-        error: 'キャラクター詳細生成リクエストに失敗しました',
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  },
-);
-
-/**
- * 文体アドバイスを取得
- */
-router.post('/style-advice', authMiddleware, async (req, res) => {
-  try {
-    const { message, textContent = '' } = req.body;
-
-    if (!textContent) {
-      return res.status(400).json({ error: 'テキスト内容は必須です' });
-    }
-
-    // 文章改善ネットワークを使用
-    const result = await writingImprovementNetwork.run(
-      message || 'このテキストの文体や表現を改善してください',
-      {
-        context: {
-          selectedElements: [
-            {
-              type: 'writing',
-              id: 'current-text',
-              name: 'テキスト内容',
-              content: textContent,
-            },
-          ],
-        },
-        maxSteps: 5,
-      },
+    console.log(
+      `[API] 世界観要素詳細生成リクエスト: ${elementName} (${elementType}), フォーマット: ${format}`,
     );
 
-    res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
-    });
-  } catch (error) {
-    console.error('文体アドバイスエラー:', error);
-    res.status(500).json({
-      error: '文体アドバイスリクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
+    // 要素タイプの正規化（小文字に変換）
+    const normalizedElementType =
+      elementType?.toLowerCase() || WorldBuildingElementType.PLACE;
 
-/**
- * 世界観構築アドバイスを取得
- */
-router.post('/worldbuilding-advice', authMiddleware, async (req, res) => {
-  try {
-    const { message, worldElements = [] } = req.body;
+    // 世界観要素タイプに応じたプロンプトテンプレートを生成
+    const promptTemplate = generateElementPrompt(
+      normalizedElementType,
+      elementName,
+    );
 
-    if (!message) {
-      return res.status(400).json({ error: 'メッセージは必須です' });
-    }
+    // ユーザーからの追加指示がある場合は組み合わせる
+    const enhancedMessage = message
+      ? `${promptTemplate}\n\n追加の指示:\n${message}`
+      : promptTemplate;
 
-    // 世界観構築アシスタントを直接使用
-    const result = await novelCreationNetwork.run(message, {
+    // システムプロンプトを構築
+    const systemPrompt = templateManager.buildWorldElementSystemPrompt(
+      elementName,
+      normalizedElementType,
+    );
+
+    // AIリクエストを作成
+    const aiRequest: StandardAIRequest = {
+      requestType: 'worldbuilding-detail',
+      model: model,
+      systemPrompt,
+      userPrompt: enhancedMessage,
       context: {
-        selectedElements: worldElements,
-        forceAgent: 'world-building',
+        elementName,
+        elementType: normalizedElementType,
+        plotElements,
+        charactersElements,
       },
-      maxSteps: 5,
-    });
+      options: {
+        temperature: 0.7,
+        maxTokens: 2000,
+        expectedFormat: format === 'json' ? 'json' : 'yaml',
+        responseFormat: format === 'json' ? 'json' : 'yaml',
+      },
+    };
 
+    // AIリクエストを実行
+    console.log(
+      `[API] AIリクエスト実行: ${aiRequest.requestType}, フォーマット: ${format}, モデル: ${model}`,
+    );
+    const aiResponse = await processAIRequest(aiRequest);
+
+    let responseData: WorldBuildingElementData;
+
+    // JSON形式の場合、パースしてエンリッチしたデータを返す
+    if (format === 'json' && aiResponse.content) {
+      try {
+        // パース済みの場合はそのまま使用、文字列ならパースする
+        const parsedData =
+          typeof aiResponse.content === 'string'
+            ? JSON.parse(aiResponse.content)
+            : aiResponse.content;
+
+        // 世界観要素共通データの設定
+        responseData = {
+          ...parsedData,
+          type: normalizedElementType,
+          originalType: elementType || normalizedElementType,
+        };
+
+        console.log(
+          `[API] 世界観要素データ処理完了: ${elementName} (${normalizedElementType})`,
+        );
+      } catch (error) {
+        console.error(`[API] エラー: 世界観要素データのパースに失敗`, error);
+        responseData = {
+          name: elementName,
+          type: normalizedElementType,
+          description:
+            aiResponse.rawContent || '世界観要素の説明を取得できませんでした',
+          features: '特徴',
+          importance: '重要性',
+        };
+      }
+    } else {
+      // YAMLまたはテキスト形式の場合
+      responseData = {
+        name: elementName,
+        type: normalizedElementType,
+        description: aiResponse.rawContent || aiResponse.content || '',
+        features: '特徴',
+        importance: '重要性',
+      };
+    }
+
+    // レスポンスを返す
     res.json({
-      response: result.output,
-      agentUsed: result.agentUsed,
-      steps: result.steps,
+      status: 'success',
+      data: responseData,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiRequest.model,
+        processingTime: aiResponse.debug?.processingTime,
+        requestType: aiRequest.requestType,
+        format: format,
+      },
     });
   } catch (error) {
-    console.error('世界観構築アドバイスエラー:', error);
+    console.error('[API] 世界観要素詳細生成エラー:', error);
     res.status(500).json({
-      error: '世界観構築アドバイスリクエストに失敗しました',
-      message: error instanceof Error ? error.message : String(error),
+      status: 'error',
+      error: error.message || '世界観要素詳細の生成中にエラーが発生しました',
     });
   }
 });
 
 /**
- * 世界観要素リストを生成する専用エンドポイント（分割リクエスト第1段階）
+ * 世界観要素のリスト生成エンドポイント
+ * 小説世界の場所や文化などのリストを生成します
  */
-router.post(
-  '/worldbuilding-list-generation',
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const { message, plotElements = [], charactersElements = [] } = req.body;
+router.post('/worldbuilding-list-generation', async (req, res) => {
+  try {
+    const { elementType, userMessage, model } = req.body;
+    const format = req.body.format || 'json'; // デフォルトをJSONに変更
 
-      if (!message) {
-        return res.status(400).json({ error: 'メッセージは必須です' });
-      }
+    console.log(
+      `[API] 世界観要素リスト生成リクエスト: ${elementType || 'タイプ未指定'}, フォーマット: ${format}, モデル: ${model || 'デフォルト'}`,
+    );
+    console.log(
+      `[API] ユーザーメッセージ: ${userMessage ? userMessage.slice(0, 100) + '...' : 'なし'}`,
+    );
 
-      console.log('世界観要素リスト生成リクエスト:', {
-        messageLength: message.length,
-        plotElementsCount: plotElements.length,
-        charactersElementsCount: charactersElements.length,
+    // elementTypeの検証を追加
+    const validatedElementType = elementType || 'places'; // デフォルトは場所
+
+    // 明示的なデバッグログを追加
+    console.log(`[API] 処理される要素タイプ: ${validatedElementType}`);
+
+    // 要素タイプに応じたテンプレートキーを取得（デフォルトを'places'に変更）
+    const templateKey =
+      validatedElementType === 'places' || validatedElementType === '場所'
+        ? 'places'
+        : validatedElementType === 'cultures' || validatedElementType === '文化'
+          ? 'cultures'
+          : validatedElementType === 'characters' ||
+              validatedElementType === 'キャラクター'
+            ? 'characters'
+            : 'places'; // デフォルトを'characters'から'places'に変更
+
+    // テンプレートタイプをログに出力
+    console.log(`[API] 使用するテンプレートキー: ${templateKey}`);
+
+    // 汎用的な世界観要素リストテンプレートを使用する
+    const modelSpecific =
+      model && model.includes('gemini') ? 'gemini' : undefined;
+    const formatTemplate = templateManager.getFormatTemplate(
+      format as 'json' | 'yaml',
+      'world-building-list-generic', // 汎用テンプレートを使用
+      modelSpecific,
+    );
+
+    // ユーザープロンプトを構築（ユーザーの意図を優先し、フォーマット指示を後に配置）
+    // ユーザーメッセージがない場合のみデフォルトのプロンプトを使用
+    const enhancedUserMessage =
+      userMessage ||
+      `現在の物語設定から、適切な世界観構築設定を行うための要素リストを生成してください。`;
+
+    // ユーザーメッセージを最初に配置し、フォーマット指示を後に追加
+    const userPrompt = `${enhancedUserMessage}\n\n以下のフォーマットで回答してください:\n${formatTemplate}`;
+
+    // AIリクエストを作成
+    const aiRequest: StandardAIRequest = {
+      requestType: 'worldbuilding-list',
+      model: model || determineModelByElementType(validatedElementType),
+      systemPrompt: WORLD_BUILDER,
+      userPrompt,
+      context: {
+        elementType: validatedElementType,
+      },
+      options: {
+        temperature: 0.7,
+        maxTokens: 2000,
+        expectedFormat: format === 'json' ? 'json' : 'yaml',
+        responseFormat: format === 'json' ? 'json' : 'yaml',
+      },
+    };
+
+    // AIリクエストを実行
+    console.log(
+      `[API] AIリクエスト実行: ${aiRequest.requestType}, フォーマット: ${format}, モデル: ${aiRequest.model}`,
+    );
+    const aiResponse = await processAIRequest(aiRequest);
+
+    // 詳細なデバッグ情報
+    console.log(`[API] AIレスポンスステータス: ${aiResponse.status}`);
+
+    // レスポンスがnullかどうか確認
+    if (!aiResponse.content) {
+      console.warn(`[API] 警告：レスポンスコンテンツがnullまたは空です`);
+      console.log(
+        `[API] 生のレスポンス内容: ${aiResponse.rawContent || '<空>'}`,
+      );
+    }
+
+    // エラー処理
+    if (aiResponse.status === 'error') {
+      // レスポンスのエラーコードとリクエスト内容をコンソールに出力
+      console.error('[API] AIリクエスト失敗:', {
+        errorCode: aiResponse.error?.code,
+        errorMessage: aiResponse.error?.message,
+        request: JSON.stringify(aiRequest, null, 2),
       });
 
-      // 世界観構築アシスタントを直接使用
-      const result = await novelCreationNetwork.run(message, {
-        context: {
-          selectedElements: [...plotElements, ...charactersElements],
-          forceAgent: 'world-building',
-          task: 'worldbuilding-list', // リスト生成タスクを指定
-        },
-        maxSteps: 3, // リスト生成は少ないステップで十分
-      });
-
-      res.json({
-        response: result.output,
-        agentUsed: result.agentUsed,
-        steps: result.steps,
-      });
-    } catch (error) {
-      console.error('世界観要素リスト生成エラー:', error);
-      res.status(500).json({
-        error: '世界観要素リスト生成リクエストに失敗しました',
-        message: error instanceof Error ? error.message : String(error),
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
       });
     }
-  },
-);
+
+    // 成功の場合でも、コンテンツがない場合はダミーデータを提供
+    if (!aiResponse.content && format === 'json') {
+      console.warn(
+        '[API] 警告：AIから有効なレスポンスが得られませんでした。ダミーデータを返します',
+      );
+
+      // 要素タイプに応じたダミーデータ - フロントエンドの期待する形式 (name, type) に合わせる
+      const dummyData =
+        validatedElementType === 'places' || validatedElementType === '場所'
+          ? [
+              {
+                name: '魔法の森',
+                type: 'place',
+              },
+              {
+                name: '古代都市エレミア',
+                type: 'place',
+              },
+            ]
+          : validatedElementType === 'cultures' ||
+              validatedElementType === '文化'
+            ? [
+                {
+                  name: '空翔ける民',
+                  type: 'culture',
+                },
+                {
+                  name: '深緑の守護者',
+                  type: 'culture',
+                },
+              ]
+            : [
+                {
+                  name: '魔法使いの制約',
+                  type: 'rule',
+                },
+                {
+                  name: '王国の継承法',
+                  type: 'rule',
+                },
+              ];
+
+      // ダミーデータを返す
+      return res.json({
+        status: 'success',
+        data: dummyData,
+        rawContent: JSON.stringify(dummyData),
+        metadata: {
+          model: aiResponse.debug?.model || 'fallback',
+          processingTime: aiResponse.debug?.processingTime || 0,
+          requestType: aiRequest.requestType,
+          format: format,
+          isDummyData: true, // これがダミーデータであることを示すフラグ
+        },
+      });
+    }
+
+    // 通常の成功レスポンス
+    console.log(
+      `[API] 成功レスポンス送信: データ型=${typeof aiResponse.content}, 生データ長=${aiResponse.rawContent?.length || 0}`,
+    );
+
+    return res.json({
+      status: 'success',
+      data: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiResponse.debug?.model,
+        processingTime: aiResponse.debug?.processingTime,
+        requestType: aiRequest.requestType,
+        format: format,
+      },
+    });
+  } catch (error: any) {
+    console.error('[API] ルートハンドラでのエラー:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || '処理中に予期しないエラーが発生しました',
+    });
+  }
+});
 
 /**
- * 特定の世界観要素の詳細生成を行う専用エンドポイント（分割リクエスト第2段階）
+ * キャラクター詳細生成エンドポイント
+ * 小説のキャラクターの詳細情報を生成します
  */
-router.post(
-  '/worldbuilding-detail-generation',
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const {
-        elementName,
-        elementType,
-        message = '',
-        plotElements = [],
-        charactersElements = [],
-      } = req.body;
+router.post('/character-detail-generation', async (req, res) => {
+  try {
+    const { characterName, characterRole, userMessage, model } = req.body;
+    const format = req.body.format || 'yaml'; // デフォルトをYAMLに変更
 
-      if (!elementName || !elementType) {
-        return res.status(400).json({ error: '要素名と要素タイプは必須です' });
-      }
+    console.log(
+      `[API] キャラクター詳細生成リクエスト: ${characterName} (${characterRole})`,
+    );
 
-      console.log('世界観要素詳細生成リクエスト:', {
-        elementName,
-        elementType,
-        messageLength: message.length,
+    // ユーザープロンプトを構築
+    const userPrompt = templateManager.buildCharacterUserPrompt(
+      characterName,
+      characterRole || '主要キャラクター',
+      userMessage || '',
+      format as 'json' | 'yaml',
+    );
+
+    // AIリクエストを作成
+    const aiRequest: StandardAIRequest = {
+      requestType: 'character-detail',
+      model: model || 'gpt-4o',
+      systemPrompt: templateManager.buildCharacterSystemPrompt(
+        characterName,
+        characterRole || '主要キャラクター',
+      ),
+      userPrompt,
+      context: {
+        characterName,
+        characterRole,
+      },
+      options: {
+        temperature: 0.7,
+        maxTokens: 2000,
+        expectedFormat: format === 'json' ? 'json' : 'yaml',
+        responseFormat: format === 'json' ? 'json' : 'yaml',
+      },
+    };
+
+    // AIリクエストを実行
+    console.log(`[API] AIリクエスト実行: ${aiRequest.requestType}`);
+    const aiResponse = await processAIRequest(aiRequest);
+
+    // エラー処理
+    if (aiResponse.status === 'error') {
+      // レスポンスのエラーコードとリクエスト内容をコンソールに出力
+      console.error('[API] AIリクエスト失敗:', {
+        errorCode: aiResponse.error?.code,
+        errorMessage: aiResponse.error?.message,
+        request: JSON.stringify(aiRequest, null, 2),
       });
 
-      // 指示メッセージを構築
-      const detailPrompt = `
-「${elementName}」という${elementTypeToJapanese(
-        elementType,
-      )}の詳細情報を以下の形式で作成してください。
-
-名前: ${elementName}
-タイプ: ${elementTypeToJapanese(elementType)}
-説明: [詳細な説明]
-特徴: [主要な特徴]
-重要性: [物語における重要性]
-${
-  elementType === 'place'
-    ? '立地: [地理的な立地や環境]\n人口: [おおよその人口規模]\n文化的特徴: [この場所特有の文化]'
-    : ''
-}
-${
-  elementType === 'culture'
-    ? '習慣: [文化における重要な習慣]\n信念: [文化的な信念や価値観]\n歴史: [文化の簡単な歴史]'
-    : ''
-}
-${
-  elementType === 'rule'
-    ? '影響: [ルールが世界に与える影響]\n例外: [ルールの例外や制限]\n由来: [ルールの起源や理由]'
-    : ''
-}
-
-関連事項:
-- [関連する要素1]: [関係の説明]
-- [関連する要素2]: [関係の説明]
-
-${message}
-`;
-
-      // 世界観構築アシスタントを直接使用して詳細生成
-      const result = await novelCreationNetwork.run(detailPrompt, {
-        context: {
-          selectedElements: [...plotElements, ...charactersElements],
-          forceAgent: 'world-building',
-          task: 'worldbuilding-detail', // 詳細生成タスクを指定
-          elementName,
-          elementType,
-        },
-        maxSteps: 3, // 詳細生成は少ないステップで十分
-      });
-
-      res.json({
-        response: result.output,
-        agentUsed: result.agentUsed,
-        steps: result.steps,
-      });
-    } catch (error) {
-      console.error('世界観要素詳細生成エラー:', error);
-      res.status(500).json({
-        error: '世界観要素詳細生成リクエストに失敗しました',
-        message: error instanceof Error ? error.message : String(error),
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
       });
     }
-  },
-);
 
-// 要素タイプを日本語に変換するヘルパー関数
-function elementTypeToJapanese(type: string): string {
-  const normalizedType = type.toLowerCase().trim();
+    // 成功レスポンス
+    return res.json({
+      status: 'success',
+      data: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiResponse.debug?.model,
+        processingTime: aiResponse.debug?.processingTime,
+        requestType: aiRequest.requestType,
+        format: format,
+      },
+    });
+  } catch (error: any) {
+    console.error('[API] ルートハンドラでのエラー:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || '処理中に予期しないエラーが発生しました',
+    });
+  }
+});
 
-  switch (normalizedType) {
-    case 'place':
-    case '場所':
-      return '場所';
-    case 'culture':
-    case '文化':
-      return '文化';
-    case 'rule':
-    case 'ルール':
-      return 'ルール';
-    case 'history':
-    case '歴史':
-    case '歴史的出来事':
-      return '歴史的出来事';
-    case 'legend':
-    case '伝説':
-      return '伝説';
-    case 'technology':
-    case '技術':
-      return '技術';
-    case 'magic':
-    case '魔法':
-      return '魔法';
-    case 'religion':
-    case '宗教':
-      return '宗教';
-    case 'custom':
-    case '習慣':
-      return '習慣';
-    case 'geography':
-    case '地理':
-      return '地理';
-    case 'climate':
-    case '気候':
-      return '気候';
-    case 'language':
-    case '言語':
-      return '言語';
-    default:
-      return '要素';
+/**
+ * プロット開発エンドポイント
+ * 物語のプロット作成や改善に関するアドバイスを提供します
+ */
+router.post('/plot-development', async (req, res) => {
+  try {
+    const { userMessage, model } = req.body;
+    const format = req.body.format || 'text'; // プロットはテキストがデフォルト
+
+    console.log('[API] プロット開発リクエスト');
+
+    // AIリクエストを作成
+    const aiRequest: StandardAIRequest = {
+      requestType: 'plot-development',
+      model: model || 'gpt-4o',
+      systemPrompt: PLOT_DEVELOPER,
+      userPrompt: userMessage,
+      options: {
+        temperature: 0.7,
+        maxTokens: 2000,
+        expectedFormat:
+          format === 'text' ? 'text' : format === 'json' ? 'json' : 'yaml',
+        responseFormat:
+          format === 'text' ? 'text' : format === 'json' ? 'json' : 'yaml',
+      },
+    };
+
+    // AIリクエストを実行
+    console.log(`[API] AIリクエスト実行: ${aiRequest.requestType}`);
+    const aiResponse = await processAIRequest(aiRequest);
+
+    // エラー処理
+    if (aiResponse.status === 'error') {
+      // レスポンスのエラーコードとリクエスト内容をコンソールに出力
+      console.error('[API] AIリクエスト失敗:', {
+        errorCode: aiResponse.error?.code,
+        errorMessage: aiResponse.error?.message,
+        request: JSON.stringify(aiRequest, null, 2),
+      });
+
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
+      });
+    }
+
+    // 成功レスポンス
+    return res.json({
+      status: 'success',
+      data: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiResponse.debug?.model,
+        processingTime: aiResponse.debug?.processingTime,
+        requestType: aiRequest.requestType,
+        format: format,
+      },
+    });
+  } catch (error: any) {
+    console.error('[API] ルートハンドラでのエラー:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || '処理中に予期しないエラーが発生しました',
+    });
+  }
+});
+
+/**
+ * YAMLとJSONの変換エンドポイント
+ * YAMLとJSON形式の相互変換を行います
+ */
+router.post('/format-conversion', async (req, res) => {
+  try {
+    const { data, fromFormat, toFormat } = req.body;
+
+    if (!data || !fromFormat || !toFormat) {
+      return res.status(400).json({
+        status: 'error',
+        message: '必要なパラメータが不足しています: data, fromFormat, toFormat',
+      });
+    }
+
+    console.log(
+      `[API] フォーマット変換リクエスト: ${fromFormat} -> ${toFormat}`,
+    );
+
+    let parsedData;
+    let result;
+
+    // ソース形式からパース
+    try {
+      if (fromFormat === 'json') {
+        parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+      } else if (fromFormat === 'yaml') {
+        parsedData = typeof data === 'string' ? yaml.load(data) : data;
+      } else {
+        return res.status(400).json({
+          status: 'error',
+          message: `サポートされていないソース形式: ${fromFormat}`,
+        });
+      }
+    } catch (error: any) {
+      return res.status(400).json({
+        status: 'error',
+        message: `${fromFormat}のパースに失敗しました: ${error.message}`,
+      });
+    }
+
+    // 目標形式に変換
+    try {
+      if (toFormat === 'json') {
+        result = JSON.stringify(parsedData, null, 2);
+      } else if (toFormat === 'yaml') {
+        result = yaml.dump(parsedData, {
+          indent: 2,
+          lineWidth: -1,
+          noRefs: true,
+        });
+      } else {
+        return res.status(400).json({
+          status: 'error',
+          message: `サポートされていない目標形式: ${toFormat}`,
+        });
+      }
+    } catch (error: any) {
+      return res.status(400).json({
+        status: 'error',
+        message: `${toFormat}への変換に失敗しました: ${error.message}`,
+      });
+    }
+
+    // 成功レスポンス
+    return res.json({
+      status: 'success',
+      data: result,
+      metadata: {
+        fromFormat,
+        toFormat,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error: any) {
+    console.error('[API] フォーマット変換エラー:', error);
+    return res.status(500).json({
+      status: 'error',
+      message:
+        error.message || 'フォーマット変換中に予期しないエラーが発生しました',
+    });
+  }
+});
+
+/**
+ * 要素タイプに基づいて最適なモデルを決定する関数
+ */
+function determineModelByElementType(elementType: string): string {
+  if (elementType === 'places' || elementType === '場所') {
+    return 'gemini-1.5-pro'; // 場所には詳細な地理情報が必要なため、Geminiモデルを使用
+  } else if (elementType === 'cultures' || elementType === '文化') {
+    return 'gemini-1.5-pro'; // 文化には細かいニュアンスが必要
+  } else {
+    return 'gemini-1.5-pro'; // その他の場合も同様にGeminiを使用
   }
 }
 

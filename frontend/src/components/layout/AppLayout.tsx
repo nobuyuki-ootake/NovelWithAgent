@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Container, Fab, Tooltip, IconButton } from "@mui/material";
+import React from "react";
+import { Box, Container, Fab, Tooltip } from "@mui/material";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
   currentProjectState,
@@ -8,9 +8,7 @@ import {
 } from "../../store/atoms";
 import Sidebar from "./Sidebar";
 import AIChatPanel from "../ai/AIChatPanel";
-import { SettingsMenu } from "./SettingsMenu";
 import MenuIcon from "@mui/icons-material/Menu";
-import SettingsIcon from "@mui/icons-material/Settings";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -64,7 +62,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           backgroundColor: "background.default",
         }}
       >
-        o{children}
+        {children}
         {/* フロート操作メニューボタン */}
         <Tooltip title="創作メニュー" placement="left">
           <Fab
