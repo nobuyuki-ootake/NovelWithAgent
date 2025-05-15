@@ -650,7 +650,7 @@ ${message}`;
             name: elementInfo.name,
             type: elementInfo.type,
             // その他の情報も保持
-            rawData: detailResult.data,
+            rawData: detailResult.data as WorldBuildingElement,
           };
 
           console.log("[DEBUG] 生成された要素:", detailResult);

@@ -267,9 +267,7 @@ export const WorldBuildingProvider: React.FC<{ children: ReactNode }> = ({
     if (!projectToUpdate.worldBuilding) {
       projectToUpdate.worldBuilding = {
         id: uuidv4(),
-        mapImageUrl: "",
         setting: "",
-        history: "",
         rules: [],
         places: [],
         cultures: [],
@@ -289,26 +287,6 @@ export const WorldBuildingProvider: React.FC<{ children: ReactNode }> = ({
       JSON.stringify(projectToUpdate)
     );
 
-    // Log for each type of element
-    if (pendingPlaces.length > 0) {
-      console.log(
-        "[DEBUG] Attempting to insert places:",
-        JSON.stringify(pendingPlaces)
-      );
-    }
-    if (pendingRules.length > 0) {
-      console.log(
-        "[DEBUG] Attempting to insert rules:",
-        JSON.stringify(pendingRules)
-      );
-    }
-    if (pendingCultures.length > 0) {
-      console.log(
-        "[DEBUG] Attempting to insert cultures:",
-        JSON.stringify(pendingCultures)
-      );
-    }
-
     // 場所の保存
     if (pendingPlaces.length > 0) {
       console.log(`保留中の場所: ${pendingPlaces.length}件`);
@@ -319,7 +297,7 @@ export const WorldBuildingProvider: React.FC<{ children: ReactNode }> = ({
         : [];
 
       // 注意: 個別要素も処理時に既に追加されているため、二重追加防止の確認を行う
-      const placeIds = new Set(existingPlaces.map((p: Place) => p.id));
+      const placeIds = new Set(existingPlaces.map((p: PlaceElement) => p.id));
       const newPlaces = pendingPlaces.filter((p) => !placeIds.has(p.id));
 
       if (newPlaces.length > 0) {

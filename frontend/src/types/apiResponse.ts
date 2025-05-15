@@ -2,7 +2,7 @@
  * APIレスポンスの型定義
  */
 
-import { WorldBuildingElementData } from ".";
+import { WorldBuildingElement, WorldBuildingElementData } from ".";
 
 // 標準的なAPIレスポンスの基本型
 export interface ApiResponse<T> {
@@ -21,7 +21,7 @@ export interface ApiResponse<T> {
 // 世界観要素のAPIレスポンス型
 export interface WorldBuildingApiResponse {
   status: string;
-  data: Record<string, unknown>; // 汎用型でWorldBuildingElementDataを表現
+  data: WorldBuildingElement; // 汎用型でWorldBuildingElementDataを表現
   rawContent: string;
   response?: string;
   agentUsed?: Record<string, unknown>;

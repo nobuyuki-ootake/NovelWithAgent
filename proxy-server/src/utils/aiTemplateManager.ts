@@ -644,7 +644,9 @@ ${userMessage}
 7. 各オブジェクトはカンマで区切ること
 8. 最後のオブジェクトの後にはカンマを付けないこと
 9. 要素の種類で設定可能なのは、
-"place","culture","rule","history","legend","technology","magic","religion","custom","geography","climate","language","element"
+'worldmap','setting','rule','place','culture',
+'geography_environment','history_legend','magic_technology',
+'free_text','state_definition',
 です。
 10. あらすじやプロットから、過不足なく世界観要素を生成してください。
 11. 要素の名前は日本語で出力してください。
@@ -677,7 +679,9 @@ ${userMessage}
 6. 文書の開始と終了には"---"と"..."を使用すること
 7. 各エントリは"-"で始めること
 8. 要素の種類で設定可能なのは、
-"place","culture","rule","history","legend","technology","magic","religion","custom","geography","climate","language","element"
+'worldmap','setting','rule','place','culture',
+'geography_environment','history_legend','magic_technology',
+'free_text','state_definition',
 です。
 9. あらすじやプロットから、過不足なく世界観要素を生成してください。
 10. 要素の名前は日本語で出力してください。
