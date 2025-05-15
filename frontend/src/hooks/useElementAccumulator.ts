@@ -58,11 +58,14 @@ export const useElementAccumulator = () => {
   // タブを更新済みとしてマーク
   const markTabAsUpdated = useCallback(
     (index: number) => {
-      const newTabs = updatedTabs;
-      newTabs[index] = true;
-      setUpdatedTabs(newTabs);
+      setUpdatedTabs((prev) => {
+        return {
+          ...prev,
+          [index]: true,
+        };
+      });
     },
-    [updatedTabs, setUpdatedTabs]
+    [setUpdatedTabs]
   );
 
   // 強制的にタブを更新済みとしてマーク
@@ -101,6 +104,7 @@ export const useElementAccumulator = () => {
   // 場所要素を保留リストに追加
   const addPendingPlace = useCallback(
     (place: PlaceElement) => {
+      console.log("[DEBUG] 場所要素を保留リストに追加:", place, typeof place);
       setPendingPlaces((prev) => [
         ...prev,
         { ...place, id: place.id || uuidv4() },

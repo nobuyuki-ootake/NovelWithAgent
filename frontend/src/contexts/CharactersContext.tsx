@@ -10,10 +10,6 @@ import {
 } from "../types";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../store/atoms";
-import {
-  parseAIResponseToCharacter,
-  parseAIResponseToCharacters,
-} from "../utils/aiResponseParser";
 import { AIResponse, CharacterBatchResponse } from "../types/apiResponse";
 
 // AIレスポンスの型定義

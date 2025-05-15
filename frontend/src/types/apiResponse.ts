@@ -74,6 +74,8 @@ export interface WorldBuildingElementResponse {
   response?: string; // AIレスポンス文字列
   agentUsed?: Record<string, unknown>;
   steps?: Record<string, unknown>;
+  elementName?: string;
+  elementType?: string;
   elementData?: WorldBuildingElementData;
 }
 

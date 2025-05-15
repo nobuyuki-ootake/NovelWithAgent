@@ -89,52 +89,10 @@ export interface WorldBuilding {
   freeText: FreeTextElement[];
   stateDefinition: StateDefinitionElement[];
   custom: CustomElement[];
-  history: string;
-  mapImageUrl?: string;
   freeFields?: WorldBuildingFreeField[];
   timelineSettings?: {
     startDate: string;
   };
-  // 社会と文化のタブ用フィールド
-  socialStructure?: string;
-  government?: string;
-  economy?: string;
-  religion?: string;
-  traditions?: string;
-  language?: string;
-  art?: string;
-  education?: string;
-  technology?: string;
-
-  // 地理と環境のタブ用フィールド
-  geography?: string;
-  climate?: string;
-  flora?: string;
-  fauna?: string;
-  resources?: string;
-  settlements?: string;
-  naturalDisasters?: string;
-  seasonalChanges?: string;
-
-  // 歴史と伝説のタブ用フィールド
-  historicalEvents?: string;
-  ancientCivilizations?: string;
-  myths?: string;
-  legends?: string;
-  folklore?: string;
-  religions?: string;
-  historicalFigures?: string;
-  conflicts?: string;
-
-  // 魔法と技術のタブ用フィールド
-  magicSystem?: string;
-  magicRules?: string;
-  magicUsers?: string;
-  artifacts?: string;
-  technologyLevel?: string;
-  inventions?: string;
-  energySources?: string;
-  transportation?: string;
 }
 
 // ルール、文化、場所の型定義は worldBuilding 内の型を使用
@@ -416,6 +374,7 @@ export interface WorldBuildingFreeField {
   id: string;
   title: string;
   content: string;
+  type: string;
 }
 
 /**
@@ -443,7 +402,7 @@ export enum WorldBuildingElementType {
   SETTING = "setting",
   RULE = "rule",
   PLACE = "place",
-  SOCIETY_CULTURE = "society_culture",
+  CULTURE = "culture",
   GEOGRAPHY_ENVIRONMENT = "geography_environment",
   HISTORY_LEGEND = "history_legend",
   MAGIC_TECHNOLOGY = "magic_technology",
@@ -457,7 +416,7 @@ export const ElementTypeDisplayNames: Record<string, string> = {
   [WorldBuildingElementType.SETTING]: "世界観設定",
   [WorldBuildingElementType.RULE]: "ルール",
   [WorldBuildingElementType.PLACE]: "地名",
-  [WorldBuildingElementType.SOCIETY_CULTURE]: "社会と文化",
+  [WorldBuildingElementType.CULTURE]: "社会と文化",
   [WorldBuildingElementType.GEOGRAPHY_ENVIRONMENT]: "地理と環境",
   [WorldBuildingElementType.HISTORY_LEGEND]: "歴史と伝説",
   [WorldBuildingElementType.MAGIC_TECHNOLOGY]: "魔法と技術",
@@ -622,7 +581,7 @@ export interface WorldBuildingElementData {
   socialStructure?: string;
   values?: string[];
   customsArray?: string[]; // 配列型のcustoms
-  rawData?: Record<string, unknown>;
+  rawData?: WorldBuildingElement;
   relations?: string | { name: string; description: string }[];
   img?: string;
 }

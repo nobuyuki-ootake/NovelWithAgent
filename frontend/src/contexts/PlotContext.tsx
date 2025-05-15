@@ -1,7 +1,6 @@
 import React, { createContext, useContext, ReactNode, useState } from "react";
 import { usePlot } from "../hooks/usePlot";
 import { useAIAssist } from "../hooks/useAIAssist";
-import { parseAIResponseToPlotItems } from "../utils/aiResponseParser";
 import { v4 as uuidv4 } from "uuid";
 import { PlotElement, NovelProject } from "../types";
 import { toast } from "sonner";
