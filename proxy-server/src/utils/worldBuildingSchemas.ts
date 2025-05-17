@@ -15,7 +15,7 @@ export enum WorldBuildingElementType {
   GEOGRAPHY_ENVIRONMENT = 'geography_environment',
   HISTORY_LEGEND = 'history_legend',
   MAGIC_TECHNOLOGY = 'magic_technology',
-  FREE_TEXT = 'free_text',
+  FREE_FIELD = 'free_field',
   STATE_DEFINITION = 'state_definition',
 }
 
@@ -82,7 +82,7 @@ export const WorldBuildingElementSchemas: Record<
     impact: '社会への影響',
     relations: '他の要素との関係',
   },
-  [WorldBuildingElementType.FREE_TEXT]: {
+  [WorldBuildingElementType.FREE_FIELD]: {
     name: '自由記述欄の名称',
     description: '詳細な説明',
     features: '特徴的な要素',

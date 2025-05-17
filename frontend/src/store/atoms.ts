@@ -1,5 +1,5 @@
 import { atom } from "recoil";
-import { NovelProject } from "../types/index";
+import { NovelProject, PlaceElement } from "../types/index";
 
 // 現在選択されているプロジェクトのID
 export const currentProjectIdState = atom<string | null>({
@@ -125,4 +125,9 @@ export const worldBuildingUpdatedTabsState = atom<{ [key: number]: boolean }>({
 export const worldBuildingForceUpdateCounterState = atom<number>({
   key: "worldBuildingForceUpdateCounterState",
   default: 0,
+});
+
+export const pendingPlacesState = atom<PlaceElement[]>({
+  key: "pendingPlacesState",
+  default: [],
 });

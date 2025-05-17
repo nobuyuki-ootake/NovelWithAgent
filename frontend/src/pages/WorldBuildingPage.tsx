@@ -10,6 +10,8 @@ import {
   Badge,
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import SaveIcon from "@mui/icons-material/Save";
 import WorldMapTab from "../components/worldbuilding/WorldMapTab";
 import SettingTab from "../components/worldbuilding/SettingTab";
 import TabPanel from "../components/worldbuilding/TabPanel";
@@ -18,7 +20,7 @@ import GeographyEnvironmentTab from "../components/worldbuilding/GeographyEnviro
 import HistoryLegendTab from "../components/worldbuilding/HistoryLegendTab";
 import MagicTechnologyTab from "../components/worldbuilding/MagicTechnologyTab";
 import RulesTab from "../components/worldbuilding/RulesTab";
-import PlacesTabSimple from "../components/worldbuilding/PlacesTabSimple";
+import PlacesTab from "../components/worldbuilding/PlacesTab";
 import FreeFieldsTab from "../components/worldbuilding/FreeFieldsTab";
 import CharacterStatusList from "../components/characters/CharacterStatusList";
 import { AIAssistModal } from "../components/modals/AIAssistModal";
@@ -26,16 +28,15 @@ import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../store/atoms";
 import { useWorldBuildingContext } from "../contexts/WorldBuildingContext";
 import { useWorldBuildingAI } from "../hooks/useWorldBuildingAI";
+import { useElementAccumulator } from "../hooks/useElementAccumulator";
 
 const WorldBuildingPage: React.FC = () => {
   const currentProject = useRecoilValue(currentProjectState);
+  const { resetWorldBuildingElements } = useElementAccumulator();
 
   // コンテキストから状態とハンドラ関数を取得
   const {
     tabValue,
-    mapImageUrl,
-    description,
-    history,
     snackbarOpen,
     snackbarMessage,
     handleTabChange,
@@ -44,7 +45,6 @@ const WorldBuildingPage: React.FC = () => {
     handleHistoryChange,
     handleSaveWorldBuilding,
     handleCloseSnackbar,
-    hasUnsavedChanges,
     updatedTabs,
     aiModalOpen,
     setAIModalOpen,
@@ -65,6 +65,18 @@ const WorldBuildingPage: React.FC = () => {
     setAIModalOpen(false);
   };
 
+  const handleResetWorldBuilding = () => {
+    if (
+      window.confirm(
+        "本当に世界観設定をリセットしますか？この操作は元に戻せません。"
+      )
+    ) {
+      resetWorldBuildingElements();
+      // 必要であればSnackbar等でユーザーに通知
+      // 例: setSnackbarMessage("世界観設定がリセットされました。"); setSnackbarOpen(true);
+    }
+  };
+
   if (!currentProject) {
     return (
       <Box sx={{ p: 3 }}>
@@ -81,6 +93,8 @@ const WorldBuildingPage: React.FC = () => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: 1,
           }}
         >
           <Box>
@@ -91,18 +105,39 @@ const WorldBuildingPage: React.FC = () => {
               世界観構築
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<SmartToyIcon />}
-            onClick={() => setAIModalOpen(true)}
-            sx={{ ml: 2 }}
-          >
-            AIに世界観を考えてもらう
-          </Button>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<DeleteSweepIcon />}
+              onClick={handleResetWorldBuilding}
+            >
+              世界観をリセット
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<SmartToyIcon />}
+              onClick={() => setAIModalOpen(true)}
+            >
+              AIに世界観を考えてもらう
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<SaveIcon />}
+              onClick={handleSaveWorldBuilding}
+            >
+              保存
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
+      {/* - 一時的なもの
+      物語の舞台となる主要な場所（少なくとも3つ）
+- この世界のルール（魔法や技術の制約など）
+- 特徴的な文化や風習 */}
       {/* AI支援モーダル */}
       <AIAssistModal
         open={aiModalOpen}
@@ -112,9 +147,7 @@ const WorldBuildingPage: React.FC = () => {
         defaultMessage={`「${
           currentProject.title
         }」の世界観について、以下の要素を考えてください。
-- 物語の舞台となる主要な場所（少なくとも3つ）
-- この世界のルール（魔法や技術の制約など）
-- 特徴的な文化や風習
+- 物語の舞台となる主要な場所2つ
 
 物語のあらすじ:
 ${currentProject.synopsis || "（あらすじが設定されていません）"}`}
@@ -280,7 +313,7 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
         {/* ワールドマップタブ */}
         <TabPanel value={tabValue} index={0}>
           <WorldMapTab
-            mapImageUrl={mapImageUrl || ""}
+            mapImageUrl={currentProject.worldBuilding?.worldMapImageUrl || ""}
             onMapImageUpload={handleMapImageUpload || (() => {})}
           />
         </TabPanel>
@@ -288,9 +321,9 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
         {/* 世界観設定タブ */}
         <TabPanel value={tabValue} index={1}>
           <SettingTab
-            description={description || ""}
+            description={currentProject.worldBuilding?.description || ""}
             onDescriptionChange={handleSettingChange || (() => {})}
-            history={history || ""}
+            history={currentProject.worldBuilding?.history || ""}
             onHistoryChange={handleHistoryChange || (() => {})}
           />
         </TabPanel>
@@ -302,7 +335,7 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
 
         {/* 地名タブ */}
         <TabPanel value={tabValue} index={3}>
-          <PlacesTabSimple />
+          <PlacesTab />
         </TabPanel>
 
         {/* 社会と文化タブ */}
@@ -360,18 +393,6 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
           </Box>
         </TabPanel>
       </Paper>
-
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          size="large"
-          onClick={handleSaveWorldBuilding || (() => {})}
-          disabled={!hasUnsavedChanges}
-        >
-          保存
-        </Button>
-      </Box>
 
       <Snackbar
         open={snackbarOpen || false}

@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
-import { useRecoilState } from "recoil";
+import { useState, useEffect, useCallback } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { v4 as uuidv4 } from "uuid";
 import { currentProjectState } from "../store/atoms";
 import { NovelProject } from "../types/index";
 
 export function useHome() {
   const [projects, setProjects] = useState<NovelProject[]>([]);
-  const [currentProject, setCurrentProject] =
-    useRecoilState(currentProjectState);
+  const currentProject = useRecoilValue(currentProjectState);
+  const [, setCurrentProjectStateSetter] = useRecoilState(currentProjectState);
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -57,6 +57,13 @@ export function useHome() {
         places: [],
         cultures: [],
         history: "",
+        geographyEnvironment: [],
+        historyLegend: [],
+        magicTechnology: [],
+        freeFields: [],
+        stateDefinition: [],
+        worldmaps: [],
+        settings: [],
       },
       timeline: [],
       chapters: [],
@@ -67,7 +74,7 @@ export function useHome() {
     saveProjects(updatedProjects);
 
     // 新規プロジェクトを選択
-    setCurrentProject(newProject);
+    setCurrentProjectStateSetter(newProject);
     localStorage.setItem("currentProjectId", newProject.id);
 
     handleCloseDialog();
@@ -75,7 +82,7 @@ export function useHome() {
 
   // プロジェクト選択
   const handleSelectProject = (project: NovelProject) => {
-    setCurrentProject(project);
+    setCurrentProjectStateSetter(project);
     localStorage.setItem("currentProjectId", project.id);
   };
 
@@ -103,6 +110,38 @@ export function useHome() {
     handleCloseDeleteDialog();
   };
 
+  // 現在のプロジェクトデータをlocalStorageに保存する関数
+  const updateAndSaveCurrentProject = useCallback(
+    (projectToSave: NovelProject | null) => {
+      if (!projectToSave) return;
+
+      const savedProjectsString = localStorage.getItem("novelProjects");
+      let projectsToUpdate: NovelProject[] = [];
+      if (savedProjectsString) {
+        projectsToUpdate = JSON.parse(savedProjectsString);
+      }
+
+      const projectIndex = projectsToUpdate.findIndex(
+        (p) => p.id === projectToSave.id
+      );
+
+      if (projectIndex !== -1) {
+        projectsToUpdate[projectIndex] = projectToSave;
+      } else {
+        // もしプロジェクトリストに存在しない場合（通常はありえないが念のため）、新しいプロジェクトとして追加
+        projectsToUpdate.push(projectToSave);
+      }
+
+      localStorage.setItem("novelProjects", JSON.stringify(projectsToUpdate));
+      setProjects(projectsToUpdate); // ローカルのprojectsステートも更新
+      console.log(
+        "[DEBUG] Project saved to localStorage:",
+        projectToSave.title
+      );
+    },
+    [] // 依存配列は空でOK (localStorage と projects ステートの更新のみのため)
+  );
+
   return {
     projects,
     currentProject,
@@ -117,5 +156,6 @@ export function useHome() {
     handleOpenDeleteDialog,
     handleCloseDeleteDialog,
     handleDeleteProject,
+    updateAndSaveCurrentProject,
   };
 }

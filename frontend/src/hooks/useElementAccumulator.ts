@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useCallback, useEffect } from "react";
+import { useRecoilState, useRecoilCallback } from "recoil";
 import {
   currentProjectState,
   worldBuildingUpdatedTabsState,
@@ -15,13 +15,22 @@ import {
   RuleElement,
   WorldmapElement,
   SettingElement,
-  WorldBuildingFreeField,
   GeographyEnvironmentElement,
   MagicTechnologyElement,
   HistoryLegendElement,
+  WorldBuildingElementType,
+  getCategoryTabIndex,
+  StateDefinitionElement,
 } from "../types";
 
 export const useElementAccumulator = () => {
+  useEffect(() => {
+    console.log("[DEBUG] useElementAccumulator MOUNTED");
+    return () => {
+      console.log("[DEBUG] useElementAccumulator UNMOUNTED");
+    };
+  }, []);
+
   // プロジェクト状態
   const [currentProject, setCurrentProject] =
     useRecoilState(currentProjectState);
@@ -34,41 +43,17 @@ export const useElementAccumulator = () => {
     worldBuildingForceUpdateCounterState
   );
 
-  // 保留中の要素を格納する状態変数
-  const [pendingRules, setPendingRules] = useState<RuleElement[]>([]);
-  const [pendingCultures, setPendingCultures] = useState<CultureElement[]>([]);
-  const [pendingPlaces, setPendingPlaces] = useState<PlaceElement[]>([]);
-  const [pendingWorldmaps, setPendingWorldmaps] = useState<WorldmapElement[]>(
-    []
-  );
-  const [pendingSettings, setPendingSettings] = useState<SettingElement[]>([]);
-  const [pendingHistories, setPendingHistories] = useState<
-    HistoryLegendElement[]
-  >([]);
-  const [pendingGeographies, setPendingGeographies] = useState<
-    GeographyEnvironmentElement[]
-  >([]);
-  const [pendingTechnologies, setPendingTechnologies] = useState<
-    MagicTechnologyElement[]
-  >([]);
-  const [pendingFreeFields, setPendingFreeFields] = useState<
-    WorldBuildingFreeField[]
-  >([]);
-
-  // タブを更新済みとしてマーク
   const markTabAsUpdated = useCallback(
     (index: number) => {
-      setUpdatedTabs((prev) => {
-        return {
-          ...prev,
-          [index]: true,
-        };
-      });
+      console.log("[DEBUG] markTabAsUpdated CALLED WITH INDEX:", index);
+      setUpdatedTabs((prev) => ({
+        ...prev,
+        [index]: true,
+      }));
     },
     [setUpdatedTabs]
   );
 
-  // 強制的にタブを更新済みとしてマーク
   const forceMarkTabAsUpdated = useCallback(
     (index: number) => {
       markTabAsUpdated(index);
@@ -77,253 +62,367 @@ export const useElementAccumulator = () => {
     [markTabAsUpdated, setForceUpdateCounter]
   );
 
-  // ルール要素を保留リストに追加
   const addPendingRule = useCallback(
     (rule: RuleElement) => {
-      setPendingRules((prev) => [
-        ...prev,
-        { ...rule, id: rule.id || uuidv4() },
-      ]);
-      markTabAsUpdated(2); // ルールタブのインデックスと仮定
+      if (!currentProject) return;
+      const newRule = { ...rule, id: rule.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          rules: [...(prevProject.worldBuilding?.rules || []), newRule],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.RULE));
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 文化要素を保留リストに追加
   const addPendingCulture = useCallback(
     (culture: CultureElement) => {
-      setPendingCultures((prev) => [
-        ...prev,
-        { ...culture, id: culture.id || uuidv4() },
-      ]);
-      markTabAsUpdated(3); // 文化タブのインデックスと仮定
+      if (!currentProject) return;
+      const newCulture = { ...culture, id: culture.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          cultures: [
+            ...(prevProject.worldBuilding?.cultures || []),
+            newCulture,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.CULTURE));
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 場所要素を保留リストに追加
   const addPendingPlace = useCallback(
     (place: PlaceElement) => {
-      console.log("[DEBUG] 場所要素を保留リストに追加:", place, typeof place);
-      setPendingPlaces((prev) => [
-        ...prev,
-        { ...place, id: place.id || uuidv4() },
-      ]);
-      markTabAsUpdated(1); // 場所タブのインデックスと仮定
+      console.log(
+        "[DEBUG] addPendingPlace called with:",
+        JSON.stringify(place)
+      );
+      if (!currentProject) {
+        console.error("[DEBUG] addPendingPlace: currentProject is null!");
+        return;
+      }
+      const newPlace = { ...place, id: place.id || uuidv4() };
+      console.log("[DEBUG] newPlace to add:", JSON.stringify(newPlace));
+
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject; // Should not happen if initial check passed
+        console.log(
+          "[DEBUG] prevProject.worldBuilding.places before adding:",
+          JSON.stringify(prevProject.worldBuilding?.places)
+        );
+        const updatedPlaces = [
+          ...(prevProject.worldBuilding?.places || []),
+          newPlace,
+        ];
+        console.log(
+          "[DEBUG] updatedPlaces after adding:",
+          JSON.stringify(updatedPlaces)
+        );
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          places: updatedPlaces,
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.PLACE));
+      console.log(
+        `[DEBUG] markTabAsUpdated(${getCategoryTabIndex(
+          WorldBuildingElementType.PLACE
+        )}) called after setCurrentProject`
+      );
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // ワールドマップ要素を保留リストに追加
   const addPendingWorldmap = useCallback(
     (worldmap: WorldmapElement) => {
-      setPendingWorldmaps((prev) => [
-        ...prev,
-        { ...worldmap, id: worldmap.id || uuidv4() },
-      ]);
-      markTabAsUpdated(0); // ワールドマップタブのインデックスと仮定
+      if (!currentProject) return;
+      const newWorldmap = { ...worldmap, id: worldmap.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          worldmaps: [
+            ...(prevProject.worldBuilding?.worldmaps || []),
+            newWorldmap,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.WORLDMAP));
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 設定要素を保留リストに追加
   const addPendingSetting = useCallback(
     (setting: SettingElement) => {
-      setPendingSettings((prev) => [
-        ...prev,
-        { ...setting, id: setting.id || uuidv4() },
-      ]);
-      markTabAsUpdated(0); // 設定タブのインデックスと仮定
+      if (!currentProject) return;
+      const newSetting = { ...setting, id: setting.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          settings: [
+            ...(prevProject.worldBuilding?.settings || []),
+            newSetting,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.SETTING));
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 歴史要素を保留リストに追加
   const addPendingHistory = useCallback(
     (history: HistoryLegendElement) => {
-      setPendingHistories((prev) => [
-        ...prev,
-        { ...history, id: history.id || uuidv4() },
-      ]);
-      markTabAsUpdated(4); // 歴史タブのインデックスと仮定
+      if (!currentProject) return;
+      const newHistory = { ...history, id: history.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          historyLegend: [
+            ...(prevProject.worldBuilding?.historyLegend || []),
+            newHistory,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(
+        getCategoryTabIndex(WorldBuildingElementType.HISTORY_LEGEND)
+      );
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 社会文化要素を保留リストに追加
   const addPendingSocietyCulture = useCallback(
     (culture: CultureElement) => {
-      setPendingCultures((prev) => [
-        ...prev,
-        { ...culture, id: culture.id || uuidv4() },
-      ]);
-      markTabAsUpdated(3); // 社会文化タブのインデックスと仮定
+      if (!currentProject) return;
+      const newCulture = { ...culture, id: culture.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          cultures: [
+            ...(prevProject.worldBuilding?.cultures || []),
+            newCulture,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.CULTURE));
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 技術要素を保留リストに追加
   const addPendingTechnology = useCallback(
     (technology: MagicTechnologyElement) => {
-      setPendingTechnologies((prev) => [
-        ...prev,
-        { ...technology, id: technology.id || uuidv4() },
-      ]);
-      markTabAsUpdated(5); // 魔法と技術タブのインデックスと仮定
+      if (!currentProject) return;
+      const newTechnology = { ...technology, id: technology.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          magicTechnology: [
+            ...(prevProject.worldBuilding?.magicTechnology || []),
+            newTechnology,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(
+        getCategoryTabIndex(WorldBuildingElementType.MAGIC_TECHNOLOGY)
+      );
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 地理環境要素を保留リストに追加
   const addPendingGeography = useCallback(
     (geography: GeographyEnvironmentElement) => {
-      setPendingGeographies((prev) => [
-        ...prev,
-        { ...geography, id: geography.id || uuidv4() },
-      ]);
-      markTabAsUpdated(6); // 地理環境タブのインデックスと仮定
+      if (!currentProject) return;
+      const newGeography = { ...geography, id: geography.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          geographyEnvironment: [
+            ...(prevProject.worldBuilding?.geographyEnvironment || []),
+            newGeography,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(
+        getCategoryTabIndex(WorldBuildingElementType.GEOGRAPHY_ENVIRONMENT)
+      );
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 保留中の要素をクリア
-  const clearPendingElements = useCallback(() => {
-    setPendingRules([]);
-    setPendingCultures([]);
-    setPendingPlaces([]);
-    setPendingWorldmaps([]);
-    setPendingSettings([]);
-    setPendingHistories([]);
-    setPendingGeographies([]);
-    setPendingTechnologies([]);
-    setPendingFreeFields([]);
-  }, []);
-
-  // フリーフィールド要素を保留リストに追加
   const addPendingFreeField = useCallback(
     (freeField: WorldBuildingFreeField) => {
-      setPendingFreeFields((prev) => [
-        ...prev,
-        { ...freeField, id: freeField.id || uuidv4() },
-      ]);
-      markTabAsUpdated(7); // フリーフィールドタブのインデックスと仮定
+      if (!currentProject) return;
+      const newFreeField = { ...freeField, id: freeField.id || uuidv4() };
+      setCurrentProject((prevProject) => {
+        if (!prevProject) return prevProject;
+        const updatedWorldBuilding = {
+          ...prevProject.worldBuilding,
+          freeFields: [
+            ...(prevProject.worldBuilding?.freeFields || []),
+            newFreeField,
+          ],
+        };
+        return { ...prevProject, worldBuilding: updatedWorldBuilding };
+      });
+      markTabAsUpdated(
+        getCategoryTabIndex(WorldBuildingElementType.FREE_FIELD)
+      );
     },
-    [markTabAsUpdated]
+    [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // 全ての保留中要素を保存
-  const saveAllPendingElements = useCallback(() => {
-    if (!currentProject) return;
+  // addPendingStateDefinition のダミー実装
+  const addPendingStateDefinition = useCallback(
+    (definition: StateDefinitionElement) => {
+      console.warn(
+        "addPendingStateDefinition is not implemented in useElementAccumulator",
+        definition
+      );
+      // markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.STATE_DEFINITION)); // 必要に応じて
+    },
+    [markTabAsUpdated] // 依存配列は最小限に
+  );
 
-    const updatedProject = { ...currentProject };
+  const clearPendingElements = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async () => {
+        console.log("[DEBUG] clearPendingElements CALLED");
+        const currentProj = await snapshot.getPromise(currentProjectState);
+        if (currentProj && currentProj.worldBuilding) {
+          const newWorldBuilding = { ...currentProj.worldBuilding };
+          // すべての要素タイプの配列を空にする
+          // 以下は例です。実際のプロジェクトの型定義に合わせてください。
+          newWorldBuilding.places = [];
+          newWorldBuilding.rules = [];
+          newWorldBuilding.cultures = [];
+          newWorldBuilding.worldmaps = [];
+          newWorldBuilding.settings = [];
+          // 他のすべての要素タイプについても同様に空にする
+          // (例) newWorldBuilding.historyLegend = []; など
 
-    // 各要素タイプの保留中データを現在のプロジェクトに統合
-    if (pendingRules.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        rules: [
-          ...(updatedProject.worldBuilding?.rules || []),
-          ...pendingRules,
-        ],
-      };
+          set(currentProjectState, {
+            ...currentProj,
+            worldBuilding: newWorldBuilding,
+          });
+          console.log(
+            "[DEBUG] All pending elements cleared from currentProject state"
+          );
+        }
+      },
+    []
+  );
+
+  const resetWorldBuildingElements = useRecoilCallback(
+    ({ set }) =>
+      async () => {
+        console.log("[DEBUG] resetWorldBuildingElements CALLED");
+        set(currentProjectState, (prevProject) => {
+          if (!prevProject) return prevProject;
+          return {
+            ...prevProject,
+            worldBuilding: {
+              id: prevProject.worldBuilding?.id || uuidv4(),
+              worldMapImageUrl: "",
+              description: "",
+              history: "",
+              setting: "",
+              rules: [],
+              places: [],
+              cultures: [],
+              worldmaps: [],
+              settings: [],
+              historyLegend: [],
+              magicTechnology: [],
+              geographyEnvironment: [],
+              freeFields: [],
+              stateDefinition: [],
+            },
+          };
+        });
+        setUpdatedTabs({});
+        setForceUpdateCounter((prev) => prev + 1);
+        console.log(
+          "[DEBUG] World building elements reset and updated tabs cleared"
+        );
+      },
+    [setUpdatedTabs, setForceUpdateCounter]
+  );
+
+  const saveAllPendingElements = useRecoilCallback(
+    ({ snapshot }) =>
+      async () => {
+        const project = await snapshot.getPromise(currentProjectState);
+        if (project) {
+          // ここでプロジェクトデータを永続化する処理を呼び出す
+          // 例: await saveProjectToBackend(project);
+          console.log(
+            "[DEBUG] AIバッチ処理完了。要素は currentProject に直接保存済み (from snapshot):",
+            project.title // project全体をログすると長すぎるのでタイトルだけ
+          );
+          // プロジェクト内の各要素の数をログに出力
+          console.log(
+            "[DEBUG] 保存後のプロジェクトの場所の数 (from snapshot):",
+            project.worldBuilding?.places?.length || 0
+          );
+          console.log(
+            "[DEBUG] 保存後のプロジェクトのルールの数 (from snapshot):",
+            project.worldBuilding?.rules?.length || 0
+          );
+          console.log(
+            "[DEBUG] 保存後のプロジェクトの文化の数 (from snapshot):",
+            project.worldBuilding?.cultures?.length || 0
+          );
+          // 他の要素タイプについても同様にログ出力
+          // clearPendingElements(); // 保存が完了したので保留リストをクリア... しない。currentProjectに直接入っているため
+        } else {
+          console.warn(
+            "[DEBUG] saveAllPendingElements: currentProject is null, skipping save."
+          );
+        }
+      },
+    [
+      /*clearPendingElements*/
+    ] // clearPendingElements は依存配列から削除
+  );
+
+  const getCurrentProjectState = useRecoilCallback(
+    ({ snapshot }) =>
+      () => {
+        return snapshot.getLoadable(currentProjectState).contents;
+      },
+    []
+  );
+
+  // 世界観データのバリデーション関数
+  const validateWorldBuildingData = useCallback(() => {
+    if (!currentProject || !currentProject.worldBuilding) {
+      console.warn("プロジェクトまたは世界観データが存在しません。");
+      return false;
     }
-
-    if (pendingCultures.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        cultures: [
-          ...(updatedProject.worldBuilding?.cultures || []),
-          ...pendingCultures,
-        ],
-      };
-    }
-
-    if (pendingPlaces.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        places: [
-          ...(updatedProject.worldBuilding?.places || []),
-          ...pendingPlaces,
-        ],
-      };
-    }
-
-    if (pendingWorldmaps.length > 0) {
-      // ワールドマップデータの統合
-      // 実装は世界観設計に依存
-    }
-
-    if (pendingSettings.length > 0) {
-      // 設定データの統合
-      // 実装は世界観設計に依存
-    }
-
-    if (pendingHistories.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        historyLegend: [
-          ...(updatedProject.worldBuilding?.historyLegend || []),
-          ...pendingHistories,
-        ],
-      };
-    }
-
-    if (pendingGeographies.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        geographyEnvironment: [
-          ...(updatedProject.worldBuilding?.geographyEnvironment || []),
-          ...pendingGeographies,
-        ],
-      };
-    }
-
-    if (pendingTechnologies.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        magicTechnology: [
-          ...(updatedProject.worldBuilding?.magicTechnology || []),
-          ...pendingTechnologies,
-        ],
-      };
-    }
-
-    if (pendingFreeFields.length > 0) {
-      updatedProject.worldBuilding = {
-        ...updatedProject.worldBuilding,
-        freeFields: [
-          ...(updatedProject.worldBuilding?.freeFields || []),
-          ...pendingFreeFields,
-        ],
-      };
-    }
-
-    // プロジェクトの状態を更新
-    setCurrentProject(updatedProject);
-
-    // 保留中データをクリア
-    clearPendingElements();
-  }, [
-    currentProject,
-    pendingRules,
-    pendingCultures,
-    pendingPlaces,
-    pendingWorldmaps,
-    pendingSettings,
-    pendingHistories,
-    pendingGeographies,
-    pendingTechnologies,
-    pendingFreeFields,
-    setCurrentProject,
-    clearPendingElements,
-  ]);
-
-  // 現在のプロジェクト状態を取得
-  const getCurrentProjectState = useCallback(() => {
-    return currentProject;
+    // ここに各要素のバリデーションロジックを追加
+    // 例: currentProject.worldBuilding.places の各要素が適切な名前と説明を持っているか等
+    return true; // 仮実装
   }, [currentProject]);
 
-  // プロジェクト状態を更新
   const updateProjectState = useCallback(
     (updatedProject: NovelProject) => {
       setCurrentProject(updatedProject);
@@ -331,46 +430,27 @@ export const useElementAccumulator = () => {
     [setCurrentProject]
   );
 
-  // 世界観データの整合性を検証
-  const validateWorldBuildingData = useCallback(() => {
-    if (!currentProject || !currentProject.worldBuilding) return false;
-
-    // 必須フィールドの存在確認など、基本的な検証ロジックを実装
-    return true;
-  }, [currentProject]);
-
   return {
-    // タブ関連
     updatedTabs,
     markTabAsUpdated,
     forceMarkTabAsUpdated,
     forceUpdateCounter,
-
-    // 要素累積API
     addPendingRule,
     addPendingCulture,
+    addPendingPlace,
     addPendingWorldmap,
     addPendingSetting,
-    addPendingPlace,
     addPendingHistory,
     addPendingSocietyCulture,
     addPendingTechnology,
     addPendingGeography,
     addPendingFreeField,
+    addPendingStateDefinition,
     saveAllPendingElements,
     clearPendingElements,
-
-    // プロジェクト状態
+    resetWorldBuildingElements,
     getCurrentProjectState,
     updateProjectState,
-
-    // データ整合性チェック
     validateWorldBuildingData,
-
-    // デバッグ用 - 保留中データを公開
-    pendingPlaces,
-    pendingRules,
-    pendingCultures,
-    pendingFreeFields,
   };
 };

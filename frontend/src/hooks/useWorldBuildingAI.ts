@@ -9,13 +9,12 @@ import {
   RuleElement,
   WorldmapElement,
   SettingElement,
-  WorldBuildingFreeField,
   GeographyEnvironmentElement,
   MagicTechnologyElement,
   HistoryLegendElement,
   WorldBuildingElementType,
   WorldBuildingElement,
-  FreeTextElement,
+  FreeFieldElement,
 } from "../types";
 
 /**
@@ -51,8 +50,34 @@ export const useWorldBuildingAI = () => {
     addPendingFreeField,
     saveAllPendingElements,
     forceMarkTabAsUpdated,
-    forceUpdateCounter,
   } = useElementAccumulator();
+
+  // initiateWorldBuildingAIGeneration のダミー実装
+  const initiateWorldBuildingAIGeneration = useCallback(
+    async (
+      elementsToGenerate: Array<{
+        elementType: string;
+        count: number;
+        customPrompt?: string;
+      }>,
+      apiKey: string,
+      model: string
+    ) => {
+      console.warn(
+        "initiateWorldBuildingAIGeneration is not implemented in useWorldBuildingAI",
+        { elementsToGenerate, apiKey, model }
+      );
+      // 実際のAI生成ロジックがないため、Promiseを解決するだけ
+      return Promise.resolve();
+    },
+    []
+  );
+
+  // cancelAIGeneration のダミー実装
+  const cancelAIGeneration = useCallback(() => {
+    console.warn("cancelAIGeneration is not implemented in useWorldBuildingAI");
+    // 実際のキャンセルロジックがない
+  }, []);
 
   // 世界観要素の処理
   const handleProcessWorldBuildingElement = useCallback(
@@ -114,8 +139,8 @@ export const useWorldBuildingAI = () => {
             population: elementData.population || "",
             culturalFeatures: elementData.culturalFeatures || "",
           };
-          console.log("[DEBUG] 処理完了した要素:", placeElement);
           addPendingPlace(placeElement);
+          console.log("[DEBUG] 処理完了した要素:", placeElement);
           break;
         }
 
@@ -214,13 +239,17 @@ export const useWorldBuildingAI = () => {
           break;
         }
 
-        case WorldBuildingElementType.FREE_TEXT: {
-          const elementData = inputEelementData as FreeTextElement;
-          const freeField: WorldBuildingFreeField = {
+        case WorldBuildingElementType.FREE_FIELD: {
+          const elementData = inputEelementData as FreeFieldElement;
+          const freeField: FreeFieldElement = {
             id: uuidv4(),
-            title: elementData.name || "",
-            content: elementData.description || "",
-            type: elementData.type || "free_text",
+            name: elementData.name || "",
+            description: elementData.description || "",
+            features: elementData.features || "",
+            importance: elementData.importance || "",
+            relations: elementData.relations || "",
+            type: elementData.type || "free_field",
+            originalType: elementData.originalType || "free_field",
           };
           addPendingFreeField(freeField);
           break;
@@ -228,13 +257,17 @@ export const useWorldBuildingAI = () => {
 
         default: {
           console.warn("[WARN] 未対応の要素タイプ:", inputEelementData.type);
-          const elementData = inputEelementData as FreeTextElement;
+          const elementData = inputEelementData as FreeFieldElement;
           // 不明な要素タイプは自由フィールドに追加
-          const unknownElement: WorldBuildingFreeField = {
+          const unknownElement: FreeFieldElement = {
             id: uuidv4(),
-            title: elementData.name || "",
-            content: JSON.stringify(elementData, null, 2),
-            type: elementData.type || "free_text",
+            name: elementData.name || "",
+            description: elementData.description || "",
+            features: elementData.features || "",
+            importance: elementData.importance || "",
+            relations: elementData.relations || "",
+            type: elementData.type || "free_field",
+            originalType: elementData.originalType || "free_field",
           };
           addPendingFreeField(unknownElement);
           break;
@@ -258,86 +291,103 @@ export const useWorldBuildingAI = () => {
   const { generateWorldBuildingBatch } = useAIAssist({
     onWorldBuildingElementGenerated: (result) => {
       console.log(
-        "[DEBUG] 世界観要素の生成結果:",
-        result,
-        "result.response",
-        result.response
+        "[DEBUG] AIアシスト onWorldBuildingElementGenerated - result:",
+        result
       );
-      if (result && result.name) {
+      if (result && (result.elementName || result.name)) {
         try {
-          console.log("世界観要素の生成結果:", result);
+          console.log(
+            "AIアシスト onWorldBuildingElementGenerated - result (valid name):",
+            result
+          );
 
-          const elementData = result.elementData
-            ?.rawData as WorldBuildingElement;
-
-          if (result.elementData?.rawData) {
-            try {
-              // データ型のデバッグ表示
-              console.log(
-                "[DEBUG] 生成された要素タイプ:",
-                elementData.type,
-                "elementData:",
-                elementData
-              );
-
-              // 要素タイプに応じて、一時保存領域に追加
-              handleProcessWorldBuildingElement(elementData);
-
-              // 重要: 各要素を即時保存して反映する
-              console.log(
-                "[DEBUG] Calling saveAllPendingElements for element type:",
-                elementData.type
-              );
-              saveAllPendingElements();
-            } catch (err) {
-              console.error("[Error] 要素処理中のエラー:", err);
+          let elementDataToProcess: WorldBuildingElement | undefined =
+            undefined;
+          if (result.elementData && typeof result.elementData === "object") {
+            elementDataToProcess = result.elementData as WorldBuildingElement;
+            if ((result.elementData as any).rawData) {
+              elementDataToProcess = (result.elementData as any)
+                .rawData as WorldBuildingElement;
             }
+          } else if (
+            typeof result.response === "string" &&
+            result.response.trim() !== ""
+          ) {
+            console.warn(
+              "[WARN] AI response string parsing not implemented in this example. Element may not be processed."
+            );
+          }
+
+          if (elementDataToProcess) {
+            console.log(
+              "[DEBUG] AIアシスト onWorldBuildingElementGenerated - Processing elementData:",
+              elementDataToProcess
+            );
+            handleProcessWorldBuildingElement(elementDataToProcess);
+          } else {
+            console.warn(
+              "[WARN] AIアシスト onWorldBuildingElementGenerated - No valid elementData to process from result:",
+              result
+            );
           }
         } catch (err) {
-          console.error("[Error] 要素パース中のエラー:", err);
+          console.error(
+            "[Error] AIアシスト onWorldBuildingElementGenerated - 要素処理中のエラー:",
+            err
+          );
         }
+      } else {
+        console.warn(
+          "[WARN] AIアシスト onWorldBuildingElementGenerated - Invalid result or missing element name:",
+          result
+        );
       }
     },
 
     // AIアシスト機能が完了した時のコールバック
     onWorldBuildingBatchSuccess: (result) => {
+      console.log(
+        "[DEBUG] AIアシスト onWorldBuildingBatchSuccess - result:",
+        result
+      );
       if (result && result.elements && result.elements.length > 0) {
-        // 処理完了フラグを設定
         setIsGenerating(false);
 
-        // 全要素の処理が完了したことを通知
+        console.log(
+          "[DEBUG] AIアシスト onWorldBuildingBatchSuccess - Calling saveAllPendingElements"
+        );
+        saveAllPendingElements();
+
         setNotificationMessage(
           `全ての世界観要素(${result.elements.length}件)を処理完了しました！`
         );
         setNotificationOpen(true);
 
-        // タブ更新を強制
         setTimeout(() => {
-          // 場所タブ
-          forceMarkTabAsUpdated(3);
-          // ルールタブ
-          forceMarkTabAsUpdated(2);
-          // 文化タブ
-          forceMarkTabAsUpdated(4);
-          // 自由記述タブ
-          forceMarkTabAsUpdated(8);
-          // 地理と環境タブ
-          forceMarkTabAsUpdated(5);
-          // 歴史と伝説タブ
-          forceMarkTabAsUpdated(6);
-          // 魔法と技術タブ
-          forceMarkTabAsUpdated(7);
-          // 設定タブ
-          forceMarkTabAsUpdated(1);
-          // 世界マップタブ
-          forceMarkTabAsUpdated(0);
+          const updatedIndexes = new Set<number>();
+          result.elements?.forEach((element) => {
+            if (element.elementType) {
+              const pseudoIndex = element.elementType.charCodeAt(0) % 10;
+              updatedIndexes.add(pseudoIndex);
+            }
+          });
+          updatedIndexes.forEach((index) => forceMarkTabAsUpdated(index));
+          if (updatedIndexes.size === 0) {
+            forceMarkTabAsUpdated(0);
+            forceMarkTabAsUpdated(1);
+            forceMarkTabAsUpdated(2);
+            forceMarkTabAsUpdated(3);
+          }
 
-          // 再レンダリング
           setTriggerRerender((prev) => prev + 1);
-
-          // 確認トースト
-          toast.success("世界観要素を追加しました！");
+          toast.success("AIによる世界観要素の追加が完了しました！");
         }, 100);
+      } else {
+        setIsGenerating(false);
+        toast.info("AIによって追加される新しい世界観要素はありませんでした。");
+        console.log(
+          "[DEBUG] AIアシスト onWorldBuildingBatchSuccess - No elements to process or save."
+        );
       }
     },
 
@@ -347,20 +397,23 @@ export const useWorldBuildingAI = () => {
       setNotificationMessage(`エラーが発生しました: ${error.message}`);
       setNotificationOpen(true);
       toast.error(`世界観生成中にエラーが発生しました: ${error.message}`);
+      console.error("[Error] AIアシスト onError:", error);
     },
   });
 
-  // 進捗状況を更新する関数を追加
-  useCallback((progress: number, current: string, total: number) => {
-    setAiGenerationProgress(progress);
-    setCurrentElement(current);
-    setTotalElements(total);
-  }, []);
+  // 進捗状況を更新するコールバック (useAIAssist に渡す想定)
+  const handleProgressUpdate = useCallback(
+    (progress: number, current: string, total: number) => {
+      setAiGenerationProgress(progress);
+      setCurrentElement(current);
+      setTotalElements(total);
+    },
+    []
+  );
 
   return {
     aiModalOpen,
     setAIModalOpen,
-    handleProcessWorldBuildingElement,
     aiGenerationProgress,
     isGenerating,
     generateWorldBuildingBatch,
@@ -370,7 +423,8 @@ export const useWorldBuildingAI = () => {
     currentElement,
     totalElements,
     triggerRerender,
-    forceUpdateCounter,
-    forceMarkTabAsUpdated,
+    handleProgressUpdate,
+    initiateWorldBuildingAIGeneration,
+    cancelAIGeneration,
   };
 };

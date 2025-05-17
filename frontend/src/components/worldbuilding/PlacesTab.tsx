@@ -22,9 +22,10 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useProjectStore } from "../../stores/projectStore";
+import { useRecoilState } from "recoil";
+import { currentProjectState } from "../../store/atoms";
 import { v4 as uuidv4 } from "uuid";
-import { PlaceElement } from "../../types";
+import { PlaceElement, NovelProject } from "../../types";
 
 // 場所タイプの定義
 const PLACE_TYPES = [
@@ -46,8 +47,9 @@ const PLACE_TYPES = [
 ];
 
 const PlacesTab: React.FC = () => {
-  // projectStoreからデータを取得
-  const { currentProject, updateProject } = useProjectStore();
+  // Recoilからデータを取得
+  const [currentProject, setCurrentProject] =
+    useRecoilState(currentProjectState);
 
   // 場所データを取得
   const places = currentProject?.worldBuilding?.places || [];
@@ -87,14 +89,19 @@ const PlacesTab: React.FC = () => {
   const handleDelete = (id: string) => {
     if (!currentProject) return;
 
-    const updatedPlaces = places.filter((place) => place.id !== id);
+    const updatedPlaces = places.filter(
+      (place: PlaceElement) => place.id !== id
+    );
 
-    updateProject({
-      ...currentProject,
-      worldBuilding: {
-        ...currentProject.worldBuilding,
-        places: updatedPlaces,
-      },
+    setCurrentProject((prevProject: NovelProject | null) => {
+      if (!prevProject) return null;
+      return {
+        ...prevProject,
+        worldBuilding: {
+          ...prevProject.worldBuilding,
+          places: updatedPlaces,
+        },
+      } as NovelProject;
     });
   };
 
@@ -108,31 +115,35 @@ const PlacesTab: React.FC = () => {
   const handleSavePlace = () => {
     if (!currentPlace || !currentProject) return;
 
-    // 場所を保存（編集または新規追加）
     if (isEditing) {
-      const updatedPlaces = places.map((place) =>
+      const updatedPlaces = places.map((place: PlaceElement) =>
         place.id === currentPlace.id ? currentPlace : place
       );
-
-      updateProject({
-        ...currentProject,
-        worldBuilding: {
-          ...currentProject.worldBuilding,
-          places: updatedPlaces,
-        },
+      setCurrentProject((prevProject: NovelProject | null) => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          worldBuilding: {
+            ...prevProject.worldBuilding,
+            places: updatedPlaces,
+          },
+        } as NovelProject;
       });
     } else {
-      // 新しい場所を追加
-      updateProject({
-        ...currentProject,
-        worldBuilding: {
-          ...currentProject.worldBuilding,
-          places: [...places, currentPlace],
-        },
+      setCurrentProject((prevProject: NovelProject | null) => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          worldBuilding: {
+            ...prevProject.worldBuilding,
+            places: [
+              ...(prevProject.worldBuilding?.places || []),
+              currentPlace,
+            ],
+          },
+        } as NovelProject;
       });
     }
-
-    // ダイアログを閉じる
     handleCloseDialog();
   };
 
@@ -141,7 +152,6 @@ const PlacesTab: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     if (!currentPlace) return;
-
     setCurrentPlace({
       ...currentPlace,
       [e.target.name]: e.target.value,
@@ -151,7 +161,6 @@ const PlacesTab: React.FC = () => {
   // セレクトフィールドの変更を処理
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
     if (!currentPlace) return;
-
     setCurrentPlace({
       ...currentPlace,
       [e.target.name]: e.target.value,
@@ -184,7 +193,7 @@ const PlacesTab: React.FC = () => {
         </Paper>
       ) : (
         <List sx={{ width: "100%" }}>
-          {places.map((place, index) => (
+          {places.map((place: PlaceElement, index: number) => (
             <Paper
               key={place.id || index}
               elevation={1}
@@ -197,51 +206,101 @@ const PlacesTab: React.FC = () => {
               }}
             >
               <ListItem
-                secondaryAction={
-                  <Box>
-                    <IconButton
-                      edge="end"
-                      aria-label="edit"
-                      onClick={() => handleEdit(place)}
-                      sx={{ mr: 1 }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      aria-label="delete"
-                      onClick={() => handleDelete(place.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                }
                 disablePadding
-                sx={{ pt: 1 }}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
               >
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" fontWeight="medium">
-                      {place.name || "名称未設定の場所"}
+                <Box sx={{ flexGrow: 1, pr: 2 }}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="medium"
+                    component="div"
+                    sx={{ mb: 1 }}
+                  >
+                    {place.name || "名称未設定の場所"}
+                  </Typography>
+
+                  <Typography
+                    component="div"
+                    variant="body2"
+                    sx={{ color: "text.secondary", mb: 0.5 }}
+                  >
+                    <strong>種類:</strong> {place.type || "未指定"}
+                  </Typography>
+
+                  <Typography
+                    component="div"
+                    variant="body2"
+                    sx={{ whiteSpace: "pre-wrap", mb: 0.5 }}
+                  >
+                    {place.description || "説明がありません"}
+                  </Typography>
+
+                  <Typography component="div" variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>重要度:</strong> {place.importance || "未指定"}
+                  </Typography>
+
+                  <Typography component="div" variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>関連:</strong> {place.relations || "未指定"}
+                  </Typography>
+
+                  {place.location && (
+                    <Typography
+                      component="div"
+                      variant="body2"
+                      sx={{ mb: 0.5 }}
+                    >
+                      <strong>位置:</strong> {place.location}
                     </Typography>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 1, color: "text.secondary" }}
-                      >
-                        <strong>種類:</strong> {place.type || "未指定"}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 1, whiteSpace: "pre-wrap" }}
-                      >
-                        {place.description || "説明がありません"}
-                      </Typography>
-                    </Box>
-                  }
-                />
+                  )}
+
+                  {place.population && (
+                    <Typography
+                      component="div"
+                      variant="body2"
+                      sx={{ mb: 0.5 }}
+                    >
+                      <strong>人口:</strong> {place.population}
+                    </Typography>
+                  )}
+
+                  {place.culturalFeatures && (
+                    <Typography
+                      component="div"
+                      variant="body2"
+                      sx={{ mb: 0.5 }}
+                    >
+                      <strong>文化的特徴:</strong> {place.culturalFeatures}
+                    </Typography>
+                  )}
+
+                  {place.features && (
+                    <Typography component="div" variant="body2">
+                      <strong>地理的特徴:</strong> {place.features}
+                    </Typography>
+                  )}
+                </Box>
+
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <IconButton
+                    edge="end"
+                    aria-label="edit"
+                    onClick={() => handleEdit(place)}
+                    sx={{ mr: 1 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => handleDelete(place.id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
               </ListItem>
             </Paper>
           ))}

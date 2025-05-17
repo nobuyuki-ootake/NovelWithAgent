@@ -348,7 +348,7 @@ export const aiAgentApi = {
     try {
       // 要素タイプの正規化（小文字に変換）
       const normalizedElementType =
-        elementType?.toLowerCase() || WorldBuildingElementType.FREE_TEXT;
+        elementType?.toLowerCase() || WorldBuildingElementType.FREE_FIELD;
 
       // APIリクエストを送信（プロンプト生成はバックエンド側で行われる）
       const response = await axios.post<WorldBuildingApiResponse>(

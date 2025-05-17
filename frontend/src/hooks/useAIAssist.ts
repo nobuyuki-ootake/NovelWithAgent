@@ -493,6 +493,245 @@ ${message}`;
   };
 
   /**
+   * エラー処理を統一したヘルパー関数
+   */
+  const handleGenerationError = (err: unknown, processName: string) => {
+    const error = err instanceof Error ? err : new Error(String(err));
+    setError(error);
+    toast.error(`${processName}に失敗しました: ${error.message}`);
+    options.onError?.(error);
+  };
+
+  /**
+   * 世界観要素リストを抽出するヘルパー関数
+   */
+  const extractWorldBuildingElementList = async (
+    message: string,
+    plotElements: PlotElement[],
+    characterElements: Character[]
+  ): Promise<{ name: string; type: string }[]> => {
+    // 一時的なもの
+    const enhancedListMessage = `
+世界観に登場する重要な場所とその特徴のリストを作成してください。
+以下のJSONフォーマットで出力してください:
+[
+  {"name": "場所の名前1", "type": "place"},
+  {"name": "場所の名前2", "type": "place"},
+]
+
+重要な注意:
+- 特殊なマーカー記号は使用しないでください
+- 名前はシンプルに記述してください
+- 純粋なテキストのみを使用してください
+
+2つの主要な場所を定義してください
+${message}`;
+
+    const listResult = await aiAgentApi.generateWorldBuildingList(
+      enhancedListMessage,
+      plotElements,
+      characterElements,
+      "gemini-1.5-pro",
+      "json",
+      "places"
+    );
+
+    // リスト抽出処理
+    let elementList: { name: string; type: string }[] = [];
+
+    // APIから直接JSON配列を取得できる場合
+    if (listResult?.data && Array.isArray(listResult.data)) {
+      elementList = listResult.data;
+      toast.success(
+        `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
+      );
+      return elementList;
+    }
+
+    // レスポンス文字列からJSON抽出を試みる
+    const response = listResult.response || "";
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+
+    if (!jsonMatch) {
+      throw new Error("JSON形式の世界観要素リストが見つかりませんでした");
+    }
+
+    elementList = JSON.parse(jsonMatch[0]);
+    toast.success(
+      `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
+    );
+
+    if (elementList.length === 0) {
+      throw new Error("生成する世界観要素がありません");
+    }
+
+    return elementList;
+  };
+  //     const enhancedListMessage = `
+  // 世界観に登場する重要な場所とその特徴のリストを作成してください。
+  // 以下のJSONフォーマットで出力してください:
+  // [
+  //   {"name": "場所の名前1", "type": "place"},
+  //   {"name": "場所の名前2", "type": "place"},
+  //   {"name": "文化名1", "type": "culture"},
+  //   {"name": "ルール名1", "type": "rule"}
+  // ]
+
+  // 重要な注意:
+  // - 特殊なマーカー記号は使用しないでください
+  // - 名前はシンプルに記述してください
+  // - 純粋なテキストのみを使用してください
+
+  // 少なくとも3つの主要な場所を含めてください。
+  // ${message}`;
+
+  //     const listResult = await aiAgentApi.generateWorldBuildingList(
+  //       enhancedListMessage,
+  //       plotElements,
+  //       characterElements,
+  //       "gemini-1.5-pro",
+  //       "json",
+  //       "places"
+  //     );
+
+  //     // リスト抽出処理
+  //     let elementList: { name: string; type: string }[] = [];
+
+  //     // APIから直接JSON配列を取得できる場合
+  //     if (listResult?.data && Array.isArray(listResult.data)) {
+  //       elementList = listResult.data;
+  //       toast.success(
+  //         `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
+  //       );
+  //       return elementList;
+  //     }
+
+  //     // レスポンス文字列からJSON抽出を試みる
+  //     const response = listResult.response || "";
+  //     const jsonMatch = response.match(/\[[\s\S]*\]/);
+
+  //     if (!jsonMatch) {
+  //       throw new Error("JSON形式の世界観要素リストが見つかりませんでした");
+  //     }
+
+  //     elementList = JSON.parse(jsonMatch[0]);
+  //     toast.success(
+  //       `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
+  //     );
+
+  //     if (elementList.length === 0) {
+  //       throw new Error("生成する世界観要素がありません");
+  //     }
+
+  //     return elementList;
+  //   };
+
+  /**
+   * 要素レスポンスオブジェクトを作成するヘルパー関数
+   */
+  const createElementResponse = (
+    detailResult: WorldBuildingApiResponse,
+    elementInfo: { name: string; type: string }
+  ): WorldBuildingElementResponse => {
+    // データが直接利用可能な場合
+    if (detailResult?.data) {
+      const elementData: WorldBuildingElementData = {
+        name: elementInfo.name,
+        type: elementInfo.type,
+        rawData: detailResult.data as WorldBuildingElement,
+      };
+
+      return {
+        type: elementInfo.type,
+        name: elementInfo.name,
+        response: detailResult.response || "",
+        agentUsed: detailResult.agentUsed,
+        steps: detailResult.steps,
+        elementName: elementInfo.name,
+        elementType: elementInfo.type,
+        elementData: elementData,
+      } as WorldBuildingElementResponse;
+    }
+
+    // データが直接利用できない場合
+    return {
+      type: elementInfo.type,
+      name: elementInfo.name,
+      response: detailResult.response || "",
+      agentUsed: detailResult.agentUsed,
+      steps: detailResult.steps,
+      elementName: elementInfo.name,
+      elementType: elementInfo.type,
+    } as WorldBuildingElementResponse;
+  };
+
+  /**
+   * 要素詳細の生成を行うヘルパー関数
+   */
+  const generateElementDetails = async (
+    elementList: { name: string; type: string }[],
+    total: number,
+    plotElements: PlotElement[],
+    characterElements: Character[]
+  ): Promise<WorldBuildingElementResponse[]> => {
+    const generatedElements: WorldBuildingElementResponse[] = [];
+
+    for (let i = 0; i < elementList.length; i++) {
+      const elementInfo = elementList[i];
+      const progress = 0.1 + (0.9 * i) / total;
+
+      // 進捗状況の更新
+      updateProgress(
+        progress,
+        { name: elementInfo.name, role: elementInfo.type },
+        total
+      );
+
+      toast.info(
+        `世界観要素生成中 (${i + 1}/${total}): 「${elementInfo.name}」(${
+          elementInfo.type
+        })`
+      );
+
+      // 要素詳細のリクエスト用メッセージ
+      const detailMessage = `
+以下の厳密なフォーマットに従って、「${elementInfo.name}」という${elementInfo.type}の詳細情報を作成してください。
+
+重要な注意:
+- 特殊なマーカー記号は使用しないでください
+- 純粋なテキストのみを使用してください
+- 装飾や強調のための記号は使わないでください
+`;
+
+      // 要素詳細を取得
+      const detailResult = await aiAgentApi.generateWorldBuildingDetail(
+        elementInfo.name,
+        elementInfo.type,
+        detailMessage,
+        plotElements,
+        characterElements,
+        "json"
+      );
+
+      // 生成された要素の処理
+      const elementResponse = createElementResponse(detailResult, elementInfo);
+      generatedElements.push(elementResponse);
+      console.log("生成された要素:", elementResponse);
+      console.log("要素追加後の一時保存配列:", generatedElements);
+
+      // 要素生成完了通知
+      toast.success(
+        `「${elementInfo.name}」を生成しました (${i + 1}/${total})`
+      );
+
+      // コールバック実行
+      options.onWorldBuildingElementGenerated?.(elementResponse);
+    }
+
+    return generatedElements;
+  };
+
+  /**
    * 世界観構築要素のバッチ生成
    */
   const generateWorldBuildingBatch = async (
@@ -505,93 +744,18 @@ ${message}`;
       setError(null);
       updateProgress(0);
 
-      // 処理開始を通知
       toast.info("世界観要素リストの生成を開始しています...");
 
-      // ステップ1: 世界観要素リストの生成
-      const enhancedListMessage = `
-物語の世界観に登場する重要な場所とその特徴のリストを作成してください。
-以下のJSONフォーマットで出力してください:
-[
-  {"name": "場所の名前1", "type": "place"},
-  {"name": "場所の名前2", "type": "place"},
-  {"name": "文化名1", "type": "culture"},
-  {"name": "ルール名1", "type": "rule"}
-]
-
-重要な注意:
-- 特殊なマーカー記号（**、##、-- など）は名前や説明に付けないでください
-- 名前はシンプルで直接的に記述してください（例: "紅蓮の砂漠"、"** 紅蓮の砂漠" ではなく）
-- 純粋なテキストのみを使用してください
-
-少なくとも3つの主要な場所を含めてください。
-${message}`;
-
-      const listResult = await aiAgentApi.generateWorldBuildingList(
-        enhancedListMessage,
+      // ステップ1: 世界観要素リストの取得
+      const elementList = await extractWorldBuildingElementList(
+        message,
         plotElements,
-        characterElements,
-        "gemini-1.5-pro",
-        "json", // 明示的にJSON形式を指定
-        "places" // 明示的に場所として指定
+        characterElements
       );
 
-      // レスポンスから世界観要素一覧を抽出
-      let elementList: { name: string; type: string }[] = [];
-      try {
-        // まずレスポンスのデータプロパティを直接使用（最も信頼性が高い方法）
-        if (listResult && listResult.data && Array.isArray(listResult.data)) {
-          elementList = listResult.data;
-          console.log("[DEBUG] APIから直接JSON配列を取得:", elementList);
-          toast.success(
-            `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
-          );
-        }
-        // 直接データがない場合はレスポンス文字列から抽出を試みる
-        else {
-          console.log("[DEBUG] 応答からJSON抽出を試みます:", listResult);
-          const response = listResult.response || "";
-
-          // より堅牢な正規表現で配列部分を検出
-          const jsonMatch = response.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const jsonStr = jsonMatch[0];
-            console.log("[DEBUG] 検出されたJSON文字列:", jsonStr);
-
-            // 抽出したJSON文字列をパース
-            elementList = JSON.parse(jsonStr);
-            console.log("[DEBUG] パース成功:", elementList);
-            toast.success(
-              `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
-            );
-          } else {
-            console.error(
-              "[DEBUG] JSON配列パターンが見つかりません:",
-              response
-            );
-            throw new Error("JSON形式の世界観要素リストが見つかりませんでした");
-          }
-        }
-      } catch (e) {
-        console.error(
-          "世界観要素リストのパースに失敗:",
-          e,
-          "元データ:",
-          listResult
-        );
-        toast.error("世界観要素リストの解析に失敗しました");
-        throw e;
-      }
-
-      // 生成する要素がない場合
-      if (elementList.length === 0) {
-        toast.error("生成する世界観要素がありません");
-        throw new Error("生成する世界観要素がありません");
-      }
-
-      // 総要素数を設定
+      // 総要素数の設定と初期進捗更新
       const total = elementList.length;
-      setTotalCharacters(total); // 既存の状態を流用
+      setTotalCharacters(total);
       updateProgress(
         0.1,
         { name: elementList[0].name, role: elementList[0].type },
@@ -599,165 +763,12 @@ ${message}`;
       );
 
       // ステップ2: 各要素の詳細を生成
-      const generatedElements: WorldBuildingElementResponse[] = [];
-      let currentIndex = 0;
-
-      for (const elementInfo of elementList) {
-        // 進捗状況の更新
-        const progress = 0.1 + (0.9 * currentIndex) / total;
-        updateProgress(
-          progress,
-          { name: elementInfo.name, role: elementInfo.type },
-          total
-        );
-
-        // 現在の要素生成状況を通知
-        toast.info(
-          `世界観要素生成中 (${currentIndex + 1}/${total}): 「${
-            elementInfo.name
-          }」(${elementInfo.type})`
-        );
-
-        // 要素詳細のリクエスト用メッセージを構築
-        const detailMessage = `
-以下の厳密なフォーマットに従って、「${elementInfo.name}」という${elementInfo.type}の詳細情報を作成してください。
-
-重要な注意:
-- 特殊なマーカー記号（**、##、-- など）は名前や説明に付けないでください
-- 純粋なテキストのみを使用してください
-- 装飾や強調のための記号は使わないでください
-`;
-
-        // 要素詳細を取得
-        const detailResult = await aiAgentApi.generateWorldBuildingDetail(
-          elementInfo.name,
-          elementInfo.type,
-          detailMessage,
-          plotElements,
-          characterElements,
-          "json" // フォーマットをJSON形式に明示的に指定
-        );
-
-        // 結果を保存
-        if (detailResult && detailResult.data) {
-          console.log(
-            `[DEBUG] ${elementInfo.name}の詳細データ:`,
-            detailResult.data
-          );
-
-          // データが直接利用可能な場合
-          const elementData: WorldBuildingElementData = {
-            name: elementInfo.name,
-            type: elementInfo.type,
-            // その他の情報も保持
-            rawData: detailResult.data as WorldBuildingElement,
-          };
-
-          console.log("[DEBUG] 生成された要素:", detailResult);
-
-          // パース結果を追加
-          generatedElements.push({
-            type: elementInfo.type,
-            name: elementInfo.name,
-            response: detailResult.response || "",
-            agentUsed: detailResult.agentUsed,
-            steps: detailResult.steps,
-            elementName: elementInfo.name,
-            elementType: elementInfo.type,
-            // 構造化データも保存
-            elementData: elementData,
-          } as WorldBuildingElementResponse);
-
-          console.log("[DEBUG] パース結果:", generatedElements);
-
-          // 要素が生成されたことを通知
-          toast.success(
-            `「${elementInfo.name}」を生成しました (${
-              currentIndex + 1
-            }/${total})`
-          );
-
-          console.log(
-            `「${elementInfo.name}」を生成しました (${
-              currentIndex + 1
-            }/${total})`
-          );
-
-          // 個別要素が生成されたことを通知（コールバック）
-          if (options.onWorldBuildingElementGenerated) {
-            console.log("[DEBUG] コールバックの開始");
-
-            // コールバックに構造化データを含めて送信
-            const enhancedResult: WorldBuildingElementResponse = {
-              type: elementInfo.type,
-              name: elementInfo.name,
-              response: detailResult.response || "",
-              agentUsed: detailResult.agentUsed,
-              steps: detailResult.steps,
-              elementName: elementInfo.name,
-              elementType: elementInfo.type,
-              elementData: elementData,
-            };
-
-            console.log(
-              "[DEBUG] コールバックするオブジェクト:",
-              enhancedResult
-            );
-            options.onWorldBuildingElementGenerated(enhancedResult);
-          }
-        } else if (detailResult && detailResult.response) {
-          // データが直接利用できない場合はレスポンスを使用
-          console.log(
-            `[DEBUG] ${elementInfo.name}のレスポンスデータを使用:`,
-            detailResult.response
-          );
-
-          // パース結果を追加
-          generatedElements.push({
-            type: elementInfo.type,
-            name: elementInfo.name,
-            response: detailResult.response || "",
-            agentUsed: detailResult.agentUsed,
-            steps: detailResult.steps,
-            elementName: elementInfo.name,
-            elementType: elementInfo.type,
-          } as WorldBuildingElementResponse);
-
-          // 要素が生成されたことを通知
-          toast.success(
-            `「${elementInfo.name}」を生成しました (${
-              currentIndex + 1
-            }/${total})`
-          );
-          console.log(
-            `「${elementInfo.name}」を生成しました (${
-              currentIndex + 1
-            }/${total})`
-          );
-
-          // 個別要素が生成されたことを通知（コールバック）
-          if (options.onWorldBuildingElementGenerated) {
-            console.log("[DEBUG] コールバックの開始");
-            const elementResponse: WorldBuildingElementResponse = {
-              type: elementInfo.type,
-              name: elementInfo.name,
-              response: detailResult.response || "",
-              agentUsed: detailResult.agentUsed,
-              steps: detailResult.steps,
-              elementName: elementInfo.name,
-              elementType: elementInfo.type,
-            };
-
-            console.log(
-              "[DEBUG] コールバックするオブジェクト:",
-              elementResponse
-            );
-            options.onWorldBuildingElementGenerated(elementResponse);
-          }
-        }
-
-        currentIndex++;
-      }
+      const generatedElements = await generateElementDetails(
+        elementList,
+        total,
+        plotElements,
+        characterElements
+      );
 
       // 結果を返す
       const finalResult: WorldBuildingBatchResponse = {
@@ -767,20 +778,10 @@ ${message}`;
       };
 
       // バッチ成功コールバックがあれば呼び出し
-      if (options.onWorldBuildingBatchSuccess) {
-        options.onWorldBuildingBatchSuccess(finalResult);
-      }
-
+      options.onWorldBuildingBatchSuccess?.(finalResult);
       return finalResult;
     } catch (err: unknown) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      toast.error(
-        "世界観要素生成に失敗しました: " +
-          (err instanceof Error ? err.message : "不明なエラー")
-      );
-      if (options.onError) {
-        options.onError(err instanceof Error ? err : new Error(String(err)));
-      }
+      handleGenerationError(err, "世界観要素生成");
       throw err;
     } finally {
       updateLoading(false);

@@ -80,19 +80,21 @@ export interface BatchProcessResult {
 export interface WorldBuilding {
   id: string;
   setting: string;
+  worldmaps: WorldmapElement[];
+  settings: SettingElement[];
   rules: RuleElement[];
   places: PlaceElement[];
   cultures: CultureElement[];
   geographyEnvironment: GeographyEnvironmentElement[];
   historyLegend: HistoryLegendElement[];
   magicTechnology: MagicTechnologyElement[];
-  freeText: FreeTextElement[];
   stateDefinition: StateDefinitionElement[];
-  custom: CustomElement[];
-  freeFields?: WorldBuildingFreeField[];
+  freeFields: FreeFieldElement[];
   timelineSettings?: {
     startDate: string;
   };
+  worldMapImageUrl?: string;
+  description?: string;
 }
 
 // ルール、文化、場所の型定義は worldBuilding 内の型を使用
@@ -260,45 +262,31 @@ export interface SettingElement extends BaseWorldBuildingElement {
  * ルール要素の型定義
  */
 export interface RuleElement extends BaseWorldBuildingElement {
-  name: string;
   description: string;
-  features: string;
-  importance: string;
   impact: string;
   exceptions: string;
   origin: string;
-  relations: string;
 }
 
 /**
  * 場所要素の型定義
  */
 export interface PlaceElement extends BaseWorldBuildingElement {
-  name: string;
-  description: string;
-  features: string;
-  importance: string;
   location: string;
   population: string;
   culturalFeatures: string;
-  relations: string;
 }
 
 /**
  * 文化要素の型定義
  */
 export interface CultureElement extends BaseWorldBuildingElement {
-  name: string;
-  description: string;
-  features: string;
-  importance: string;
   customText: string;
   beliefs: string;
   history: string;
   socialStructure: string;
   values: string[];
   customsArray: string[];
-  relations: string;
 }
 
 /**
@@ -339,7 +327,7 @@ export interface MagicTechnologyElement extends BaseWorldBuildingElement {
 /**
  * 自由記述要素の型定義
  */
-export interface FreeTextElement extends BaseWorldBuildingElement {
+export interface FreeFieldElement extends BaseWorldBuildingElement {
   name: string;
   description: string;
   features: string;
@@ -359,25 +347,6 @@ export interface StateDefinitionElement extends BaseWorldBuildingElement {
 }
 
 /**
- * 追加要素の型定義
- */
-export interface CustomElement extends BaseWorldBuildingElement {
-  occasion: string;
-  participants: string;
-  significance: string;
-}
-
-/**
- * 世界観の自由入力フィールド
- */
-export interface WorldBuildingFreeField {
-  id: string;
-  title: string;
-  content: string;
-  type: string;
-}
-
-/**
  * 世界観要素の型（すべての要素型の統合）
  */
 export type WorldBuildingElement =
@@ -389,10 +358,8 @@ export type WorldBuildingElement =
   | GeographyEnvironmentElement
   | HistoryLegendElement
   | MagicTechnologyElement
-  | FreeTextElement
-  | StateDefinitionElement
-  | CustomElement
-  | WorldBuildingFreeField;
+  | FreeFieldElement
+  | StateDefinitionElement;
 
 /**
  * 世界観要素の種類
@@ -406,8 +373,8 @@ export enum WorldBuildingElementType {
   GEOGRAPHY_ENVIRONMENT = "geography_environment",
   HISTORY_LEGEND = "history_legend",
   MAGIC_TECHNOLOGY = "magic_technology",
-  FREE_TEXT = "free_text",
   STATE_DEFINITION = "state_definition",
+  FREE_FIELD = "free_field",
 }
 
 // 日本語の表示名
@@ -420,7 +387,7 @@ export const ElementTypeDisplayNames: Record<string, string> = {
   [WorldBuildingElementType.GEOGRAPHY_ENVIRONMENT]: "地理と環境",
   [WorldBuildingElementType.HISTORY_LEGEND]: "歴史と伝説",
   [WorldBuildingElementType.MAGIC_TECHNOLOGY]: "魔法と技術",
-  [WorldBuildingElementType.FREE_TEXT]: "自由記述欄",
+  [WorldBuildingElementType.FREE_FIELD]: "自由記述欄",
   [WorldBuildingElementType.STATE_DEFINITION]: "状態定義",
 };
 
@@ -496,7 +463,7 @@ export const worldBuildingTabs: WorldBuildingCategory[] = [
     description: "魔法システム、科学技術、発明品などを定義します。",
   },
   {
-    id: "free_text",
+    id: "free_field",
     label: "自由記述欄",
     index: 8,
     iconName: "edit_note",
@@ -677,11 +644,11 @@ export function createTypedWorldBuildingElement(
         impact: data.impact || "",
       } as MagicTechnologyElement;
 
-    case "free_text":
+    case "free_field":
       return {
         ...baseElement,
         customText: data.customText || "",
-      } as FreeTextElement;
+      } as FreeFieldElement;
 
     case "state_definition":
       return {
@@ -695,9 +662,7 @@ export function createTypedWorldBuildingElement(
       // デフォルトは汎用的な要素として扱う
       return {
         ...baseElement,
-        occasion: data.occasion || "",
-        participants: data.participants || "",
-        significance: data.significance || "",
-      } as CustomElement;
+        customText: data.customText || "",
+      } as FreeFieldElement;
   }
 }
