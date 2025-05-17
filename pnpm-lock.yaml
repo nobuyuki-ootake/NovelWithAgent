@@ -14,9 +14,18 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      turbo:
+        specifier: ^1.0.0
+        version: 1.13.4
 
-  frontend:
+  apps/frontend:
     dependencies:
+      '@dnd-kit/core':
+        specifier: ^6.1.0
+        version: 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@dnd-kit/sortable':
+        specifier: ^8.0.0
+        version: 8.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.1.2)(react@18.3.1)
@@ -38,6 +47,9 @@ importers:
       '@mui/x-charts':
         specifier: ^8.0.0
         version: 8.1.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@18.3.1))(@emotion/styled@11.14.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@18.3.1))(@types/react@19.1.2)(react@18.3.1))(@mui/material@7.0.2(@emotion/react@11.14.0(@types/react@19.1.2)(react@18.3.1))(@emotion/styled@11.14.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@18.3.1))(@types/react@19.1.2)(react@18.3.1))(@types/react@19.1.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@mui/system@7.0.2(@emotion/react@11.14.0(@types/react@19.1.2)(react@18.3.1))(@emotion/styled@11.14.0(@emotion/react@11.14.0(@types/react@19.1.2)(react@18.3.1))(@types/react@19.1.2)(react@18.3.1))(@types/react@19.1.2)(react@18.3.1))(@types/react@19.1.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@novel-ai-assistant/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@types/react-beautiful-dnd':
         specifier: ^13.1.8
         version: 13.1.8
@@ -178,7 +190,7 @@ importers:
         specifier: ^3.1.2
         version: 3.1.2(@types/node@22.15.3)(@vitest/browser@3.1.2)(jsdom@26.1.0)(terser@5.39.0)(yaml@2.7.1)
 
-  proxy-server:
+  apps/proxy-server:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.11.0
@@ -186,6 +198,12 @@ importers:
       '@google/generative-ai':
         specifier: ^0.3.0
         version: 0.3.1
+      '@novel-ai-assistant/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -204,6 +222,9 @@ importers:
       ioredis:
         specifier: ^5.3.2
         version: 5.6.1
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
       langchain:
         specifier: ^0.0.75
         version: 0.0.75(axios@1.9.0)(playwright@1.52.0)(typeorm@0.3.22(ioredis@5.6.1)(pg@8.15.6)(reflect-metadata@0.2.2)(ts-node@10.9.2(@swc/core@1.11.21)(@types/node@20.17.32)(typescript@5.7.3)))
@@ -243,6 +264,15 @@ importers:
         version: 10.9.2(@swc/core@1.11.21)(@types/node@20.17.32)(typescript@5.7.3)
       typescript:
         specifier: ^5.3.2
+        version: 5.7.3
+
+  packages/types:
+    devDependencies:
+      eslint:
+        specifier: ^9.22.0
+        version: 9.25.1
+      typescript:
+        specifier: ~5.7.2
         version: 5.7.3
 
 packages:
@@ -681,6 +711,28 @@ packages:
 
   '@dabh/diagnostics@2.0.3':
     resolution: {integrity: sha512-hrlQOIi7hAfzsMqlGSFyVucrx38O+j6wiGOf//H2ecvIEqYN4ADBSS2iLMh5UFyDunCNniUIPk/q3riFv45xRA==}
+
+  '@dnd-kit/accessibility@3.1.1':
+    resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
+    peerDependencies:
+      react: '>=16.8.0'
+
+  '@dnd-kit/core@6.3.1':
+    resolution: {integrity: sha512-xkGBRQQab4RLwgXxoqETICr6S5JlogafbhNsidmrkVv2YRs5MLwpjoF2qpiGjQt8S9AoxtIV603s0GIUpY5eYQ==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
+  '@dnd-kit/sortable@8.0.0':
+    resolution: {integrity: sha512-U3jk5ebVXe1Lr7c2wU7SBZjcWdQP+j7peHJfCspnA81enlu88Mgd7CC8Q+pub9ubP7eKVETzJW+IBAhsqbSu/g==}
+    peerDependencies:
+      '@dnd-kit/core': ^6.1.0
+      react: '>=16.8.0'
+
+  '@dnd-kit/utilities@3.2.2':
+    resolution: {integrity: sha512-+MKAJEOfaBe5SmV6t34p80MMKhjvUz0vRrvVJbPT0WElzaOJ/1xs+D+KDv+tD/NE5ujfrChEcshd4fLn0wpiqg==}
+    peerDependencies:
+      react: '>=16.8.0'
 
   '@dqbd/tiktoken@1.0.21':
     resolution: {integrity: sha512-grBxRSY9+/iBM205EWjbMm5ySeXQrhJyXWMP38VJd+pO2DRGraDAbi4n8J8T9M4XY1M/FHgonMcmu3J+KjcX0Q==}
@@ -2586,6 +2638,9 @@ packages:
 
   '@types/jest@29.5.14':
     resolution: {integrity: sha512-ZN+4sdnLUbo8EVvVc2ao0GFW6oVrQRPn4K2lglySj7APvSrgzxHiNNK99us4WDMi57xxA2yggblIAMNhXOotLQ==}
+
+  '@types/js-yaml@4.0.9':
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -4713,7 +4768,6 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lines-and-columns@1.2.4:
@@ -6136,8 +6190,42 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  turbo-darwin-64@1.13.4:
+    resolution: {integrity: sha512-A0eKd73R7CGnRinTiS7txkMElg+R5rKFp9HV7baDiEL4xTG1FIg/56Vm7A5RVgg8UNgG2qNnrfatJtb+dRmNdw==}
+    cpu: [x64]
+    os: [darwin]
+
+  turbo-darwin-arm64@1.13.4:
+    resolution: {integrity: sha512-eG769Q0NF6/Vyjsr3mKCnkG/eW6dKMBZk6dxWOdrHfrg6QgfkBUk0WUUujzdtVPiUIvsh4l46vQrNVd9EOtbyA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  turbo-linux-64@1.13.4:
+    resolution: {integrity: sha512-Bq0JphDeNw3XEi+Xb/e4xoKhs1DHN7OoLVUbTIQz+gazYjigVZvtwCvgrZI7eW9Xo1eOXM2zw2u1DGLLUfmGkQ==}
+    cpu: [x64]
+    os: [linux]
+
+  turbo-linux-arm64@1.13.4:
+    resolution: {integrity: sha512-BJcXw1DDiHO/okYbaNdcWN6szjXyHWx9d460v6fCHY65G8CyqGU3y2uUTPK89o8lq/b2C8NK0yZD+Vp0f9VoIg==}
+    cpu: [arm64]
+    os: [linux]
+
   turbo-stream@2.4.0:
     resolution: {integrity: sha512-FHncC10WpBd2eOmGwpmQsWLDoK4cqsA/UT/GqNoaKOQnT8uzhtCbg3EoUDMvqpOSAI0S26mr0rkjzbOO6S3v1g==}
+
+  turbo-windows-64@1.13.4:
+    resolution: {integrity: sha512-OFFhXHOFLN7A78vD/dlVuuSSVEB3s9ZBj18Tm1hk3aW1HTWTuAw0ReN6ZNlVObZUHvGy8d57OAGGxf2bT3etQw==}
+    cpu: [x64]
+    os: [win32]
+
+  turbo-windows-arm64@1.13.4:
+    resolution: {integrity: sha512-u5A+VOKHswJJmJ8o8rcilBfU5U3Y1TTAfP9wX8bFh8teYF1ghP0EhtMRLjhtp6RPa+XCxHHVA2CiC3gbh5eg5g==}
+    cpu: [arm64]
+    os: [win32]
+
+  turbo@1.13.4:
+    resolution: {integrity: sha512-1q7+9UJABuBAHrcC4Sxp5lOqYS5mvxRrwa33wpIyM18hlOCpRD/fTJNxZ0vhbMcJmz15o9kkVm743mPn7p6jpQ==}
+    hasBin: true
 
   tween-functions@1.2.0:
     resolution: {integrity: sha512-PZBtLYcCLtEcjL14Fzb1gSxPBeL7nWvGhO5ZFPGqziCcr8uvHp0NDmdjBchp6KHL+tExcg0m3NISmKxhU394dA==}
@@ -7391,6 +7479,31 @@ snapshots:
       colorspace: 1.1.4
       enabled: 2.0.0
       kuler: 2.0.0
+
+  '@dnd-kit/accessibility@3.1.1(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      tslib: 2.8.1
+
+  '@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@dnd-kit/accessibility': 3.1.1(react@18.3.1)
+      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      tslib: 2.8.1
+
+  '@dnd-kit/sortable@8.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@dnd-kit/core': 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
+      react: 18.3.1
+      tslib: 2.8.1
+
+  '@dnd-kit/utilities@3.2.2(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      tslib: 2.8.1
 
   '@dqbd/tiktoken@1.0.21': {}
 
@@ -9799,6 +9912,8 @@ snapshots:
     dependencies:
       expect: 29.7.0
       pretty-format: 29.7.0
+
+  '@types/js-yaml@4.0.9': {}
 
   '@types/json-schema@7.0.15': {}
 
@@ -13639,7 +13754,34 @@ snapshots:
 
   tslib@2.8.1: {}
 
+  turbo-darwin-64@1.13.4:
+    optional: true
+
+  turbo-darwin-arm64@1.13.4:
+    optional: true
+
+  turbo-linux-64@1.13.4:
+    optional: true
+
+  turbo-linux-arm64@1.13.4:
+    optional: true
+
   turbo-stream@2.4.0: {}
+
+  turbo-windows-64@1.13.4:
+    optional: true
+
+  turbo-windows-arm64@1.13.4:
+    optional: true
+
+  turbo@1.13.4:
+    optionalDependencies:
+      turbo-darwin-64: 1.13.4
+      turbo-darwin-arm64: 1.13.4
+      turbo-linux-64: 1.13.4
+      turbo-linux-arm64: 1.13.4
+      turbo-windows-64: 1.13.4
+      turbo-windows-arm64: 1.13.4
 
   tween-functions@1.2.0: {}
 
