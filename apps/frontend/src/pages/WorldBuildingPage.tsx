@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -29,6 +29,7 @@ import { currentProjectState } from "../store/atoms";
 import { useWorldBuildingContext } from "../contexts/WorldBuildingContext";
 import { useWorldBuildingAI } from "../hooks/useWorldBuildingAI";
 import { useElementAccumulator } from "../hooks/useElementAccumulator";
+import { ProgressSnackbar } from "../components/ui/ProgressSnackbar";
 
 const WorldBuildingPage: React.FC = () => {
   const currentProject = useRecoilValue(currentProjectState);
@@ -52,17 +53,43 @@ const WorldBuildingPage: React.FC = () => {
     notificationMessage,
     setNotificationOpen,
     freeFields,
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
   } = useWorldBuildingContext();
 
   const { generateWorldBuildingBatch } = useWorldBuildingAI();
 
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges || isAIProcessing) {
+        event.preventDefault();
+        event.returnValue = ""; // For Chrome
+        return ""; // For other browsers
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, isAIProcessing]);
+
   // AIに世界観要素を考えてもらう
   const handleAIAssist = async (message: string) => {
     console.log("AIアシスト要求:", message);
-    // AIアシストのバッチ生成を開始
-    generateWorldBuildingBatch(message);
-    // モーダルを閉じる
-    setAIModalOpen(false);
+    setIsAIProcessing(true); // AI処理開始
+    try {
+      await generateWorldBuildingBatch(message);
+      setHasUnsavedChanges(true); // Contextのセッターを使用
+    } catch (error) {
+      console.error("AIアシスト処理中にエラーが発生しました:", error);
+    } finally {
+      setIsAIProcessing(false);
+      setAIModalOpen(false);
+    }
   };
 
   const handleResetWorldBuilding = () => {
@@ -72,7 +99,7 @@ const WorldBuildingPage: React.FC = () => {
       )
     ) {
       resetWorldBuildingElements();
-      // 必要であればSnackbar等でユーザーに通知
+      setHasUnsavedChanges(true); // Contextのセッターを使用
       // 例: setSnackbarMessage("世界観設定がリセットされました。"); setSnackbarOpen(true);
     }
   };
@@ -111,6 +138,7 @@ const WorldBuildingPage: React.FC = () => {
               color="secondary"
               startIcon={<DeleteSweepIcon />}
               onClick={handleResetWorldBuilding}
+              disabled={isAIProcessing}
             >
               世界観をリセット
             </Button>
@@ -118,7 +146,10 @@ const WorldBuildingPage: React.FC = () => {
               variant="contained"
               color="primary"
               startIcon={<SmartToyIcon />}
-              onClick={() => setAIModalOpen(true)}
+              onClick={() => {
+                setAIModalOpen(true);
+              }}
+              disabled={isAIProcessing}
             >
               AIに世界観を考えてもらう
             </Button>
@@ -127,6 +158,7 @@ const WorldBuildingPage: React.FC = () => {
               color="success"
               startIcon={<SaveIcon />}
               onClick={handleSaveWorldBuilding}
+              disabled={isAIProcessing}
             >
               保存
             </Button>
@@ -404,6 +436,14 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
         autoHideDuration={6000}
         onClose={() => setNotificationOpen && setNotificationOpen(false)}
         message={notificationMessage || ""}
+      />
+
+      <ProgressSnackbar
+        open={isAIProcessing}
+        message="AIが思考中です..."
+        severity="info"
+        onClose={() => setIsAIProcessing(false)}
+        position="top-center"
       />
     </Box>
   );

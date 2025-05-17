@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRecoilState } from "recoil";
 import {
   WorldBuilding,
@@ -7,6 +7,7 @@ import {
 } from "@novel-ai-assistant/types";
 import { currentProjectState } from "../store/atoms";
 import { v4 as uuidv4 } from "uuid";
+import { useWorldBuildingContext } from "../contexts/WorldBuildingContext";
 
 // デフォルトのCultureElementを生成するヘルパー関数
 const createDefaultCultureElement = (): CultureElement => ({
@@ -30,17 +31,28 @@ const createDefaultCultureElement = (): CultureElement => ({
   art: undefined,
   technology: undefined,
   notes: undefined,
-  economy: undefined,
   traditions: undefined,
   education: undefined,
 });
 
 export const useWorldBuilding = () => {
   const [project, setProject] = useRecoilState(currentProjectState);
-  const [worldBuilding, setWorldBuilding] = useState<WorldBuilding>(() => {
+  const context = useWorldBuildingContext();
+  const setHasUnsavedChanges = context
+    ? context.setHasUnsavedChanges
+    : () => {};
+
+  const [tabValue, setTabValue] = useState(0);
+  const handleTabChange = useCallback(
+    (event: React.SyntheticEvent, newValue: number) => {
+      setTabValue(newValue);
+    },
+    []
+  );
+
+  const [worldBuilding, setWorldBuildingState] = useState<WorldBuilding>(() => {
     let initialWB = project?.worldBuilding;
     if (initialWB) {
-      // cultures 配列が空または存在しない場合、デフォルトを追加
       if (!initialWB.cultures || initialWB.cultures.length === 0) {
         initialWB = {
           ...initialWB,
@@ -49,7 +61,6 @@ export const useWorldBuilding = () => {
       }
       return initialWB;
     }
-    // projectまたはproject.worldBuildingが存在しない場合の完全な初期値
     return {
       id: uuidv4(),
       setting: "",
@@ -57,31 +68,27 @@ export const useWorldBuilding = () => {
       settings: [],
       rules: [],
       places: [],
-      cultures: [createDefaultCultureElement()], // culturesにデフォルト要素を設定
+      cultures: [createDefaultCultureElement()],
       geographyEnvironment: [],
       historyLegend: [],
       magicTechnology: [],
       stateDefinition: [],
       freeFields: [],
-      // societyCulture は削除されたので、ここでの参照も削除
     };
   });
 
   useEffect(() => {
     if (project && project.worldBuilding) {
       let currentWB = project.worldBuilding;
-      // cultures 配列が空または存在しない場合、デフォルトを追加
       if (!currentWB.cultures || currentWB.cultures.length === 0) {
         currentWB = {
           ...currentWB,
           cultures: [createDefaultCultureElement()],
         };
       }
-      // societyCulture が存在した場合の古いロジックは不要なので削除
-      setWorldBuilding(currentWB);
+      setWorldBuildingState(currentWB);
     } else {
-      // projectが存在しない場合のフォールバック
-      setWorldBuilding({
+      setWorldBuildingState({
         id: uuidv4(),
         setting: "",
         worldmaps: [],
@@ -98,22 +105,60 @@ export const useWorldBuilding = () => {
     }
   }, [project]);
 
-  const updateWorldBuilding = (newWorldBuilding: WorldBuilding) => {
-    // societyCultureへの参照がないことを確認
-    // newWorldBuildingにsocietyCultureが含まれていないはず
-    setWorldBuilding(newWorldBuilding);
-    if (project) {
-      const updatedProject: NovelProject = {
-        ...project,
-        worldBuilding: newWorldBuilding,
-      };
-      setProject(updatedProject);
-    }
-  };
+  const updateWorldBuilding = useCallback(
+    (newWorldBuilding: WorldBuilding) => {
+      setWorldBuildingState(newWorldBuilding);
+      if (project) {
+        const updatedProject: NovelProject = {
+          ...project,
+          worldBuilding: newWorldBuilding,
+        };
+        setProject(updatedProject);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [project, setProject, setHasUnsavedChanges]
+  );
+
+  const handleMapImageUpload = useCallback(
+    (url: string) => {
+      updateWorldBuilding({
+        ...worldBuilding,
+        worldMapImageUrl: url,
+      });
+    },
+    [worldBuilding, updateWorldBuilding]
+  );
+
+  const handleSettingChange = useCallback(
+    (description: string) => {
+      updateWorldBuilding({
+        ...worldBuilding,
+        description: description,
+      });
+    },
+    [worldBuilding, updateWorldBuilding]
+  );
+
+  const handleHistoryChange = useCallback(
+    (historyValue: string) => {
+      updateWorldBuilding({
+        ...worldBuilding,
+        description:
+          (worldBuilding.description || "") + " History: " + historyValue,
+      });
+    },
+    [worldBuilding, updateWorldBuilding]
+  );
 
   return {
     worldBuilding,
     updateWorldBuilding,
+    tabValue,
+    handleTabChange,
+    handleMapImageUpload,
+    handleSettingChange,
+    handleHistoryChange,
   };
 };
 

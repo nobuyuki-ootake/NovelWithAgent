@@ -86,7 +86,8 @@ export interface WorldBuildingContextType {
   handleSettingChange?: (value: string) => void;
   handleHistoryChange?: (value: string) => void;
   handleSaveWorldBuilding?: () => void;
-  hasUnsavedChanges?: boolean;
+  hasUnsavedChanges: boolean;
+  setHasUnsavedChanges: React.Dispatch<React.SetStateAction<boolean>>;
   snackbarOpen: boolean;
   snackbarMessage: string;
   setSnackbarMessage: React.Dispatch<React.SetStateAction<string>>;
@@ -125,6 +126,8 @@ export const WorldBuildingProvider: React.FC<{ children: ReactNode }> = ({
   // 通知関連の状態
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
+
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const showNotification = useCallback((message: string) => {
     setNotificationMessage(message);
@@ -166,8 +169,10 @@ export const WorldBuildingProvider: React.FC<{ children: ReactNode }> = ({
       const projectToSave = restOfElementAccumulator.getCurrentProjectState();
       updateAndSaveCurrentProject(projectToSave);
       showNotification("プロジェクトが保存されました。");
+      setHasUnsavedChanges(false);
     },
-    hasUnsavedChanges: worldBuildingHook.hasUnsavedChanges,
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
     projectForSaving,
     updateAndSaveCurrentProject,
     notificationOpen,
