@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ImportUtil, ValidationError } from "../../../utils/importUtil";
-import { Project } from "../../../types/project";
+import { NovelProject as Project } from "../../../types";
 
 interface ImportResult {
   success: boolean;

@@ -5,7 +5,7 @@ import {
   WorldBuilding,
   Place,
   Culture,
-  WorldBuildingFreeField,
+  FreeFieldElement,
   NovelProject,
 } from "../types/index";
 import { v4 as uuidv4 } from "uuid";
@@ -24,8 +24,8 @@ export function useWorldBuilding() {
   const [newRule, setNewRule] = useState<string>("");
   const [places, setPlaces] = useState<Place[]>([]);
   const [cultures, setCultures] = useState<Culture[]>([]);
-  const [freeFields, setFreeFields] = useState<WorldBuildingFreeField[]>([]);
-  const [newFreeField, setNewFreeField] = useState<WorldBuildingFreeField>({
+  const [freeFields, setFreeFields] = useState<FreeFieldElement[]>([]);
+  const [newFreeField, setNewFreeField] = useState<FreeFieldElement>({
     id: "",
     title: "",
     content: "",

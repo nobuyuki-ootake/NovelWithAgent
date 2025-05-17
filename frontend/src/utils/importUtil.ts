@@ -1,4 +1,4 @@
-import { Project } from "../types/project";
+import { NovelProject as Project } from "../types";
 import { LocalStorageManager } from "./localStorage";
 
 /**

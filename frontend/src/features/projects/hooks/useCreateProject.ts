@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { LocalStorageManager } from "../../../utils/localStorage";
-import { Project, ProjectStatus } from "../../../types/project";
+import { NovelProject as Project, ProjectStatus } from "../../../types";
 
 interface CreateProjectOptions {
   name: string;
@@ -27,34 +27,53 @@ export const useCreateProject = () => {
       // 新しいプロジェクトの基本構造を作成
       const newProject: Project = {
         id: projectId,
-        name: options.name,
-        description: options.description || "",
-        createdAt: now,
-        updatedAt: now,
+        title: options.name,
+        synopsis: options.description || "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
         characters: [],
         worldBuilding: {
           id: uuidv4(),
+          setting: "",
+          worldmaps: [],
+          settings: [],
+          rules: [],
           places: [],
+          cultures: [],
+          geographyEnvironment: [],
+          historyLegend: [],
+          magicTechnology: [],
+          stateDefinition: [],
+          freeFields: [],
           timelineSettings: {
             startDate: now.split("T")[0],
           },
         },
         timeline: [],
+        plot: [],
         chapters: [
           {
             id: uuidv4(),
-            title: "第1章",
+            title: "第一章",
+            synopsis: "",
             content: "",
-            order: 0,
+            order: 1,
+            scenes: [],
             status: "draft",
           },
         ],
+        feedback: [],
+        definedCharacterStatuses: [],
         metadata: {
-          version: "1.0",
-          tags: options.tags || [],
-          genre: options.genre || [],
+          version: "1.0.0",
           status: "active" as ProjectStatus,
+          genre: options.genre || [],
+          tags: options.tags || [],
+          targetAudience: "",
+          wordCountGoal: 0,
+          lastBackupDate: undefined,
         },
+        notes: [],
       };
 
       // ローカルストレージに保存

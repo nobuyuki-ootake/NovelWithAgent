@@ -1,10 +1,11 @@
 import React from "react";
 import { Box, Typography, TextField } from "@mui/material";
+import { HistoryLegendElement } from "../../types";
 
 interface SettingTabProps {
   description: string;
   onDescriptionChange: (value: string) => void;
-  history: string;
+  history: HistoryLegendElement[];
   onHistoryChange: (value: string) => void;
 }
 

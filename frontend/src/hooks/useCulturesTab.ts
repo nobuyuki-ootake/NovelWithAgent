@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { useWorldBuildingContext } from "../contexts/WorldBuildingContext";
 import { v4 as uuidv4 } from "uuid";
-import { Culture } from "../components/worldbuilding/cultures/types";
+import { CultureElement, NovelProject } from "../types";
+import { useElementAccumulator } from "./useElementAccumulator";
 
 export function useCulturesTab() {
   // コンテキストから必要な機能を取得
@@ -12,15 +12,16 @@ export function useCulturesTab() {
     pendingCultures,
     saveAllPendingElements,
     markTabAsUpdated,
-  } = useWorldBuildingContext();
+  } = useElementAccumulator();
 
   // 状態管理
-  const [cultures, setCultures] = useState<Culture[]>([]);
-  const [currentCulture, setCurrentCulture] = useState<Culture | null>(null);
+  const [cultures, setCultures] = useState<CultureElement[]>([]);
+  const [currentCulture, setCurrentCulture] = useState<CultureElement | null>(
+    null
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [newValue, setNewValue] = useState("");
-  const [newCustom, setNewCustom] = useState("");
 
   // プロジェクトから文化を読み込む
   useEffect(() => {
@@ -37,7 +38,7 @@ export function useCulturesTab() {
       const allCultures = [...cultures];
 
       // ペンディング文化を追加（既存のものは上書き）
-      pendingCultures.forEach((pendingCulture) => {
+      pendingCultures.forEach((pendingCulture: CultureElement) => {
         const existingIndex = allCultures.findIndex(
           (c) => c.id === pendingCulture.id
         );
@@ -59,14 +60,23 @@ export function useCulturesTab() {
       name: "",
       description: "",
       values: [],
-      customs: [],
+      customText: "",
+      beliefs: "",
+      history: "",
+      features: "",
+      importance: "",
+      relations: "",
+      socialStructure: "",
+      customsArray: [],
+      type: "culture",
+      originalType: "culture",
     });
     setIsEditing(false);
     setDialogOpen(true);
   }, []);
 
   // 文化編集ダイアログを開く
-  const handleEdit = useCallback((culture: Culture) => {
+  const handleEdit = useCallback((culture: CultureElement) => {
     setCurrentCulture({ ...culture });
     setIsEditing(true);
     setDialogOpen(true);
@@ -77,20 +87,21 @@ export function useCulturesTab() {
     (id: string) => {
       const updatedCultures = cultures.filter((culture) => culture.id !== id);
       setCultures(updatedCultures);
-
+      const project = getCurrentProjectState();
+      if (!project) return;
+      const updatedWorldBuilding = {
+        ...project.worldBuilding,
+        cultures: updatedCultures,
+      };
       // 世界観データを更新
-      updateProjectState((project) => ({
+      updateProjectState({
         ...project,
-        worldBuilding: {
-          ...project.worldBuilding,
-          cultures: updatedCultures,
-        },
-      }));
-
+        worldBuilding: updatedWorldBuilding,
+      });
       // タブを更新済みとマーク
       markTabAsUpdated(5); // 文化タブのインデックス
     },
-    [cultures, markTabAsUpdated, updateProjectState]
+    [cultures, markTabAsUpdated, updateProjectState, getCurrentProjectState]
   );
 
   // ダイアログを閉じる
@@ -98,7 +109,6 @@ export function useCulturesTab() {
     setDialogOpen(false);
     setCurrentCulture(null);
     setNewValue("");
-    setNewCustom("");
   }, []);
 
   // 文化の保存
@@ -112,14 +122,17 @@ export function useCulturesTab() {
       );
       setCultures(updatedCultures);
 
+      const project = getCurrentProjectState();
+      if (!project) return;
+      const updatedWorldBuilding = {
+        ...project.worldBuilding,
+        cultures: updatedCultures,
+      };
       // 世界観データを更新
-      updateProjectState((project) => ({
+      updateProjectState({
         ...project,
-        worldBuilding: {
-          ...project.worldBuilding,
-          cultures: updatedCultures,
-        },
-      }));
+        worldBuilding: updatedWorldBuilding,
+      });
     } else {
       // 新しい文化を保存
       addPendingCulture(currentCulture);
@@ -142,6 +155,7 @@ export function useCulturesTab() {
     saveAllPendingElements,
     markTabAsUpdated,
     handleCloseDialog,
+    getCurrentProjectState,
   ]);
 
   // 入力フィールドの変更を処理
@@ -184,40 +198,12 @@ export function useCulturesTab() {
     [currentCulture]
   );
 
-  // 習慣の追加
-  const handleAddCustom = useCallback(() => {
-    if (!currentCulture || !newCustom.trim()) return;
-
-    setCurrentCulture({
-      ...currentCulture,
-      customs: [...currentCulture.customs, newCustom.trim()],
-    });
-    setNewCustom("");
-  }, [currentCulture, newCustom]);
-
-  // 習慣の削除
-  const handleRemoveCustom = useCallback(
-    (index: number) => {
-      if (!currentCulture) return;
-
-      const updatedCustoms = [...currentCulture.customs];
-      updatedCustoms.splice(index, 1);
-
-      setCurrentCulture({
-        ...currentCulture,
-        customs: updatedCustoms,
-      });
-    },
-    [currentCulture]
-  );
-
   return {
     cultures,
     currentCulture,
     dialogOpen,
     isEditing,
     newValue,
-    newCustom,
     handleOpenNewDialog,
     handleEdit,
     handleDelete,
@@ -226,9 +212,6 @@ export function useCulturesTab() {
     handleInputChange,
     handleAddValue,
     handleRemoveValue,
-    handleAddCustom,
-    handleRemoveCustom,
     setNewValue,
-    setNewCustom,
   };
 }

@@ -323,7 +323,7 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
           <SettingTab
             description={currentProject.worldBuilding?.description || ""}
             onDescriptionChange={handleSettingChange || (() => {})}
-            history={currentProject.worldBuilding?.history || ""}
+            history={currentProject.worldBuilding?.historyLegend || ""}
             onHistoryChange={handleHistoryChange || (() => {})}
           />
         </TabPanel>

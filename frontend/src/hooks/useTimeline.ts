@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRecoilState } from "recoil";
 import { currentProjectState } from "../store/atoms";
-import { Character, Place, CharacterStatus } from "../types/index";
+import { Character, CharacterStatus, PlaceElement } from "../types/index";
 import { TimelineEvent, NovelProject } from "../types/index";
 import { v4 as uuidv4 } from "uuid";
 import moment from "moment";
@@ -42,7 +42,7 @@ export function useTimeline() {
     useRecoilState(currentProjectState);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [places, setPlaces] = useState<Place[]>([]);
+  const [places, setPlaces] = useState<PlaceElement[]>([]);
 
   // グラフ表示用のデータ
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);

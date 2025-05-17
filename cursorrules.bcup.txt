@@ -1,8 +1,3 @@
----
-description: 
-globs: 
-alwaysApply: true
----
 # ノベル作成エージェント開発ルール
 
 ## プロジェクト概要

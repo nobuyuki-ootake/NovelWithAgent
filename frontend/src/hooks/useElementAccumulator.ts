@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRecoilState, useRecoilCallback } from "recoil";
 import {
   currentProjectState,
@@ -21,13 +21,82 @@ import {
   WorldBuildingElementType,
   getCategoryTabIndex,
   StateDefinitionElement,
+  FreeFieldElement,
 } from "../types";
 
-export const useElementAccumulator = () => {
+export interface ElementAccumulatorHook {
+  updatedTabs: { [key: number]: boolean };
+  markTabAsUpdated: (index: number) => void;
+  forceMarkTabAsUpdated: (index: number) => void;
+  forceUpdateCounter: number;
+  addPendingRule: (rule: RuleElement) => void;
+  addPendingCulture: (culture: CultureElement) => void;
+  addPendingPlace: (place: PlaceElement) => void;
+  addPendingWorldmap: (worldmap: WorldmapElement) => void;
+  addPendingSetting: (setting: SettingElement) => void;
+  addPendingHistory: (history: HistoryLegendElement) => void;
+  addPendingTechnology: (technology: MagicTechnologyElement) => void;
+  addPendingGeography: (geography: GeographyEnvironmentElement) => void;
+  addPendingFreeField: (freeField: FreeFieldElement) => void;
+  addPendingStateDefinition: (stateDefinition: StateDefinitionElement) => void;
+  saveAllPendingElements: () => void;
+  clearPendingElements: () => void;
+  resetWorldBuildingElements: (elements?: {
+    places?: PlaceElement[];
+    rules?: RuleElement[];
+    stateDefinition?: StateDefinitionElement[];
+    cultures?: CultureElement[];
+    worldmaps?: WorldmapElement[];
+    settings?: SettingElement[];
+    historyLegend?: HistoryLegendElement[];
+    magicTechnology?: MagicTechnologyElement[];
+    geographyEnvironment?: GeographyEnvironmentElement[];
+    freeFields?: FreeFieldElement[];
+  }) => void;
+  getCurrentProjectState: () => NovelProject;
+  updateProjectState: (updatedProject: NovelProject) => void;
+  validateWorldBuildingData: () => boolean;
+  pendingPlaces: PlaceElement[];
+  pendingRules: RuleElement[];
+  pendingStateDefinitions: StateDefinitionElement[];
+  pendingCultures: CultureElement[];
+  pendingWorldmaps: WorldmapElement[];
+  pendingSettings: SettingElement[];
+  pendingHistoryLegends: HistoryLegendElement[];
+  pendingMagicTechnologies: MagicTechnologyElement[];
+  pendingGeographyEnvironments: GeographyEnvironmentElement[];
+  pendingFreeFields: FreeFieldElement[];
+}
+
+console.log("useElementAccumulator.ts LOADING");
+
+export const useElementAccumulator = (): ElementAccumulatorHook => {
+  const [pendingPlaces, setPendingPlaces] = useState<PlaceElement[]>([]);
+  const [pendingRules, setPendingRules] = useState<RuleElement[]>([]);
+  const [pendingStateDefinitions, setPendingStateDefinitions] = useState<
+    StateDefinitionElement[]
+  >([]);
+  const [pendingCultures, setPendingCultures] = useState<CultureElement[]>([]);
+  const [pendingWorldmaps, setPendingWorldmaps] = useState<WorldmapElement[]>(
+    []
+  );
+  const [pendingSettings, setPendingSettings] = useState<SettingElement[]>([]);
+  const [pendingHistoryLegends, setPendingHistoryLegends] = useState<
+    HistoryLegendElement[]
+  >([]);
+  const [pendingMagicTechnologies, setPendingMagicTechnologies] = useState<
+    MagicTechnologyElement[]
+  >([]);
+  const [pendingGeographyEnvironments, setPendingGeographyEnvironments] =
+    useState<GeographyEnvironmentElement[]>([]);
+  const [pendingFreeFields, setPendingFreeFields] = useState<
+    FreeFieldElement[]
+  >([]);
+
   useEffect(() => {
-    console.log("[DEBUG] useElementAccumulator MOUNTED");
+    console.log("useElementAccumulator MOUNTED");
     return () => {
-      console.log("[DEBUG] useElementAccumulator UNMOUNTED");
+      console.log("useElementAccumulator UNMOUNTED");
     };
   }, []);
 
@@ -75,6 +144,7 @@ export const useElementAccumulator = () => {
         return { ...prevProject, worldBuilding: updatedWorldBuilding };
       });
       markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.RULE));
+      setPendingRules((prev) => [...prev, newRule]);
     },
     [currentProject, setCurrentProject, markTabAsUpdated]
   );
@@ -138,6 +208,7 @@ export const useElementAccumulator = () => {
           WorldBuildingElementType.PLACE
         )}) called after setCurrentProject`
       );
+      setPendingPlaces((prev) => [...prev, newPlace]);
     },
     [currentProject, setCurrentProject, markTabAsUpdated]
   );
@@ -204,26 +275,6 @@ export const useElementAccumulator = () => {
     [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  const addPendingSocietyCulture = useCallback(
-    (culture: CultureElement) => {
-      if (!currentProject) return;
-      const newCulture = { ...culture, id: culture.id || uuidv4() };
-      setCurrentProject((prevProject) => {
-        if (!prevProject) return prevProject;
-        const updatedWorldBuilding = {
-          ...prevProject.worldBuilding,
-          cultures: [
-            ...(prevProject.worldBuilding?.cultures || []),
-            newCulture,
-          ],
-        };
-        return { ...prevProject, worldBuilding: updatedWorldBuilding };
-      });
-      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.CULTURE));
-    },
-    [currentProject, setCurrentProject, markTabAsUpdated]
-  );
-
   const addPendingTechnology = useCallback(
     (technology: MagicTechnologyElement) => {
       if (!currentProject) return;
@@ -269,7 +320,7 @@ export const useElementAccumulator = () => {
   );
 
   const addPendingFreeField = useCallback(
-    (freeField: WorldBuildingFreeField) => {
+    (freeField: FreeFieldElement) => {
       if (!currentProject) return;
       const newFreeField = { ...freeField, id: freeField.id || uuidv4() };
       setCurrentProject((prevProject) => {
@@ -290,16 +341,15 @@ export const useElementAccumulator = () => {
     [currentProject, setCurrentProject, markTabAsUpdated]
   );
 
-  // addPendingStateDefinition のダミー実装
   const addPendingStateDefinition = useCallback(
     (definition: StateDefinitionElement) => {
       console.warn(
         "addPendingStateDefinition is not implemented in useElementAccumulator",
         definition
       );
-      // markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.STATE_DEFINITION)); // 必要に応じて
+      setPendingStateDefinitions((prev) => [...prev, definition]);
     },
-    [markTabAsUpdated] // 依存配列は最小限に
+    []
   );
 
   const clearPendingElements = useRecoilCallback(
@@ -309,15 +359,16 @@ export const useElementAccumulator = () => {
         const currentProj = await snapshot.getPromise(currentProjectState);
         if (currentProj && currentProj.worldBuilding) {
           const newWorldBuilding = { ...currentProj.worldBuilding };
-          // すべての要素タイプの配列を空にする
-          // 以下は例です。実際のプロジェクトの型定義に合わせてください。
           newWorldBuilding.places = [];
           newWorldBuilding.rules = [];
           newWorldBuilding.cultures = [];
           newWorldBuilding.worldmaps = [];
           newWorldBuilding.settings = [];
-          // 他のすべての要素タイプについても同様に空にする
-          // (例) newWorldBuilding.historyLegend = []; など
+          newWorldBuilding.historyLegend = [];
+          newWorldBuilding.magicTechnology = [];
+          newWorldBuilding.geographyEnvironment = [];
+          newWorldBuilding.freeFields = [];
+          newWorldBuilding.stateDefinition = [];
 
           set(currentProjectState, {
             ...currentProj,
@@ -327,42 +378,78 @@ export const useElementAccumulator = () => {
             "[DEBUG] All pending elements cleared from currentProject state"
           );
         }
+        setPendingPlaces([]);
+        setPendingRules([]);
+        setPendingStateDefinitions([]);
+        setPendingCultures([]);
+        setPendingWorldmaps([]);
+        setPendingSettings([]);
+        setPendingHistoryLegends([]);
+        setPendingMagicTechnologies([]);
+        setPendingGeographyEnvironments([]);
+        setPendingFreeFields([]);
       },
     []
   );
 
   const resetWorldBuildingElements = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        console.log("[DEBUG] resetWorldBuildingElements CALLED");
-        set(currentProjectState, (prevProject) => {
-          if (!prevProject) return prevProject;
-          return {
-            ...prevProject,
-            worldBuilding: {
-              id: prevProject.worldBuilding?.id || uuidv4(),
-              worldMapImageUrl: "",
-              description: "",
-              history: "",
-              setting: "",
-              rules: [],
-              places: [],
-              cultures: [],
-              worldmaps: [],
-              settings: [],
-              historyLegend: [],
-              magicTechnology: [],
-              geographyEnvironment: [],
-              freeFields: [],
-              stateDefinition: [],
-            },
-          };
-        });
-        setUpdatedTabs({});
-        setForceUpdateCounter((prev) => prev + 1);
+    ({ set, snapshot }) =>
+      async (elements?: {
+        places?: PlaceElement[];
+        rules?: RuleElement[];
+        stateDefinition?: StateDefinitionElement[];
+        cultures?: CultureElement[];
+        worldmaps?: WorldmapElement[];
+        settings?: SettingElement[];
+        historyLegend?: HistoryLegendElement[];
+        magicTechnology?: MagicTechnologyElement[];
+        geographyEnvironment?: GeographyEnvironmentElement[];
+        freeFields?: FreeFieldElement[];
+      }) => {
         console.log(
-          "[DEBUG] World building elements reset and updated tabs cleared"
+          "[DEBUG] resetWorldBuildingElements CALLED with:",
+          elements
         );
+        const currentProj = await snapshot.getPromise(currentProjectState);
+        if (currentProj) {
+          const newWorldBuildingData = {
+            ...currentProj.worldBuilding,
+            places: elements?.places || [],
+            rules: elements?.rules || [],
+            stateDefinition: elements?.stateDefinition || [],
+            cultures: elements?.cultures || [],
+            worldmaps: elements?.worldmaps || [],
+            settings: elements?.settings || [],
+            historyLegend: elements?.historyLegend || [],
+            magicTechnology: elements?.magicTechnology || [],
+            geographyEnvironment: elements?.geographyEnvironment || [],
+            freeFields: elements?.freeFields || [],
+          };
+
+          set(currentProjectState, {
+            ...currentProj,
+            worldBuilding: newWorldBuildingData,
+          });
+
+          // ローカルのペンディングステートもリセット
+          setPendingPlaces(elements?.places || []);
+          setPendingRules(elements?.rules || []);
+          setPendingStateDefinitions(elements?.stateDefinition || []);
+          setPendingCultures(elements?.cultures || []);
+          setPendingWorldmaps(elements?.worldmaps || []);
+          setPendingSettings(elements?.settings || []);
+          setPendingHistoryLegends(elements?.historyLegend || []);
+          setPendingMagicTechnologies(elements?.magicTechnology || []);
+          setPendingGeographyEnvironments(elements?.geographyEnvironment || []);
+          setPendingFreeFields(elements?.freeFields || []);
+
+          // Clear updated tabs and force update
+          setUpdatedTabs({});
+          setForceUpdateCounter((prev) => prev + 1);
+          console.log(
+            "[DEBUG] World building elements reset and updated tabs cleared"
+          );
+        }
       },
     [setUpdatedTabs, setForceUpdateCounter]
   );
@@ -441,7 +528,6 @@ export const useElementAccumulator = () => {
     addPendingWorldmap,
     addPendingSetting,
     addPendingHistory,
-    addPendingSocietyCulture,
     addPendingTechnology,
     addPendingGeography,
     addPendingFreeField,
@@ -452,5 +538,15 @@ export const useElementAccumulator = () => {
     getCurrentProjectState,
     updateProjectState,
     validateWorldBuildingData,
+    pendingPlaces,
+    pendingRules,
+    pendingStateDefinitions,
+    pendingCultures,
+    pendingWorldmaps,
+    pendingSettings,
+    pendingHistoryLegends,
+    pendingMagicTechnologies,
+    pendingGeographyEnvironments,
+    pendingFreeFields,
   };
 };

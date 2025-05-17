@@ -1,4 +1,4 @@
-import { Project } from "../types/project";
+import { NovelProject as Project } from "../types";
 
 /**
  * ローカルストレージを操作するためのクラス
@@ -76,7 +76,7 @@ export class LocalStorageManager {
    */
   static getProjectList(): Array<{
     id: string;
-    name: string;
+    title: string;
     updatedAt: string;
   }> {
     try {
@@ -85,7 +85,7 @@ export class LocalStorageManager {
 
       return JSON.parse(listJson) as Array<{
         id: string;
-        name: string;
+        title: string;
         updatedAt: string;
       }>;
     } catch (error) {
@@ -106,15 +106,15 @@ export class LocalStorageManager {
     if (existingIndex >= 0) {
       projectList[existingIndex] = {
         id: project.id,
-        name: project.name,
-        updatedAt: project.updatedAt,
+        title: project.title,
+        updatedAt: project.updatedAt.toISOString(),
       };
     } else {
       // 新規プロジェクトの場合は追加
       projectList.push({
         id: project.id,
-        name: project.name,
-        updatedAt: project.updatedAt,
+        title: project.title,
+        updatedAt: project.updatedAt.toISOString(),
       });
     }
 

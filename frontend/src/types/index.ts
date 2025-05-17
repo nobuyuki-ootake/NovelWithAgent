@@ -11,6 +11,15 @@ export interface NovelProject {
   chapters: Chapter[];
   feedback: Feedback[];
   definedCharacterStatuses?: CharacterStatus[];
+  metadata?: ProjectMetadata;
+  notes?: {
+    id: string;
+    title: string;
+    content: string;
+    createdAt: Date;
+    updatedAt: Date;
+    tags?: string[];
+  }[];
 }
 
 // プロット要素の型定義
@@ -122,6 +131,7 @@ export interface Chapter {
   order: number;
   scenes: Scene[];
   relatedEvents?: string[]; // 章に関連するタイムラインイベントのID配列
+  status?: ChapterStatus;
 }
 
 // シーンの型定義
@@ -168,12 +178,12 @@ export interface TimelineSettings {
 }
 
 /**
- * プロジェクトの状態を表す型 (project.ts オリジナル)
+ * プロジェクトの状態を表す型
  */
 export type ProjectStatus = "active" | "archived" | "template";
 
 /**
- * プロジェクトのメタデータ (project.ts オリジナル)
+ * プロジェクトのメタデータ
  */
 export interface ProjectMetadata {
   version: string;
@@ -203,31 +213,6 @@ export interface Section {
   title: string;
   content: string;
   order: number;
-}
-
-/**
- * プロジェクト（小説の一つの作品） (project.ts オリジナル)
- * NovelProject と内容が近いため、どちらかに寄せるか検討。一旦両方定義。
- */
-export interface Project {
-  id: string;
-  name: string; // NovelProject の title と対応か
-  description?: string; // NovelProject の synopsis と対応か
-  createdAt: string; // NovelProject では Date 型
-  updatedAt: string; // NovelProject では Date 型
-  characters: Character[];
-  worldBuilding: WorldBuilding;
-  timeline: TimelineEvent[];
-  chapters: Chapter[];
-  metadata: ProjectMetadata;
-  notes?: {
-    id: string;
-    title: string;
-    content: string;
-    createdAt: string;
-    updatedAt: string;
-    tags?: string[];
-  }[];
 }
 
 /**
@@ -548,7 +533,7 @@ export interface WorldBuildingElementData {
   socialStructure?: string;
   values?: string[];
   customsArray?: string[]; // 配列型のcustoms
-  rawData?: WorldBuildingElement;
+  rawData?: WorldBuildingElement | Record<string, unknown> | undefined;
   relations?: string | { name: string; description: string }[];
   img?: string;
 }
