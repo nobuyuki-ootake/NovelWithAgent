@@ -510,22 +510,23 @@ ${message}`;
     plotElements: PlotElement[],
     characterElements: Character[]
   ): Promise<{ name: string; type: string }[]> => {
-    // 一時的なもの
     const enhancedListMessage = `
-世界観に登場する重要な場所とその特徴のリストを作成してください。
-以下のJSONフォーマットで出力してください:
-[
-  {"name": "場所の名前1", "type": "place"},
-  {"name": "場所の名前2", "type": "place"},
-]
+  世界観に登場する重要な場所とその特徴のリストを作成してください。
+  以下のJSONフォーマットで出力してください:
+  [
+    {"name": "場所の名前1", "type": "place"},
+    {"name": "場所の名前2", "type": "place"},
+    {"name": "文化名1", "type": "culture"},
+    {"name": "ルール名1", "type": "rule"}
+  ]
 
-重要な注意:
-- 特殊なマーカー記号は使用しないでください
-- 名前はシンプルに記述してください
-- 純粋なテキストのみを使用してください
+  重要な注意:
+  - 特殊なマーカー記号は使用しないでください
+  - 名前はシンプルに記述してください
+  - 純粋なテキストのみを使用してください
 
-2つの主要な場所を定義してください
-${message}`;
+  少なくとも3つの主要な場所を含めてください。
+  ${message}`;
 
     const listResult = await aiAgentApi.generateWorldBuildingList(
       enhancedListMessage,
@@ -567,64 +568,6 @@ ${message}`;
 
     return elementList;
   };
-  //     const enhancedListMessage = `
-  // 世界観に登場する重要な場所とその特徴のリストを作成してください。
-  // 以下のJSONフォーマットで出力してください:
-  // [
-  //   {"name": "場所の名前1", "type": "place"},
-  //   {"name": "場所の名前2", "type": "place"},
-  //   {"name": "文化名1", "type": "culture"},
-  //   {"name": "ルール名1", "type": "rule"}
-  // ]
-
-  // 重要な注意:
-  // - 特殊なマーカー記号は使用しないでください
-  // - 名前はシンプルに記述してください
-  // - 純粋なテキストのみを使用してください
-
-  // 少なくとも3つの主要な場所を含めてください。
-  // ${message}`;
-
-  //     const listResult = await aiAgentApi.generateWorldBuildingList(
-  //       enhancedListMessage,
-  //       plotElements,
-  //       characterElements,
-  //       "gemini-1.5-pro",
-  //       "json",
-  //       "places"
-  //     );
-
-  //     // リスト抽出処理
-  //     let elementList: { name: string; type: string }[] = [];
-
-  //     // APIから直接JSON配列を取得できる場合
-  //     if (listResult?.data && Array.isArray(listResult.data)) {
-  //       elementList = listResult.data;
-  //       toast.success(
-  //         `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
-  //       );
-  //       return elementList;
-  //     }
-
-  //     // レスポンス文字列からJSON抽出を試みる
-  //     const response = listResult.response || "";
-  //     const jsonMatch = response.match(/\[[\s\S]*\]/);
-
-  //     if (!jsonMatch) {
-  //       throw new Error("JSON形式の世界観要素リストが見つかりませんでした");
-  //     }
-
-  //     elementList = JSON.parse(jsonMatch[0]);
-  //     toast.success(
-  //       `${elementList.length}件の世界観要素リストを作成しました。詳細を生成します...`
-  //     );
-
-  //     if (elementList.length === 0) {
-  //       throw new Error("生成する世界観要素がありません");
-  //     }
-
-  //     return elementList;
-  //   };
 
   /**
    * 要素レスポンスオブジェクトを作成するヘルパー関数

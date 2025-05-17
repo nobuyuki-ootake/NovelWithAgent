@@ -134,10 +134,6 @@ const WorldBuildingPage: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* - 一時的なもの
-      物語の舞台となる主要な場所（少なくとも3つ）
-- この世界のルール（魔法や技術の制約など）
-- 特徴的な文化や風習 */}
       {/* AI支援モーダル */}
       <AIAssistModal
         open={aiModalOpen}
@@ -147,7 +143,9 @@ const WorldBuildingPage: React.FC = () => {
         defaultMessage={`「${
           currentProject.title
         }」の世界観について、以下の要素を考えてください。
-- 物語の舞台となる主要な場所2つ
+- 物語の舞台となる主要な場所（少なくとも3つ）
+- この世界のルール（魔法や技術の制約など）
+- 特徴的な文化や風習
 
 物語のあらすじ:
 ${currentProject.synopsis || "（あらすじが設定されていません）"}`}
