@@ -7,6 +7,7 @@ import {
   PlaceElement,
   TimelineEvent,
   NovelProject,
+  PlotElement,
   // WorldBuilding, // 未使用のためコメントアウト
   // WorldBuildingElement, // 未使用のためコメントアウト
   // WorldBuildingElementType, // 未使用のためコメントアウト
@@ -37,6 +38,7 @@ export interface TimelineItem {
   relatedCharacters: string[];
   relatedCharacterNames?: string;
   relatedCharacterData?: Character[];
+  eventType?: string;
 }
 
 // 設定ダイアログの状態
@@ -50,6 +52,7 @@ export function useTimeline() {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [places, setPlaces] = useState<PlaceElement[]>([]);
+  const [allPlots, setAllPlots] = useState<PlotElement[]>([]);
 
   // グラフ表示用のデータ
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
@@ -72,7 +75,9 @@ export function useTimeline() {
     relatedCharacters: [],
     relatedPlaces: [],
     order: 0,
+    eventType: "",
     postEventCharacterStatuses: {},
+    relatedPlotIds: [],
   });
 
   // ダイアログの状態
@@ -158,6 +163,7 @@ export function useTimeline() {
       setDefinedCharacterStatusesForDialog(
         projectDataToUse.definedCharacterStatuses || []
       ); // useStateで更新
+      setAllPlots(projectDataToUse.plot || []); // プロット情報をセット
 
       // 設定を読み込み
       if (projectDataToUse.worldBuilding?.timelineSettings?.startDate) {
@@ -192,10 +198,60 @@ export function useTimeline() {
     }
   }, [places]);
 
+  const sortedTimelineEvents = useMemo(() => {
+    if (
+      !currentProject ||
+      !currentProject.plot ||
+      currentProject.plot.length === 0
+    ) {
+      // プロット情報がない場合は、日付でソートし、次に order でソート
+      return [...timelineEvents].sort((a, b) => {
+        const dateA = moment(a.date).valueOf();
+        const dateB = moment(b.date).valueOf();
+        if (dateA !== dateB) {
+          return dateA - dateB;
+        }
+        return (a.order || 0) - (b.order || 0);
+      });
+    }
+
+    const plotOrderMap = new Map<string, number>(
+      currentProject.plot.map((p) => [p.id, p.order])
+    );
+
+    return [...timelineEvents].sort((a, b) => {
+      // 関連プロットIDの最初の有効なものを取得、なければ未定義
+      const getFirstValidPlotId = (
+        event: TimelineEvent
+      ): string | undefined => {
+        if (!event.relatedPlotIds || event.relatedPlotIds.length === 0)
+          return undefined;
+        return event.relatedPlotIds.find((pid) => plotOrderMap.has(pid));
+      };
+
+      const plotIdA = getFirstValidPlotId(a);
+      const plotIdB = getFirstValidPlotId(b);
+
+      const plotOrderA = plotIdA ? plotOrderMap.get(plotIdA)! : Infinity;
+      const plotOrderB = plotIdB ? plotOrderMap.get(plotIdB)! : Infinity;
+
+      if (plotOrderA !== plotOrderB) {
+        return plotOrderA - plotOrderB;
+      }
+
+      const dateA = moment(a.date).valueOf();
+      const dateB = moment(b.date).valueOf();
+      if (dateA !== dateB) {
+        return dateA - dateB;
+      }
+      return (a.order || 0) - (b.order || 0); // 同じプロット、同じ日付の場合は元の order
+    });
+  }, [timelineEvents, currentProject]);
+
   // イベントをグラフデータに変換
   useEffect(() => {
-    if (timelineEvents.length > 0 && timelineGroups.length > 0) {
-      const items: TimelineItem[] = timelineEvents.map((event) => {
+    if (sortedTimelineEvents.length > 0 && timelineGroups.length > 0) {
+      const items: TimelineItem[] = sortedTimelineEvents.map((event) => {
         // 関連する地名がある場合はその最初の場所に配置、なければ「未分類」に
         const placeId =
           event.relatedPlaces.length > 0
@@ -230,6 +286,7 @@ export function useTimeline() {
           relatedCharacters: event.relatedCharacters,
           relatedCharacterNames: characterNames,
           relatedCharacterData,
+          eventType: event.eventType,
         };
       });
 
@@ -237,7 +294,36 @@ export function useTimeline() {
     } else {
       setTimelineItems([]);
     }
-  }, [timelineEvents, timelineGroups, characters]);
+  }, [sortedTimelineEvents, timelineGroups, characters]);
+
+  const addTimelineEventsBatch = useCallback(
+    (newEvents: TimelineEvent[]) => {
+      if (!currentProject) return;
+
+      // 新しいイベントを既存のイベントリストと結合
+      // IDの重複を避けるため、もしIDが既存のものと衝突する場合は新しいIDを振ることも検討できますが、
+      // crypto.randomUUID() を使っているので、基本的には衝突しない想定。
+      const updatedTimelineEvents = [...timelineEvents, ...newEvents].sort(
+        (a, b) => (a.order || 0) - (b.order || 0) // orderでソート
+      );
+
+      setTimelineEvents(updatedTimelineEvents);
+
+      // currentProject を更新
+      setCurrentProject({
+        ...currentProject,
+        timeline: updatedTimelineEvents,
+        updatedAt: new Date(), // 更新日時を更新
+      });
+
+      setHasUnsavedChanges(true);
+      setSnackbarMessage(
+        `${newEvents.length}件のイベントがタイムラインに追加されました。`
+      );
+      setSnackbarOpen(true);
+    },
+    [currentProject, timelineEvents, setCurrentProject]
+  );
 
   // ダイアログを開く
   const handleOpenDialog = useCallback(
@@ -263,6 +349,7 @@ export function useTimeline() {
           ...event,
           order: event.order ?? 0,
           postEventCharacterStatuses: event.postEventCharacterStatuses || {},
+          relatedPlotIds: event.relatedPlotIds || [],
         });
         setIsEditing(true);
         setCurrentEventId(event.id);
@@ -275,7 +362,9 @@ export function useTimeline() {
           relatedCharacters: [],
           relatedPlaces: [],
           order: timelineEvents.length, // 新規は末尾
+          eventType: "",
           postEventCharacterStatuses: {},
+          relatedPlotIds: [],
         });
         setIsEditing(false);
         setCurrentEventId("");
@@ -333,12 +422,29 @@ export function useTimeline() {
 
   // イベントの変更を処理
   const handleEventChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const { name, value } = e.target;
-      setNewEvent({
-        ...newEvent,
-        [name]: value,
-      });
+    (
+      e:
+        | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        | SelectChangeEvent<string>,
+      field?: string
+    ) => {
+      if (field === "eventType") {
+        // SelectChangeEventの場合
+        const value = (e as SelectChangeEvent<string>).target.value;
+        setNewEvent((prev) => ({
+          ...prev,
+          eventType: value,
+        }));
+      } else {
+        // HTMLInputElement | HTMLTextAreaElement の場合
+        const { name, value } = e.target as
+          | HTMLInputElement
+          | HTMLTextAreaElement;
+        setNewEvent((prev) => ({
+          ...prev,
+          [name]: value,
+        }));
+      }
     },
     [newEvent]
   );
@@ -384,6 +490,8 @@ export function useTimeline() {
         ...newEvent,
         id: currentEventId,
         order: newEvent.order ?? 0,
+        eventType: newEvent.eventType || "",
+        relatedPlotIds: newEvent.relatedPlotIds || [],
       };
       const updatedEvents = timelineEvents.map((event) =>
         event.id === currentEventId ? updatedEvent : event
@@ -395,6 +503,8 @@ export function useTimeline() {
         ...newEvent,
         id: uuidv4(),
         order: timelineEvents.length,
+        eventType: newEvent.eventType || "",
+        relatedPlotIds: newEvent.relatedPlotIds || [],
       };
       setTimelineEvents([...timelineEvents, updatedEvent]);
     }
@@ -612,7 +722,9 @@ export function useTimeline() {
         relatedCharacters: [],
         relatedPlaces: place ? [place.id] : ["unassigned"],
         order: timelineEvents.length,
+        eventType: "",
         postEventCharacterStatuses: {},
+        relatedPlotIds: [],
       };
 
       setNewEvent(newEventAtGrid);
@@ -655,6 +767,17 @@ export function useTimeline() {
     []
   );
 
+  // 関連プロットの変更を処理
+  const handleRelatedPlotsChange = useCallback(
+    (selectedPlotIds: string[]) => {
+      setNewEvent((prev) => ({
+        ...prev,
+        relatedPlotIds: selectedPlotIds,
+      }));
+    },
+    [newEvent]
+  );
+
   return {
     // 状態
     currentProject,
@@ -672,10 +795,11 @@ export function useTimeline() {
     snackbarOpen,
     snackbarMessage,
     hasUnsavedChanges,
+    definedCharacterStatuses: definedCharacterStatusesForDialog,
+    allPlots,
     safeMinY,
     safeMaxY,
     dateArray,
-    definedCharacterStatuses: definedCharacterStatusesForDialog, // useState版を返す
 
     // ハンドラー
     handleOpenDialog,
@@ -697,6 +821,8 @@ export function useTimeline() {
     createEventFromPosition,
     handleReorderEvents,
     handlePostEventStatusChange,
+    addTimelineEventsBatch,
+    handleRelatedPlotsChange,
   };
 }
 

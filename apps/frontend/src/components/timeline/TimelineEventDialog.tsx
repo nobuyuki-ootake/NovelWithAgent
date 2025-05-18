@@ -22,11 +22,17 @@ import {
 } from "@mui/material";
 import {
   Character,
-  Place,
+  PlaceElement,
   TimelineEvent,
   CharacterStatus,
+  PlotElement,
 } from "@novel-ai-assistant/types";
-import { getCharacterIcon } from "./TimelineUtils";
+import { getCharacterIcon, eventTypes } from "./TimelineUtils";
+
+// イベント種別の定義 (TimelineUtils.tsx に移動したためコメントアウトまたは削除)
+// export const eventTypes = [
+// ... (definition was here)
+// ];
 
 // デフォルトの状態を定義
 const defaultStatuses: CharacterStatus[] = [
@@ -51,11 +57,14 @@ interface TimelineEventDialogProps {
   isEditing: boolean;
   newEvent: TimelineEvent;
   characters: Character[];
-  places: Place[];
+  places: PlaceElement[];
   onClose: () => void;
   onSave: () => void;
   onEventChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+      | SelectChangeEvent<string>,
+    field?: string
   ) => void;
   onCharactersChange: (event: SelectChangeEvent<string[]>) => void;
   onPlacesChange: (event: SelectChangeEvent<string[]>) => void;
@@ -66,6 +75,8 @@ interface TimelineEventDialogProps {
     newStatuses: CharacterStatus[]
   ) => void;
   definedCharacterStatuses?: CharacterStatus[];
+  allPlots: PlotElement[];
+  onRelatedPlotsChange: (selectedPlotIds: string[]) => void;
 }
 
 const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
@@ -83,6 +94,8 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
   getPlaceName,
   onPostEventStatusChange,
   definedCharacterStatuses = [],
+  allPlots,
+  onRelatedPlotsChange,
 }) => {
   console.log(
     "[TimelineEventDialog] definedCharacterStatuses (from props):",
@@ -182,6 +195,31 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
             onChange={onEventChange}
             placeholder="イベントの詳細を入力してください"
           />
+
+          <FormControl fullWidth>
+            <InputLabel id="event-type-select-label">イベント種別</InputLabel>
+            <Select
+              labelId="event-type-select-label"
+              name="eventType"
+              value={newEvent.eventType || ""}
+              onChange={(e) =>
+                onEventChange(e as SelectChangeEvent<string>, "eventType")
+              }
+              label="イベント種別"
+            >
+              {eventTypes.map((type) => {
+                const IconComponent = type.iconComponent;
+                return (
+                  <MenuItem key={type.value} value={type.value}>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <IconComponent sx={{ mr: 1 }} />
+                      {type.label}
+                    </Box>
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
 
           <FormControl fullWidth>
             <InputLabel id="characters-select-label">
@@ -301,6 +339,46 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
                 ))
               )}
             </Select>
+          </FormControl>
+
+          {/* 関連プロット選択 */}
+          <FormControl fullWidth>
+            <Autocomplete
+              multiple
+              id="related-plots-select"
+              options={allPlots}
+              getOptionLabel={(option) => option.title}
+              value={allPlots.filter((plot) =>
+                newEvent.relatedPlotIds?.includes(plot.id)
+              )}
+              onChange={(_, newValue) => {
+                onRelatedPlotsChange(newValue.map((plot) => plot.id));
+              }}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="outlined"
+                  label="関連プロット"
+                  placeholder={
+                    allPlots.length > 0
+                      ? "プロットを選択"
+                      : "プロットが登録されていません"
+                  }
+                />
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    {...getTagProps({ index })}
+                    key={option.id}
+                    label={option.title}
+                    size="small"
+                  />
+                ))
+              }
+              disabled={allPlots.length === 0}
+            />
           </FormControl>
 
           {newEvent.relatedCharacters &&

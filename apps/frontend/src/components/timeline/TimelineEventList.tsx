@@ -1,6 +1,10 @@
 import React from "react";
 import { Box, Typography, Button, Paper } from "@mui/material";
-import { Add as AddIcon, Save as SaveIcon } from "@mui/icons-material";
+import {
+  Add as AddIcon,
+  Save as SaveIcon,
+  SmartToy as SmartToyIcon,
+} from "@mui/icons-material";
 import TimelineEventCard from "./TimelineEventCard";
 import { TimelineItem } from "../../hooks/useTimeline";
 import {
@@ -13,6 +17,7 @@ import {
 interface TimelineEventListProps {
   timelineItems: TimelineItem[];
   onAddEvent: () => void;
+  onAIAssist: () => void;
   onEditEvent: (id: string) => void;
   hasUnsavedChanges: boolean;
   onSave: () => void;
@@ -22,6 +27,7 @@ interface TimelineEventListProps {
 const TimelineEventList: React.FC<TimelineEventListProps> = ({
   timelineItems,
   onAddEvent,
+  onAIAssist,
   onEditEvent,
   hasUnsavedChanges,
   onSave,
@@ -64,6 +70,15 @@ const TimelineEventList: React.FC<TimelineEventListProps> = ({
             size="medium"
           >
             イベント追加
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<SmartToyIcon />}
+            onClick={onAIAssist}
+            size="medium"
+          >
+            AIでイベント生成
           </Button>
           <Button
             variant="outlined"

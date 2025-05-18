@@ -16,6 +16,7 @@ import {
 } from "@mui/icons-material";
 import { TimelineItem } from "../../hooks/useTimeline";
 import moment from "moment";
+import { getEventTypeIconComponent } from "./TimelineUtils";
 
 interface TimelineEventCardProps {
   item: TimelineItem;
@@ -41,9 +42,19 @@ const TimelineEventCard: React.FC<TimelineEventCardProps> = ({
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="h6" component="div">
-          {item.title}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {item.eventType && (
+            <Tooltip title={item.eventType}>
+              {React.createElement(getEventTypeIconComponent(item.eventType), {
+                sx: { mr: 1, color: "action.active" },
+                fontSize: "medium",
+              })}
+            </Tooltip>
+          )}
+          <Typography variant="h6" component="div">
+            {item.title}
+          </Typography>
+        </Box>
         <Box>
           <Tooltip title="編集">
             <IconButton

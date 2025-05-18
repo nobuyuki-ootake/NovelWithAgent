@@ -10,7 +10,17 @@ import {
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Spinner } from "../ui/spinner";
-import { Box, Tabs, Tab, LinearProgress } from "@mui/material";
+import {
+  Box,
+  Tabs,
+  Tab,
+  LinearProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import { PlotElement } from "@novel-ai-assistant/types";
 
 // レスポンス型の定義
 export interface ResponseData {
@@ -33,9 +43,14 @@ interface AIAssistModalProps {
   title: string;
   description?: string;
   defaultMessage?: string;
-  requestAssist: (message: string) => Promise<ResponseData> | Promise<void>;
+  requestAssist: (params: {
+    message: string;
+    plotId?: string | null;
+  }) => Promise<ResponseData> | Promise<void>;
   onAssistComplete?: (result: ResponseData) => void;
   supportsBatchGeneration?: boolean;
+  isLoading?: boolean;
+  plots?: PlotElement[];
 }
 
 export const AIAssistModal: React.FC<AIAssistModalProps> = ({
@@ -47,9 +62,12 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   requestAssist,
   onAssistComplete,
   supportsBatchGeneration = false,
+  isLoading: externalIsLoading,
+  plots = [],
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [internalIsLoading, setInternalIsLoading] = useState(false);
   const [message, setMessage] = useState(defaultMessage || "");
+  const [selectedPlotId, setSelectedPlotId] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [response, setResponse] = useState<ResponseData | null>(null);
   const [activeTab, setActiveTab] = useState<"input" | "response">("input");
@@ -79,6 +97,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
       setCurrentCharacter({});
       setTotalCharacters(0);
       setGeneratedCharacters([]);
+      setSelectedPlotId(null);
     }
   }, [open, defaultMessage]);
 
@@ -87,15 +106,15 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!message.trim() || isLoading) return;
+    if (!message.trim() || internalIsLoading || externalIsLoading) return;
 
-    setIsLoading(true);
+    setInternalIsLoading(true);
     setError(null);
     setResponse(null);
     setActiveTab("response");
 
     try {
-      const result = await requestAssist(message);
+      const result = await requestAssist({ message, plotId: selectedPlotId });
       if (result) {
         setResponse(result);
 
@@ -111,7 +130,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
       console.error("AIアシスト実行エラー:", err);
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
-      setIsLoading(false);
+      setInternalIsLoading(false);
     }
   };
 
@@ -134,7 +153,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   }, [message]);
 
   const handleCancel = () => {
-    if (!isLoading) {
+    if (!internalIsLoading) {
       onClose();
     }
   };
@@ -179,6 +198,32 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
 
         {activeTab === "input" && (
           <div>
+            {plots && plots.length > 0 && (
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="plot-select-label">
+                  関連プロット (任意)
+                </InputLabel>
+                <Select
+                  labelId="plot-select-label"
+                  id="plot-select"
+                  value={selectedPlotId || ""}
+                  label="関連プロット (任意)"
+                  onChange={(e) =>
+                    setSelectedPlotId((e.target.value as string) || null)
+                  }
+                  disabled={internalIsLoading || externalIsLoading}
+                >
+                  <MenuItem value="">
+                    <em>指定なし</em>
+                  </MenuItem>
+                  {plots.map((plot) => (
+                    <MenuItem key={plot.id} value={plot.id}>
+                      {plot.title}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             <Textarea
               ref={textareaRef}
               value={message}
@@ -187,7 +232,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
               rows={8}
               className="resize-none text-base p-3 w-full"
               style={{ minHeight: "150px" }}
-              disabled={isLoading}
+              disabled={internalIsLoading || externalIsLoading}
             />
 
             {supportsBatchGeneration && (
@@ -197,7 +242,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
                   id="batch-generation"
                   checked={useBatchGeneration}
                   onChange={handleBatchGenerationToggle}
-                  disabled={isLoading}
+                  disabled={internalIsLoading || externalIsLoading}
                 />
                 <label htmlFor="batch-generation" className="text-sm">
                   キャラクターを1人ずつ生成（より詳細な情報を取得）
@@ -209,7 +254,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
 
         {activeTab === "response" && (
           <div className="border rounded-md p-4 min-h-[200px] w-full bg-gray-50">
-            {isLoading ? (
+            {internalIsLoading ? (
               <div className="flex flex-col items-center justify-center h-full py-6">
                 <Spinner className="h-8 w-8" />
                 <p className="mt-4 text-gray-600">処理中...</p>
@@ -264,22 +309,22 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
           </div>
         )}
 
-        <DialogFooter className="mt-4 flex justify-end gap-3 flex-wrap">
+        <DialogFooter className="mt-6">
           <Button
-            type="button"
-            variant="secondary"
+            variant="outline"
             onClick={handleCancel}
-            disabled={isLoading}
+            disabled={internalIsLoading || externalIsLoading}
           >
             キャンセル
           </Button>
           <Button
-            type="button"
-            variant="default"
             onClick={handleSubmit}
-            disabled={isLoading || !message.trim()}
+            disabled={internalIsLoading || externalIsLoading || !message.trim()}
           >
-            {isLoading ? <Spinner className="h-4 w-4 mr-2" /> : "生成"}
+            {internalIsLoading ? (
+              <Spinner className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            生成
           </Button>
         </DialogFooter>
       </DialogContent>

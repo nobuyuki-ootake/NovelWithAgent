@@ -103,9 +103,21 @@ export interface TimelineEvent {
     relatedCharacters: string[];
     relatedPlaces: string[];
     order: number;
+    eventType?: string;
     postEventCharacterStatuses?: {
         [characterId: string]: CharacterStatus[];
     };
+    relatedPlotIds?: string[];
+}
+export interface TimelineEventSeed {
+    id: string;
+    eventName: string;
+    relatedPlaceIds?: string[];
+    characterIds?: string[];
+    relatedPlotIds?: string[];
+    estimatedTime?: string;
+    description?: string;
+    relatedPlotTitles?: string[];
 }
 export interface Chapter {
     id: string;

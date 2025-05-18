@@ -123,9 +123,23 @@ export interface TimelineEvent {
   relatedCharacters: string[];
   relatedPlaces: string[];
   order: number;
+  eventType?: string; // 例: "battle", "rest", "dialogue", "journey", "discovery", "turning_point", "info"
   postEventCharacterStatuses?: {
     [characterId: string]: CharacterStatus[];
   };
+  relatedPlotIds?: string[]; // 関連するプロットのID配列
+}
+
+// AIが生成するイベントの「種」の型定義
+export interface TimelineEventSeed {
+  id: string; // 仮のID、またはAIが生成したユニークID
+  eventName: string;
+  relatedPlaceIds?: string[];
+  characterIds?: string[];
+  relatedPlotIds?: string[]; // 関連するプロットのID（またはタイトルなど、初期段階での識別子）
+  estimatedTime?: string; // AIが提案するおおよその時期や期間 (例: "物語の序盤", "夏至の祭り前後")
+  description?: string; // 簡単な説明やメモ
+  relatedPlotTitles?: string[]; // 関連するプロットのタイトル配列
 }
 
 // 章の型定義
