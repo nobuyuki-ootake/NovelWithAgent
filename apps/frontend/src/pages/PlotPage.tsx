@@ -17,7 +17,7 @@ import {
   Stack,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+// import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"; // 削除
 import PlotItem from "../components/plot/PlotItem";
 import { PlotProvider, usePlotContext } from "../contexts/PlotContext";
 import { AIAssistModal } from "../components/modals/AIAssistModal";
@@ -43,7 +43,7 @@ const PlotPageContent: React.FC = () => {
     handleOpenEditDialog,
     handleCloseEditDialog,
     handleUpdateItem,
-    handleDragEnd,
+    // handleDragEnd, // PlotContextから受け取っているが、一旦削除
     handleStatusChange,
     handleSave,
     aiAssistModalOpen,
@@ -60,8 +60,11 @@ const PlotPageContent: React.FC = () => {
   };
 
   // AIAssistモーダルに渡す関数を適切な型に変換
-  const handleAIAssistTyped = (message: string): Promise<ResponseData> => {
-    return handleAIAssist(message) as Promise<ResponseData>;
+  const handleAIAssistTyped = (
+    params: { message: string; plotId?: string | null } // シグネチャ変更
+  ): Promise<ResponseData> => {
+    // plotId は PlotPage のAIアシストでは現状使用しないため、message のみ渡す
+    return handleAIAssist(params.message) as Promise<ResponseData>;
   };
 
   if (!currentProject) {
@@ -144,32 +147,47 @@ const PlotPageContent: React.FC = () => {
           </Stack>
         </Box>
       </Paper>
-
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="plot-items">
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef}>
-              {plotItems.map((item, index) => (
-                <Draggable key={item.id} draggableId={item.id} index={index}>
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.draggableProps}>
-                      <PlotItem
-                        item={item}
-                        onEdit={() => handleOpenEditDialog(item)}
-                        onDelete={() => handleDeleteItem(item.id)}
-                        onStatusChange={handleStatusChange}
-                        dragHandleProps={provided.dragHandleProps}
-                      />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
+      {/* <DragDropContext onDragEnd={handleDragEnd}> */} {/* 削除 */}
+      {/* <Droppable droppableId="plot-items"> */}
+      {/* 削除 */}
+      {/* {(provided) => ( */}
+      {/* 削除 */}
+      <Box /* {...provided.droppableProps} ref={provided.innerRef} */>
+        {" "}
+        {/* refとprops削除 */}
+        {plotItems.map(
+          (
+            item /*, index*/ // index を削除
+          ) => (
+            // <Draggable key={item.id} draggableId={item.id} index={index}> {/* 削除 */}
+            // {(provided) => ( {/* 削除 */}
+            <Box
+              key={
+                item.id
+              } /* ref={provided.innerRef} {...provided.draggableProps} */
+            >
+              {" "}
+              {/* refとprops削除、keyをBoxに移動 */}
+              <PlotItem
+                item={item}
+                onEdit={() => handleOpenEditDialog(item)}
+                onDelete={() => handleDeleteItem(item.id)}
+                onStatusChange={handleStatusChange}
+                // dragHandleProps={provided.dragHandleProps} // 削除
+              />
+            </Box>
+            // )} {/* 削除 */}
+            // </Draggable> /* 削除 */}
+          )
+        )}
+        {/* {provided.placeholder} */}
+        {/* 削除 */}
+      </Box>
+      {/* )} */}
+      {/* 削除 */}
+      {/* </Droppable> */}
+      {/* 削除 */}
+      {/* </DragDropContext> */} {/* 削除 */}
       {/* 編集ダイアログ */}
       <Dialog
         open={isDialogOpen}
@@ -224,7 +242,6 @@ const PlotPageContent: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* AIアシストモーダル */}
       <AIAssistModal
         open={aiAssistModalOpen}

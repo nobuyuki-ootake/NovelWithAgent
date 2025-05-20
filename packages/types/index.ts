@@ -128,6 +128,7 @@ export interface TimelineEvent {
     [characterId: string]: CharacterStatus[];
   };
   relatedPlotIds?: string[]; // 関連するプロットのID配列
+  placeId?: string; // タイムラインチャート表示用の主要な場所ID (オプショナル)
 }
 
 // AIが生成するイベントの「種」の型定義

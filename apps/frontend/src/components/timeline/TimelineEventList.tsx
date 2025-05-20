@@ -7,12 +7,7 @@ import {
 } from "@mui/icons-material";
 import TimelineEventCard from "./TimelineEventCard";
 import { TimelineItem } from "../../hooks/useTimeline";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "react-beautiful-dnd";
+import { TimelineEvent } from "@novel-ai-assistant/types";
 
 interface TimelineEventListProps {
   timelineItems: TimelineItem[];
@@ -21,7 +16,8 @@ interface TimelineEventListProps {
   onEditEvent: (id: string) => void;
   hasUnsavedChanges: boolean;
   onSave: () => void;
-  onReorder?: (items: TimelineItem[]) => void;
+  getCharacterNameById?: (id: string) => string;
+  getPlaceNameById?: (id: string) => string;
 }
 
 const TimelineEventList: React.FC<TimelineEventListProps> = ({
@@ -31,25 +27,9 @@ const TimelineEventList: React.FC<TimelineEventListProps> = ({
   onEditEvent,
   hasUnsavedChanges,
   onSave,
-  onReorder,
+  getCharacterNameById,
+  getPlaceNameById,
 }) => {
-  const [items, setItems] = React.useState<TimelineItem[]>([...timelineItems]);
-
-  React.useEffect(() => {
-    setItems([...timelineItems]);
-  }, [timelineItems]);
-
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-    const reordered = Array.from(items);
-    const [removed] = reordered.splice(result.source.index, 1);
-    reordered.splice(result.destination.index, 0, removed);
-    setItems(reordered);
-    if (onReorder) {
-      onReorder(reordered);
-    }
-  };
-
   return (
     <Box sx={{ mb: 4 }}>
       <Box
@@ -101,7 +81,7 @@ const TimelineEventList: React.FC<TimelineEventListProps> = ({
           minHeight: "100px",
         }}
       >
-        {items.length === 0 ? (
+        {timelineItems.length === 0 ? (
           <Typography
             variant="body1"
             color="text.secondary"
@@ -110,33 +90,41 @@ const TimelineEventList: React.FC<TimelineEventListProps> = ({
             イベントはまだありません。「イベント追加」ボタンをクリックして最初のイベントを追加してください。
           </Typography>
         ) : (
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="timeline-event-list">
-              {(provided) => (
-                <Box ref={provided.innerRef} {...provided.droppableProps}>
-                  {items.map((item, index) => (
-                    <Draggable
-                      key={item.id}
-                      draggableId={item.id}
-                      index={index}
-                    >
-                      {(provided, snapshot) => (
-                        <Box
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          sx={{ mb: 2, opacity: snapshot.isDragging ? 0.7 : 1 }}
-                        >
-                          <TimelineEventCard item={item} onEdit={onEditEvent} />
-                        </Box>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </Box>
-              )}
-            </Droppable>
-          </DragDropContext>
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+            }}
+          >
+            {timelineItems.map((item, index) => {
+              const eventForCard: TimelineEvent = {
+                id: item.id,
+                title: item.title,
+                description: item.description || "",
+                date: item.date,
+                relatedCharacters: item.relatedCharacters || [],
+                relatedPlaces: [],
+                placeId: item.placeId,
+                order: index,
+                eventType: item.eventType,
+              };
+              const placeNameForCard =
+                item.placeId && getPlaceNameById
+                  ? getPlaceNameById(item.placeId)
+                  : item.placeName || "場所不明";
+              return (
+                <TimelineEventCard
+                  key={item.id}
+                  event={eventForCard}
+                  onEdit={onEditEvent}
+                  placeName={placeNameForCard}
+                  getCharacterNameById={getCharacterNameById}
+                  dndContextType="list"
+                />
+              );
+            })}
+          </Box>
         )}
       </Paper>
     </Box>

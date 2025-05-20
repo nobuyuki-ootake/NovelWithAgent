@@ -108,6 +108,7 @@ export interface TimelineEvent {
         [characterId: string]: CharacterStatus[];
     };
     relatedPlotIds?: string[];
+    placeId?: string;
 }
 export interface TimelineEventSeed {
     id: string;

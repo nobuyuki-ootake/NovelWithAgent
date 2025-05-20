@@ -16,7 +16,6 @@ import {
   DragIndicator as DragIcon,
 } from "@mui/icons-material";
 import { PlotElement } from "@novel-ai-assistant/types";
-import { DraggableProvidedDragHandleProps } from "react-beautiful-dnd";
 
 interface PlotItemProps {
   item: PlotElement;
@@ -26,7 +25,6 @@ interface PlotItemProps {
   ) => void;
   onDelete: (id: string) => void;
   onEdit: (item: PlotElement) => void;
-  dragHandleProps: DraggableProvidedDragHandleProps | null | undefined;
 }
 
 const PlotItem: React.FC<PlotItemProps> = ({
@@ -34,7 +32,6 @@ const PlotItem: React.FC<PlotItemProps> = ({
   onStatusChange,
   onDelete,
   onEdit,
-  dragHandleProps,
 }) => {
   return (
     <Paper
@@ -49,7 +46,7 @@ const PlotItem: React.FC<PlotItemProps> = ({
         }`,
       }}
     >
-      <Box {...dragHandleProps} sx={{ mr: 1, color: "grey.500" }}>
+      <Box sx={{ mr: 1, color: "grey.500" }}>
         <DragIcon />
       </Box>
       <Box sx={{ flexGrow: 1 }}>

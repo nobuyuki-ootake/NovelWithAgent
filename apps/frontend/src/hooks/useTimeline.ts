@@ -12,10 +12,10 @@ import {
   // WorldBuildingElement, // 未使用のためコメントアウト
   // WorldBuildingElementType, // 未使用のためコメントアウト
 } from "@novel-ai-assistant/types";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid"; // 未使用のため削除
 import moment from "moment";
 import "moment/locale/ja";
-import { SelectChangeEvent } from "@mui/material";
+import { SelectChangeEvent } from "@mui/material"; // SelectChangeEvent をインポート
 
 // moment.jsの日本語化
 moment.locale("ja");
@@ -32,7 +32,7 @@ export interface TimelineItem {
   placeId: string;
   placeName: string;
   title: string;
-  date: string;
+  date: string; // ISOString
   dateValue: number;
   description?: string;
   relatedCharacters: string[];
@@ -43,8 +43,65 @@ export interface TimelineItem {
 
 // 設定ダイアログの状態
 export interface TimelineSettings {
-  startDate: string;
+  startDate: string; // yyyy-MM-dd
 }
+
+// ファイル先頭の仮定義ハンドラのうち、今回実装しないものは残す
+// const handleOpenDialog = () => {}; // 実装するため削除
+// const handleOpenSettingsDialog = () => {}; // 実装するため削除
+// const handleCloseSettingsDialog = () => {}; // 実装するため削除
+const handleSaveSettings = () => {};
+// const handleSettingsChange = (_: any) => {}; // SelectChangeEvent<string> に合わせる
+// const handleCloseDialog = () => {}; // 実装するため削除
+// const handleEventChange = (..) => {}; // 下で修正
+// const handleCharactersChange = (..) => {}; // 下で修正
+// const handlePlacesChange = (..) => {}; // 下で修正
+const handleSaveEvent = () => {}; // handleSave にリネームされる可能性あり
+// const handleEventClick = (_: TimelineItem) => {}; // 実装済み
+const handleCloseSnackbar = () => {};
+const getCharacterName = (_: string): string => "";
+const getPlaceName = (_: string): string => "";
+const calculateEventPosition = (_: number, __: number) => {};
+const createEventFromPosition = (_: number, __: number) => {};
+const handleReorderEvents = (_: TimelineEvent[]) => {};
+// const handlePostEventStatusChange = (..) => {}; // 下で修正
+// const handleRelatedPlotsChange = (..) => {}; // 下で修正
+
+// TimelineEventDialogProps に合わせたハンドラの仮定義
+const handleSettingsChange = (
+  _e:
+    | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    | SelectChangeEvent<string>,
+  _field?: string
+) => {};
+
+const handleEventChange = (
+  _e:
+    | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    | SelectChangeEvent<string>,
+  _field?: string
+) => {
+  // TODO: setNewEvent を使ってnewEventを更新するロジック
+};
+
+const handleCharactersChange = (_event: SelectChangeEvent<string[]>) => {
+  // TODO: setNewEvent を使ってnewEvent.relatedCharactersを更新するロジック
+};
+
+const handlePlacesChange = (_event: SelectChangeEvent<string[]>) => {
+  // TODO: setNewEvent を使ってnewEvent.relatedPlacesを更新するロジック
+};
+
+const handlePostEventStatusChange = (
+  _characterId: string,
+  _newStatuses: CharacterStatus[]
+) => {
+  // TODO: setNewEvent を使ってnewEvent.postEventCharacterStatusesを更新するロジック
+};
+
+const handleRelatedPlotsChange = (_selectedPlotIds: string[]) => {
+  // TODO: setNewEvent を使ってnewEvent.relatedPlotIdsを更新するロジック
+};
 
 export function useTimeline() {
   const [currentProject, setCurrentProject] =
@@ -58,9 +115,14 @@ export function useTimeline() {
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
 
+  // Y軸の日付範囲と目盛り
+  const [dateArray, setDateArray] = useState<string[]>([]);
+  const [safeMinY, setSafeMinY] = useState<number>(0);
+  const [safeMaxY, setSafeMaxY] = useState<number>(0);
+
   // タイムラインの設定
   const [timelineSettings, setTimelineSettings] = useState<TimelineSettings>({
-    startDate: new Date().toISOString().split("T")[0],
+    startDate: moment().format("YYYY-MM-DD"), // 初期値を yyyy-MM-dd に
   });
 
   // 設定ダイアログの状態
@@ -71,7 +133,7 @@ export function useTimeline() {
     id: "",
     title: "",
     description: "",
-    date: "",
+    date: moment().toISOString(), // 初期値はISOString
     relatedCharacters: [],
     relatedPlaces: [],
     order: 0,
@@ -95,6 +157,24 @@ export function useTimeline() {
     definedCharacterStatusesForDialog,
     setDefinedCharacterStatusesForDialog,
   ] = useState<CharacterStatus[]>([]);
+
+  // ★ 新しい関数: イベントの場所と日時を更新
+  const handleUpdateEventLocationAndDate = useCallback(
+    (eventId: string, newPlaceId: string, newDate: string) => {
+      setTimelineEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === eventId
+            ? { ...event, placeId: newPlaceId, date: newDate }
+            : event
+        )
+      );
+      setHasUnsavedChanges(true);
+      console.log(
+        `[useTimeline] Event ${eventId} updated via D&D: placeId=${newPlaceId}, date=${newDate}`
+      );
+    },
+    [setTimelineEvents, setHasUnsavedChanges]
+  );
 
   // 初期データのロード
   useEffect(() => {
@@ -178,7 +258,36 @@ export function useTimeline() {
     } else {
       console.log("[useTimeline] useEffect - currentProject is null");
     }
-  }, [currentProject]); // setCurrentProject を依存配列から削除
+  }, [currentProject, setCurrentProject]);
+
+  // Y軸の日付範囲と目盛りを計算
+  useEffect(() => {
+    if (timelineSettings.startDate) {
+      const start = moment(timelineSettings.startDate, "YYYY-MM-DD");
+      const dates: string[] = [];
+      // startDateから前後7日間（合計15日間）
+      for (let i = -7; i <= 7; i++) {
+        dates.push(start.clone().add(i, "days").format("YYYY-MM-DD"));
+      }
+      setDateArray(dates);
+      if (dates.length > 0) {
+        const minY = moment(dates[0], "YYYY-MM-DD").valueOf();
+        // 最終日は終日を含むように、またチャートの表示領域を考慮して、最終日の翌日の0時をMaxとする
+        const maxY = moment(dates[dates.length - 1], "YYYY-MM-DD")
+          .add(1, "day")
+          .startOf("day")
+          .valueOf();
+        setSafeMinY(minY);
+        setSafeMaxY(maxY);
+        console.log("[useTimeline] Y-axis calculation:", {
+          startDate: timelineSettings.startDate,
+          dates,
+          minY,
+          maxY,
+        });
+      }
+    }
+  }, [timelineSettings.startDate]);
 
   // 地名（グループ）の更新
   useEffect(() => {
@@ -248,534 +357,206 @@ export function useTimeline() {
     });
   }, [timelineEvents, currentProject]);
 
-  // イベントをグラフデータに変換
+  // timelineItemsの生成ロジックを修正
   useEffect(() => {
-    if (sortedTimelineEvents.length > 0 && timelineGroups.length > 0) {
-      const items: TimelineItem[] = sortedTimelineEvents.map((event) => {
-        // 関連する地名がある場合はその最初の場所に配置、なければ「未分類」に
-        const placeId =
-          event.relatedPlaces.length > 0
-            ? event.relatedPlaces[0]
-            : "unassigned";
-
-        // 地名を取得
-        const place = timelineGroups.find((group) => group.id === placeId);
-        const placeName = place ? place.title : "未分類";
-
-        // 関連キャラクターのデータを取得
-        const relatedCharacterData = characters.filter((char) =>
-          event.relatedCharacters.includes(char.id)
-        );
-
-        // 関連キャラクター名を取得
-        const characterNames = relatedCharacterData
-          .map((char) => char.name)
+    // timelineEventsが未定義または空でも、charactersやplacesが処理されるように条件を調整
+    // sortedTimelineEventsを使うので、timelineEvents自体の長さチェックは不要になるケースもある
+    if (characters && places) {
+      const items = sortedTimelineEvents.map((event) => {
+        // index は未使用
+        // sortedTimelineEvents を使用
+        const place = places.find((p) => p.id === event.placeId);
+        const relatedCharacterNames = event.relatedCharacters
+          .map((charId) => {
+            const char = characters.find((c) => c.id === charId);
+            return char ? char.name : "不明";
+          })
           .join(", ");
 
-        // 日付をmoment形式に変換
-        const dateValue = moment(event.date).valueOf();
+        const relatedCharacterData = (event.relatedCharacters || [])
+          .map((charId) => characters.find((c) => c.id === charId))
+          .filter((c) => !!c) as Character[];
 
         return {
           id: event.id,
-          placeId,
-          placeName,
+          placeId: event.placeId || "unassigned",
+          placeName: place ? place.name : "未分類",
           title: event.title,
           date: event.date,
-          dateValue,
+          dateValue: moment(event.date).valueOf(),
           description: event.description,
           relatedCharacters: event.relatedCharacters,
-          relatedCharacterNames: characterNames,
-          relatedCharacterData,
+          relatedCharacterNames: relatedCharacterNames,
+          relatedCharacterData: relatedCharacterData,
           eventType: event.eventType,
         };
       });
-
       setTimelineItems(items);
-    } else {
-      setTimelineItems([]);
     }
-  }, [sortedTimelineEvents, timelineGroups, characters]);
+  }, [sortedTimelineEvents, characters, places]);
 
+  // ダイアログ用の登場人物ステータス定義の取得
+  const definedCharacterStatuses = useMemo(() => {
+    // console.log(
+    //   "[useTimeline] definedCharacterStatuses useMemo - currentProject.definedCharacterStatuses:",
+    //   currentProject?.definedCharacterStatuses
+    // );
+    // console.log(
+    //   "[useTimeline] definedCharacterStatuses useMemo - definedCharacterStatusesForDialog (useState):",
+    //   definedCharacterStatusesForDialog
+    // );
+    return (
+      currentProject?.definedCharacterStatuses ||
+      definedCharacterStatusesForDialog ||
+      []
+    );
+  }, [
+    currentProject?.definedCharacterStatuses,
+    definedCharacterStatusesForDialog,
+  ]);
+
+  // イベントを一括で追加する関数
   const addTimelineEventsBatch = useCallback(
     (newEvents: TimelineEvent[]) => {
-      if (!currentProject) return;
-
-      // 新しいイベントを既存のイベントリストと結合
-      // IDの重複を避けるため、もしIDが既存のものと衝突する場合は新しいIDを振ることも検討できますが、
-      // crypto.randomUUID() を使っているので、基本的には衝突しない想定。
-      const updatedTimelineEvents = [...timelineEvents, ...newEvents].sort(
-        (a, b) => (a.order || 0) - (b.order || 0) // orderでソート
-      );
-
-      setTimelineEvents(updatedTimelineEvents);
-
-      // currentProject を更新
-      setCurrentProject({
-        ...currentProject,
-        timeline: updatedTimelineEvents,
-        updatedAt: new Date(), // 更新日時を更新
+      setTimelineEvents((prevEvents) => {
+        const updatedEvents = [...prevEvents];
+        let maxOrderInBatch = prevEvents.reduce(
+          (max, item) => Math.max(max, item.order || 0),
+          0
+        );
+        newEvents.forEach((newEvent) => {
+          if (!updatedEvents.find((e) => e.id === newEvent.id)) {
+            maxOrderInBatch++;
+            updatedEvents.push({
+              ...newEvent,
+              order: newEvent.order || maxOrderInBatch,
+            });
+          }
+        });
+        return updatedEvents;
       });
-
       setHasUnsavedChanges(true);
-      setSnackbarMessage(
-        `${newEvents.length}件のイベントがタイムラインに追加されました。`
-      );
-      setSnackbarOpen(true);
     },
-    [currentProject, timelineEvents, setCurrentProject]
+    [setTimelineEvents, setHasUnsavedChanges]
   );
 
-  // ダイアログを開く
-  const handleOpenDialog = useCallback(
-    (event?: TimelineEvent) => {
-      // ダイアログを開く前に、もう一度地名データの確認
-      // 万が一データが読み込まれていない場合に再読み込み
-      if (
-        places.length === 0 &&
-        currentProject &&
-        currentProject.worldBuilding &&
-        currentProject.worldBuilding.places &&
-        currentProject.worldBuilding.places.length > 0
-      ) {
-        console.log("Refreshing places data before opening dialog");
-        setPlaces(currentProject.worldBuilding.places);
+  // 変更をプロジェクトに保存する関数
+  const handleSave = useCallback(async () => {
+    if (currentProject) {
+      const updatedProject: NovelProject = {
+        ...currentProject,
+        timeline: sortedTimelineEvents, // 保存時はソート済みのイベントリストを使用
+        worldBuilding: {
+          ...currentProject.worldBuilding,
+          timelineSettings: timelineSettings,
+          places: places,
+        },
+        characters: characters,
+        plot: allPlots,
+        definedCharacterStatuses: definedCharacterStatuses,
+        updatedAt: new Date(), // toISOString() を削除して Date 型に
+      };
+
+      try {
+        const projectsStr = localStorage.getItem("novelProjects");
+        const projects: NovelProject[] = projectsStr
+          ? JSON.parse(projectsStr)
+          : [];
+        const projectIndex = projects.findIndex(
+          (p) => p.id === currentProject.id
+        );
+        if (projectIndex > -1) {
+          projects[projectIndex] = updatedProject;
+        } else {
+          projects.push(updatedProject);
+        }
+        localStorage.setItem("novelProjects", JSON.stringify(projects));
+        setCurrentProject(updatedProject);
+
+        setHasUnsavedChanges(false);
+        setSnackbarMessage("タイムラインが保存されました。");
+        setSnackbarOpen(true);
+        console.log("[useTimeline] Project saved:", updatedProject);
+      } catch (error) {
+        console.error(
+          "[useTimeline] Error saving project to localStorage:",
+          error
+        );
+        setSnackbarMessage("保存中にエラーが発生しました。");
+        setSnackbarOpen(true);
       }
+    }
+  }, [
+    currentProject,
+    setCurrentProject,
+    sortedTimelineEvents, // timelineEvents から sortedTimelineEvents に変更
+    timelineSettings,
+    characters,
+    places,
+    allPlots,
+    definedCharacterStatuses,
+  ]);
 
-      // 現在のplaces配列をログ出力
-      console.log("Places when opening dialog:", places);
-
-      if (event) {
-        setNewEvent({
-          ...event,
-          order: event.order ?? 0,
-          postEventCharacterStatuses: event.postEventCharacterStatuses || {},
-          relatedPlotIds: event.relatedPlotIds || [],
-        });
-        setIsEditing(true);
-        setCurrentEventId(event.id);
-      } else {
-        setNewEvent({
-          id: "",
-          title: "",
-          description: "",
-          date: new Date().toISOString().split("T")[0],
-          relatedCharacters: [],
-          relatedPlaces: [],
-          order: timelineEvents.length, // 新規は末尾
-          eventType: "",
-          postEventCharacterStatuses: {},
-          relatedPlotIds: [],
-        });
-        setIsEditing(false);
-        setCurrentEventId("");
-      }
-      setDialogOpen(true);
-    },
-    [places, currentProject, timelineEvents]
-  );
-
-  // 設定ダイアログを開く
-  const handleOpenSettingsDialog = useCallback(() => {
-    setSettingsDialogOpen(true);
-  }, []);
-
-  // 設定ダイアログを閉じる
-  const handleCloseSettingsDialog = useCallback(() => {
-    setSettingsDialogOpen(false);
-  }, []);
-
-  // 設定を保存
-  const handleSaveSettings = useCallback(() => {
-    if (!currentProject) return;
-
-    // プロジェクトに設定を保存
-    setCurrentProject({
-      ...currentProject,
-      worldBuilding: {
-        ...currentProject.worldBuilding,
-        timelineSettings,
-      },
-      updatedAt: new Date(),
+  // モーダル開閉ハンドラの実装
+  const handleOpenDialog = useCallback(() => {
+    setDialogOpen(true);
+    setIsEditing(false);
+    setCurrentEventId("");
+    setNewEvent({
+      id: "", // 新規作成時はuuidv4()などで生成するべきだが、一旦空文字
+      title: "",
+      description: "",
+      date: moment().toISOString(),
+      relatedCharacters: [],
+      relatedPlaces: [],
+      order: timelineEvents.length, // 仮。実際はもっと賢いロジックが必要
+      eventType: "",
+      postEventCharacterStatuses: {},
+      relatedPlotIds: [],
     });
+  }, [
+    timelineEvents.length,
+    setNewEvent,
+    setDialogOpen,
+    setIsEditing,
+    setCurrentEventId,
+  ]);
 
-    setSettingsDialogOpen(false);
-    setSnackbarMessage("タイムライン設定を保存しました");
-    setSnackbarOpen(true);
-  }, [currentProject, timelineSettings, setCurrentProject]);
-
-  // 設定の変更を処理
-  const handleSettingsChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const { name, value } = e.target;
-      setTimelineSettings({
-        ...timelineSettings,
-        [name]: value,
-      });
-    },
-    [timelineSettings]
-  );
-
-  // ダイアログを閉じる
   const handleCloseDialog = useCallback(() => {
     setDialogOpen(false);
-  }, []);
+  }, [setDialogOpen]);
 
-  // イベントの変更を処理
-  const handleEventChange = useCallback(
-    (
-      e:
-        | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-        | SelectChangeEvent<string>,
-      field?: string
-    ) => {
-      if (field === "eventType") {
-        // SelectChangeEventの場合
-        const value = (e as SelectChangeEvent<string>).target.value;
-        setNewEvent((prev) => ({
-          ...prev,
-          eventType: value,
-        }));
-      } else {
-        // HTMLInputElement | HTMLTextAreaElement の場合
-        const { name, value } = e.target as
-          | HTMLInputElement
-          | HTMLTextAreaElement;
-        setNewEvent((prev) => ({
-          ...prev,
-          [name]: value,
-        }));
-      }
-    },
-    [newEvent]
-  );
+  const handleOpenSettingsDialog = useCallback(() => {
+    setSettingsDialogOpen(true);
+  }, [setSettingsDialogOpen]);
 
-  // 関連キャラクターの変更を処理
-  const handleCharactersChange = useCallback(
-    (event: SelectChangeEvent<string[]>) => {
-      const {
-        target: { value },
-      } = event;
-      setNewEvent({
-        ...newEvent,
-        relatedCharacters: typeof value === "string" ? value.split(",") : value,
-      });
-    },
-    [newEvent]
-  );
+  const handleCloseSettingsDialog = useCallback(() => {
+    setSettingsDialogOpen(false);
+  }, [setSettingsDialogOpen]);
 
-  // 関連場所の変更を処理
-  const handlePlacesChange = useCallback(
-    (event: SelectChangeEvent<string[]>) => {
-      const {
-        target: { value },
-      } = event;
-      setNewEvent({
-        ...newEvent,
-        relatedPlaces: typeof value === "string" ? value.split(",") : value,
-      });
-    },
-    [newEvent]
-  );
-
-  // イベントの追加/編集
-  const handleSaveEvent = useCallback(() => {
-    if (!newEvent.title.trim() || !newEvent.date) {
-      return;
-    }
-
-    let updatedEvent: TimelineEvent;
-    if (isEditing) {
-      // 既存のイベントを更新
-      updatedEvent = {
-        ...newEvent,
-        id: currentEventId,
-        order: newEvent.order ?? 0,
-        eventType: newEvent.eventType || "",
-        relatedPlotIds: newEvent.relatedPlotIds || [],
-      };
-      const updatedEvents = timelineEvents.map((event) =>
-        event.id === currentEventId ? updatedEvent : event
-      );
-      setTimelineEvents(updatedEvents);
-    } else {
-      // 新しいイベントを追加
-      updatedEvent = {
-        ...newEvent,
-        id: uuidv4(),
-        order: timelineEvents.length,
-        eventType: newEvent.eventType || "",
-        relatedPlotIds: newEvent.relatedPlotIds || [],
-      };
-      setTimelineEvents([...timelineEvents, updatedEvent]);
-    }
-
-    setHasUnsavedChanges(true);
-    setDialogOpen(false);
-  }, [timelineEvents, newEvent, isEditing, currentEventId]);
-
-  // イベントをクリックしたときの処理
   const handleEventClick = useCallback(
     (id: string) => {
-      const event = timelineEvents.find((event) => event.id === id);
-      if (event) {
-        handleOpenDialog(event);
+      const eventToEdit = timelineEvents.find((event) => event.id === id);
+      if (eventToEdit) {
+        setNewEvent(eventToEdit);
+        setIsEditing(true);
+        setCurrentEventId(id);
+        setDialogOpen(true);
+      } else {
+        console.warn(
+          `[useTimeline] Event with id ${id} not found for editing.`
+        );
+        handleOpenDialog();
       }
     },
-    [timelineEvents, handleOpenDialog]
-  );
-
-  // プロジェクトとローカルストレージに保存する
-  const handleSave = useCallback(() => {
-    if (!currentProject) return;
-
-    // 現在のタイムラインイベントを更新
-    const updatedProject = {
-      ...currentProject,
-      timeline: timelineEvents,
-      updatedAt: new Date(),
-    };
-
-    console.log("保存前のプロジェクト:", currentProject);
-    console.log("保存するタイムラインイベント:", timelineEvents);
-    console.log("更新後のプロジェクト:", updatedProject);
-
-    // Recoilのステートを更新
-    setCurrentProject(updatedProject);
-
-    // ローカルストレージを更新
-    const projectsStr = localStorage.getItem("novelProjects");
-    if (projectsStr) {
-      const projects = JSON.parse(projectsStr);
-      const updatedProjects = projects.map((p: NovelProject) =>
-        p.id === updatedProject.id ? updatedProject : p
-      );
-      localStorage.setItem("novelProjects", JSON.stringify(updatedProjects));
-      console.log("ローカルストレージに保存しました:", updatedProjects);
-    }
-
-    // 成功メッセージを表示
-    setSnackbarMessage("タイムラインを保存しました");
-    setSnackbarOpen(true);
-    setHasUnsavedChanges(false);
-  }, [currentProject, timelineEvents, setCurrentProject]);
-
-  // スナックバーを閉じる
-  const handleCloseSnackbar = useCallback(() => {
-    setSnackbarOpen(false);
-  }, []);
-
-  // キャラクター名を取得
-  const getCharacterName = useCallback(
-    (id: string) => {
-      const character = characters.find((char) => char.id === id);
-      return character ? character.name : "不明なキャラクター";
-    },
-    [characters]
-  );
-
-  // 場所名を取得
-  const getPlaceName = useCallback(
-    (id: string) => {
-      const place = places.find((p) => p.id === id);
-      return place ? place.name : "不明な場所";
-    },
-    [places]
-  );
-
-  // グラフのデータを準備
-  const prepareChartData = useCallback(() => {
-    // X軸のラベル（地名）
-    const xLabels = timelineGroups.map((group) => group.title);
-
-    // X軸のインデックスとID
-    const xAxisData = timelineGroups.map((group, index) => {
-      return { index, id: group.id, title: group.title };
-    });
-
-    // イベントデータ（散布図用）
-    const scatterData = timelineItems.map((item) => {
-      // 該当する地名のインデックスを取得
-      const xIndex = xAxisData.findIndex((x) => x.id === item.placeId);
-
-      return {
-        id: item.id,
-        x: xIndex >= 0 ? xIndex : 0, // 地名のインデックス
-        y: item.dateValue, // 日時の値はタイムスタンプのまま
-        label: item.title,
-        info: item, // ツールチップ表示用
-      };
-    });
-
-    return {
-      xLabels,
-      xAxisData,
-      scatterData,
-    };
-  }, [timelineGroups, timelineItems]);
-
-  // グラフデータを準備
-  const { scatterData } = useMemo(() => prepareChartData(), [prepareChartData]);
-
-  // 安全にy値の最小値と最大値を計算
-  const safeMinY = useMemo(
-    () =>
-      scatterData.length > 0
-        ? Math.min(...scatterData.map((d) => d.y)) - 86400000 * 5 // 最小日付から5日前
-        : moment().add(-1, "month").valueOf(), // デフォルトは1ヶ月前
-    [scatterData]
-  );
-
-  const safeMaxY = useMemo(
-    () =>
-      scatterData.length > 0
-        ? Math.max(...scatterData.map((d) => d.y)) + 86400000 * 5 // 最大日付から5日後
-        : moment().add(1, "month").valueOf(), // デフォルトは1ヶ月後
-    [scatterData]
-  );
-
-  // 表示する日付の配列を作成（10日分）
-  const dateArray = useMemo(() => {
-    const result = [];
-    const dayRange = (safeMaxY - safeMinY) / (10 * 86400000); // 約10日分の間隔
-
-    for (let i = 0; i <= 10; i++) {
-      const date = moment(safeMinY)
-        .add(i * dayRange, "days")
-        .valueOf();
-      result.push({
-        date,
-        label: moment(date).format("YYYY/MM/DD"),
-      });
-    }
-    return result;
-  }, [safeMinY, safeMaxY]);
-
-  // イベントの位置計算関数
-  const calculateEventPosition = useCallback(
-    (placeId: string, dateValue: number): { xPos: number; yPos: number } => {
-      // X軸（場所）位置: グループのインデックスを使用
-      const groupIndex = timelineGroups.findIndex((g) => g.id === placeId);
-      // 場所が見つからない場合は「未分類」（インデックス0）を使用
-      const xPos = groupIndex >= 0 ? groupIndex : 0;
-
-      // Y軸（日付）位置: 日付範囲内の相対位置（0～1）を計算
-      let yPos = 0;
-
-      if (dateArray.length >= 2) {
-        const minDate = dateArray[0].date;
-        const maxDate = dateArray[dateArray.length - 1].date;
-        const range = maxDate - minDate;
-
-        if (range > 0) {
-          // 正規化した位置（0～1の範囲）
-          yPos = (dateValue - minDate) / range;
-
-          // 時間軸の目盛り線に正確に合わせる
-          // 最も近い日付のインデックスを見つける
-          let closestIndex = 0;
-          let minDistance = Number.MAX_VALUE;
-
-          for (let i = 0; i < dateArray.length; i++) {
-            const distance = Math.abs(dateValue - dateArray[i].date);
-            if (distance < minDistance) {
-              minDistance = distance;
-              closestIndex = i;
-            }
-          }
-
-          // 最も近い日付の位置を使用
-          yPos = closestIndex / (dateArray.length - 1);
-
-          // 範囲を超えないようにclamp
-          yPos = Math.max(0, Math.min(1, yPos));
-        }
-      }
-
-      // X軸位置に小数点以下の揺らぎを加える（各イベントが少しずれて表示されるように）
-      // パラメータとして日付の値を使用して、異なる日付のイベントが異なる位置になるようにする
-      const offset = (dateValue % 7) / 14 - 0.25; // -0.25～+0.25の範囲でオフセット
-      const adjustedXPos = xPos + offset;
-
-      return { xPos: adjustedXPos, yPos };
-    },
-    [timelineGroups, dateArray]
-  );
-
-  // クリック位置からイベントを作成
-  const createEventFromPosition = useCallback(
-    (xRatio: number, yRatio: number) => {
-      // X軸（場所）の計算
-      const placeIndex = Math.floor(xRatio * timelineGroups.length);
-      const place = timelineGroups[placeIndex];
-
-      // Y軸（時間）の計算
-      const dateRange = safeMaxY - safeMinY;
-      const dateValue = safeMinY + dateRange * yRatio;
-      const date = moment(dateValue).format("YYYY-MM-DD");
-
-      // イベントをダイアログで作成
-      const newEventAtGrid = {
-        id: "",
-        title: "",
-        description: "",
-        date: date,
-        relatedCharacters: [],
-        relatedPlaces: place ? [place.id] : ["unassigned"],
-        order: timelineEvents.length,
-        eventType: "",
-        postEventCharacterStatuses: {},
-        relatedPlotIds: [],
-      };
-
-      setNewEvent(newEventAtGrid);
-      setIsEditing(false);
-      setCurrentEventId("");
-      setDialogOpen(true);
-    },
-    [timelineGroups, safeMinY, safeMaxY, timelineEvents]
-  );
-
-  // イベントの順序を更新する
-  const handleReorderEvents = useCallback(
-    (reorderedItems: TimelineItem[]) => {
-      // TimelineItem[] から TimelineEvent[] への変換
-      // id順でマッチングし、orderプロパティをindexで更新
-      const updatedEvents = reorderedItems
-        .map((item, idx) => {
-          const original = timelineEvents.find((e) => e.id === item.id);
-          return original ? { ...original, order: idx } : null;
-        })
-        .filter((e): e is TimelineEvent => e !== null);
-      setTimelineEvents(updatedEvents);
-      setHasUnsavedChanges(true);
-    },
-    [timelineEvents]
-  );
-
-  // イベント後のキャラクター状態を更新するハンドラ
-  const handlePostEventStatusChange = useCallback(
-    (characterId: string, newStatuses: CharacterStatus[]) => {
-      setNewEvent((prevEvent) => ({
-        ...prevEvent,
-        postEventCharacterStatuses: {
-          ...(prevEvent.postEventCharacterStatuses || {}),
-          [characterId]: newStatuses,
-        },
-      }));
-      setHasUnsavedChanges(true);
-    },
-    []
-  );
-
-  // 関連プロットの変更を処理
-  const handleRelatedPlotsChange = useCallback(
-    (selectedPlotIds: string[]) => {
-      setNewEvent((prev) => ({
-        ...prev,
-        relatedPlotIds: selectedPlotIds,
-      }));
-    },
-    [newEvent]
+    [
+      timelineEvents,
+      setNewEvent,
+      setIsEditing,
+      setCurrentEventId,
+      setDialogOpen,
+      handleOpenDialog,
+    ]
   );
 
   return {
@@ -788,10 +569,10 @@ export function useTimeline() {
     timelineGroups,
     timelineSettings,
     settingsDialogOpen,
-    newEvent,
-    dialogOpen,
-    isEditing,
-    currentEventId,
+    newEvent, // newEvent を返すように修正
+    dialogOpen, // dialogOpen を返すように修正
+    isEditing, // isEditing を返すように修正
+    currentEventId, // currentEventId を返すように修正
     snackbarOpen,
     snackbarMessage,
     hasUnsavedChanges,
@@ -823,31 +604,6 @@ export function useTimeline() {
     handlePostEventStatusChange,
     addTimelineEventsBatch,
     handleRelatedPlotsChange,
+    handleUpdateEventLocationAndDate,
   };
 }
-
-// キャラクターの役割に応じたアイコンとカラーを定義
-export const getCharacterIcon = (character: Character) => {
-  switch (character.role) {
-    case "protagonist":
-      return {
-        color: "#FFD700", // ゴールド
-        emoji: "👑",
-      };
-    case "antagonist":
-      return {
-        color: "#DC143C", // クリムゾン
-        emoji: "😈",
-      };
-    case "supporting":
-      return {
-        color: "#4169E1", // ロイヤルブルー
-        emoji: "🙂",
-      };
-    default:
-      return {
-        color: "#808080", // グレー
-        emoji: "👤",
-      };
-  }
-};

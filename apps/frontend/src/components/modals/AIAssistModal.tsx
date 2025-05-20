@@ -51,6 +51,7 @@ interface AIAssistModalProps {
   supportsBatchGeneration?: boolean;
   isLoading?: boolean;
   plots?: PlotElement[];
+  onPlotChangeForSystemPrompt?: (plotId: string | null) => string;
 }
 
 export const AIAssistModal: React.FC<AIAssistModalProps> = ({
@@ -64,9 +65,10 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   supportsBatchGeneration = false,
   isLoading: externalIsLoading,
   plots = [],
+  onPlotChangeForSystemPrompt,
 }) => {
   const [internalIsLoading, setInternalIsLoading] = useState(false);
-  const [message, setMessage] = useState(defaultMessage || "");
+  const [userInput, setUserInput] = useState("");
   const [selectedPlotId, setSelectedPlotId] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [response, setResponse] = useState<ResponseData | null>(null);
@@ -78,18 +80,15 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
   const [generatedCharacters, setGeneratedCharacters] = useState<Character[]>(
     []
   );
+  const [effectiveSystemPrompt, setEffectiveSystemPrompt] =
+    useState(defaultMessage);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (open && textareaRef.current) {
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
-    }
-
     if (open) {
-      setMessage(defaultMessage);
+      setEffectiveSystemPrompt(defaultMessage);
+      setUserInput("");
       setResponse(null);
       setError(null);
       setActiveTab("input");
@@ -98,23 +97,60 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
       setTotalCharacters(0);
       setGeneratedCharacters([]);
       setSelectedPlotId(null);
+
+      if (textareaRef.current) {
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 100);
+      }
     }
   }, [open, defaultMessage]);
 
-  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value);
+  const handleUserInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setUserInput(e.target.value);
   };
 
   const handleSubmit = async () => {
-    if (!message.trim() || internalIsLoading || externalIsLoading) return;
+    const canSubmit =
+      (effectiveSystemPrompt.trim() || userInput.trim()) &&
+      !internalIsLoading &&
+      !externalIsLoading;
+
+    if (!canSubmit) return;
 
     setInternalIsLoading(true);
     setError(null);
     setResponse(null);
     setActiveTab("response");
 
+    let finalPrompt = effectiveSystemPrompt.trim();
+    if (userInput.trim()) {
+      if (finalPrompt) {
+        finalPrompt += `\\n\\n${userInput.trim()}`;
+      } else {
+        finalPrompt = userInput.trim();
+      }
+    }
+
+    if (!finalPrompt && !selectedPlotId) {
+      console.warn(
+        "handleSubmit called with no effective prompt and no plotId."
+      );
+      setInternalIsLoading(false);
+      setActiveTab("input");
+      setError(
+        new Error(
+          "プロンプトが空です。何か入力するか、プロットを選択してください。"
+        )
+      );
+      return;
+    }
+
     try {
-      const result = await requestAssist({ message, plotId: selectedPlotId });
+      const result = await requestAssist({
+        message: finalPrompt,
+        plotId: selectedPlotId,
+      });
       if (result) {
         setResponse(result);
 
@@ -150,7 +186,7 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
 
   useEffect(() => {
     adjustTextareaHeight();
-  }, [message]);
+  }, [userInput]);
 
   const handleCancel = () => {
     if (!internalIsLoading) {
@@ -208,9 +244,16 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
                   id="plot-select"
                   value={selectedPlotId || ""}
                   label="関連プロット (任意)"
-                  onChange={(e) =>
-                    setSelectedPlotId((e.target.value as string) || null)
-                  }
+                  onChange={(e) => {
+                    const newPlotId = (e.target.value as string) || null;
+                    setSelectedPlotId(newPlotId);
+                    if (onPlotChangeForSystemPrompt) {
+                      const newPrompt = onPlotChangeForSystemPrompt(newPlotId);
+                      setEffectiveSystemPrompt(newPrompt);
+                    } else {
+                      setEffectiveSystemPrompt(defaultMessage);
+                    }
+                  }}
                   disabled={internalIsLoading || externalIsLoading}
                 >
                   <MenuItem value="">
@@ -224,15 +267,38 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
                 </Select>
               </FormControl>
             )}
+            {effectiveSystemPrompt && (
+              <Box
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "4px",
+                  backgroundColor: "#f9f9f9",
+                }}
+              >
+                <DialogDescription className="text-sm text-gray-700">
+                  <strong>基本プロンプト:</strong>
+                  <br />
+                  {effectiveSystemPrompt.split("\\n").map((line, index) => (
+                    <React.Fragment key={index}>
+                      {line}
+                      <br />
+                    </React.Fragment>
+                  ))}
+                </DialogDescription>
+              </Box>
+            )}
             <Textarea
               ref={textareaRef}
-              value={message}
-              onChange={handleMessageChange}
+              value={userInput}
+              onChange={handleUserInputChange}
               onKeyDown={handleKeyDown}
-              rows={8}
+              rows={4}
               className="resize-none text-base p-3 w-full"
-              style={{ minHeight: "150px" }}
+              style={{ minHeight: "100px" }}
               disabled={internalIsLoading || externalIsLoading}
+              placeholder="追加の指示や詳細があれば入力してください (任意)"
             />
 
             {supportsBatchGeneration && (
@@ -313,19 +379,25 @@ export const AIAssistModal: React.FC<AIAssistModalProps> = ({
           <Button
             variant="outline"
             onClick={handleCancel}
-            disabled={internalIsLoading || externalIsLoading}
+            disabled={internalIsLoading}
           >
             キャンセル
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={internalIsLoading || externalIsLoading || !message.trim()}
-          >
-            {internalIsLoading ? (
-              <Spinner className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            生成
-          </Button>
+          {activeTab === "input" ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                internalIsLoading ||
+                externalIsLoading ||
+                !(effectiveSystemPrompt.trim() || userInput.trim())
+              }
+            >
+              {internalIsLoading ? (
+                <Spinner className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              生成
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
