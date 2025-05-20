@@ -447,4 +447,49 @@ export interface WorldBuildingElementData {
  */
 export declare function createTypedWorldBuildingElement(type: string, // ここは WorldBuildingElementType の方がより厳密ですが、呼び出し元での柔軟性を考慮
 data: WorldBuildingElementData): WorldBuildingElement;
+export type AIModelType = "openai" | "anthropic" | "gemini" | "mistral" | "ollama";
+export type AIDataFormat = "text" | "json" | "yaml";
+export interface StandardAIRequest {
+    requestId?: string;
+    requestType?: string;
+    userPrompt: string;
+    systemPrompt?: string;
+    model?: string;
+    context?: {
+        projectId?: string;
+        [key: string]: any;
+    };
+    options?: {
+        temperature?: number;
+        maxTokens?: number;
+        responseFormat?: AIDataFormat;
+        timeout?: number;
+        [key: string]: any;
+    };
+}
+export interface StandardAIResponse {
+    requestId: string;
+    timestamp: string;
+    status: "success" | "error" | "partial";
+    responseFormat: AIDataFormat;
+    content: any | null;
+    rawContent?: string;
+    error?: AIError | null;
+    usage?: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+    };
+    debug?: {
+        model?: string;
+        requestType?: string;
+        processingTime?: number;
+        [key: string]: any;
+    };
+}
+export interface AIError {
+    code: string;
+    message: string;
+    details?: any;
+}
 //# sourceMappingURL=index.d.ts.map

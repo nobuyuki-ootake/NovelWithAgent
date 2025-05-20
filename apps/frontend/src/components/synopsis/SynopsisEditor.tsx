@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Box, TextField, Button, Typography, CardContent } from "@mui/material";
 import { Save as SaveIcon, Edit as EditIcon } from "@mui/icons-material";
 import { AIAssistButton } from "../ui/AIAssistButton";
-import { AIAssistModal } from "../modals/AIAssistModal";
+import { AIAssistModal, ResponseData } from "../modals/AIAssistModal";
 import { useAIAssist } from "../../hooks/useAIAssist";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../../store/atoms";
@@ -53,21 +53,47 @@ export const SynopsisEditor: React.FC<SynopsisEditorProps> = ({
   };
 
   // AIアシストリクエスト実行（タイトル情報も含める）
-  const handleAIAssist = async (message: string) => {
+  const handleAIAssist = async (params: {
+    message: string;
+    plotId?: string | null; // AIAssistModal の型に合わせるため追加 (未使用)
+  }): Promise<ResponseData> => {
     // タイトル情報を含むコンテキスト要素を作成
     const titleContext = [
       {
         title: projectTitle,
-        genre: undefined,
+        genre: undefined, // 必要に応じてジャンル情報も渡せるようにする
       },
     ];
 
     // タイトル情報が存在する場合、それを考慮したメッセージを作成
     const enhancedMessage = projectTitle
-      ? `タイトル「${projectTitle}」の小説について、${message}`
-      : message;
+      ? `タイトル「${projectTitle}」の小説について、${params.message}`
+      : params.message;
 
-    return await assistSynopsis(enhancedMessage, titleContext);
+    if (isLoading) {
+      return {
+        response: "AI処理中です。しばらくお待ちください。",
+        error: true,
+      };
+    }
+
+    try {
+      const result = await assistSynopsis(enhancedMessage, titleContext);
+      const responseForModal: ResponseData = {
+        response: result.response, // AgentResponse を ResponseData に変換
+      };
+      // onSynopsisSuccess で onChange が呼ばれるため、モーダルを閉じる処理などをここで行う
+      setAiAssistModalOpen(false);
+      return responseForModal;
+    } catch (error) {
+      console.error("あらすじ支援エラー:", error);
+      return {
+        response: `あらすじ支援中にエラーが発生しました: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error: true,
+      };
+    }
   };
 
   return (

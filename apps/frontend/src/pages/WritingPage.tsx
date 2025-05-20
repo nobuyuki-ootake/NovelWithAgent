@@ -1,4 +1,4 @@
-import React from "react";
+import React, { JSX } from "react";
 import {
   Typography,
   Box,
@@ -7,9 +7,16 @@ import {
   Tab,
   Stack,
   Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { VerticalContentEditorWrapper } from "../components/editor";
 import ChapterList from "../components/writing/ChapterList";
 import WritingPreview from "../components/writing/WritingPreview";
@@ -18,10 +25,17 @@ import AssignEventsDialog from "../components/writing/AssignEventsDialog";
 import EventDetailDialog from "../components/writing/EventDetailDialog";
 import RelatedEventsList from "../components/writing/RelatedEventsList";
 import { WritingProvider, useWritingContext } from "../contexts/WritingContext";
-import { NovelProject } from "@novel-ai-assistant/types";
+import {
+  NovelProject,
+  TimelineEvent,
+  PlaceElement,
+} from "@novel-ai-assistant/types";
+import { AIChapterGenerationParams } from "../contexts/WritingContext";
+import Snackbar from "@mui/material/Snackbar";
+import Alert, { AlertColor } from "@mui/material/Alert";
 
 // WritingPageの実装コンポーネント
-const WritingPageContent: React.FC = () => {
+const WritingPageContent: () => JSX.Element | null = () => {
   const {
     editorValue,
     currentChapter,
@@ -54,7 +68,92 @@ const WritingPageContent: React.FC = () => {
     handleAddNewEvent,
     handleSaveContent,
     serializeToText,
+    isAiProcessing,
+    aiUserInstructions,
+    aiTargetLength,
+    setAiUserInstructions,
+    setAiTargetLength,
+    generateChapterByAI,
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    closeSnackbar,
   } = useWritingContext();
+
+  const localHandleGenerateChapterByAI = async () => {
+    if (!currentChapter || !currentProject || !timelineEvents) return;
+
+    const relatedEventDetails: AIChapterGenerationParams["relatedEvents"] =
+      currentChapter.relatedEvents
+        ?.map((eventId) => timelineEvents.find((event) => event.id === eventId))
+        .filter((event): event is TimelineEvent => !!event)
+        .map((event) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+        })) || [];
+
+    const characterIdsInEvents = relatedEventDetails.reduce(
+      (
+        acc: Set<string>,
+        eventDetail: { id: string; title: string; description: string }
+      ) => {
+        const event = timelineEvents.find((e) => e.id === eventDetail.id);
+        event?.relatedCharacters?.forEach((charId) => acc.add(charId));
+        return acc;
+      },
+      new Set<string>()
+    );
+
+    const charactersInChapter: AIChapterGenerationParams["charactersInChapter"] =
+      Array.from(characterIdsInEvents).map((charId) => {
+        const char = (currentProject.characters || []).find(
+          (c: { id: string }) => c.id === charId
+        );
+        return {
+          id: charId,
+          name: char?.name || "不明なキャラクター",
+          description: char?.description || "",
+          role: char?.role || "supporting",
+        };
+      });
+
+    const locationIdsInEvents = relatedEventDetails.reduce(
+      (
+        acc: Set<string>,
+        eventDetail: { id: string; title: string; description: string }
+      ) => {
+        const event = timelineEvents.find((e) => e.id === eventDetail.id);
+        event?.relatedPlaces?.forEach((placeId) => acc.add(placeId));
+        if (event?.placeId) acc.add(event.placeId);
+        return acc;
+      },
+      new Set<string>()
+    );
+
+    const selectedLocations: AIChapterGenerationParams["selectedLocations"] =
+      Array.from(locationIdsInEvents).map((placeId) => {
+        const place = (currentProject.worldBuilding?.places || []).find(
+          (p) => p.id === placeId
+        ) as PlaceElement | undefined;
+        return {
+          id: placeId,
+          name: place?.name || "不明な場所",
+          description: place?.description || "",
+        };
+      });
+
+    const params: AIChapterGenerationParams = {
+      chapterTitle: currentChapter.title,
+      relatedEvents: relatedEventDetails,
+      charactersInChapter: charactersInChapter,
+      selectedLocations: selectedLocations,
+      userInstructions: aiUserInstructions,
+      targetChapterLength: aiTargetLength || undefined,
+    };
+
+    await generateChapterByAI(params);
+  };
 
   // キャラクター名を取得する関数
   const getCharacterName = (characterId: string) => {
@@ -86,7 +185,14 @@ const WritingPageContent: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box
+      sx={{
+        p: 2,
+        display: "flex",
+        flexDirection: "column",
+        height: "calc(100vh - 112px)",
+      }}
+    >
       <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
         <Box
           sx={{
@@ -105,21 +211,73 @@ const WritingPageContent: React.FC = () => {
               </Typography>
             )}
           </Box>
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
             {currentChapter && (
               <Button
                 variant="contained"
                 color="success"
                 startIcon={<SaveIcon />}
                 onClick={handleSaveContent}
+                disabled={isAiProcessing}
               >
                 保存
               </Button>
+            )}
+            {currentChapter && currentTabIndex === 0 && (
+              <>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel id="ai-target-length-label">章の長さ</InputLabel>
+                  <Select
+                    labelId="ai-target-length-label"
+                    value={aiTargetLength}
+                    label="章の長さ"
+                    onChange={(e) =>
+                      setAiTargetLength(
+                        e.target.value as "short" | "medium" | "long" | ""
+                      )
+                    }
+                    disabled={isAiProcessing}
+                  >
+                    <MenuItem value="">
+                      <em>指定なし</em>
+                    </MenuItem>
+                    <MenuItem value="short">短め</MenuItem>
+                    <MenuItem value="medium">普通</MenuItem>
+                    <MenuItem value="long">長め</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="AIへの追加指示"
+                  size="small"
+                  variant="outlined"
+                  value={aiUserInstructions}
+                  onChange={(e) => setAiUserInstructions(e.target.value)}
+                  disabled={isAiProcessing}
+                  sx={{ flexGrow: 1, minWidth: 150 }}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={
+                    isAiProcessing ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <AutoFixHighIcon />
+                    )
+                  }
+                  onClick={localHandleGenerateChapterByAI}
+                  disabled={isAiProcessing || !currentChapter}
+                  sx={{ whiteSpace: "nowrap" }}
+                >
+                  AIに執筆してもらう
+                </Button>
+              </>
             )}
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleOpenNewChapterDialog}
+              disabled={isAiProcessing}
             >
               新規章作成
             </Button>
@@ -127,8 +285,18 @@ const WritingPageContent: React.FC = () => {
         </Box>
       </Paper>
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-        <Box sx={{ width: { xs: "100%", md: "25%" } }}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        sx={{ flexGrow: 1, overflow: "hidden" }}
+      >
+        <Box
+          sx={{
+            width: { xs: "100%", md: "25%" },
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           <ChapterList
             chapters={(currentProject as NovelProject).chapters}
             currentChapterId={currentChapterId}
@@ -136,16 +304,24 @@ const WritingPageContent: React.FC = () => {
           />
 
           {currentChapter && (
-            <RelatedEventsList
-              events={timelineEvents}
-              relatedEventIds={currentChapter.relatedEvents || []}
-              onViewEvent={handleOpenEventDetailDialog}
-              onAssignEvents={handleOpenAssignEventsDialog}
-            />
+            <Box sx={{ mt: 2, flexGrow: 1, overflowY: "auto" }}>
+              <RelatedEventsList
+                events={timelineEvents || []}
+                relatedEventIds={currentChapter.relatedEvents || []}
+                onViewEvent={handleOpenEventDetailDialog}
+                onAssignEvents={handleOpenAssignEventsDialog}
+              />
+            </Box>
           )}
         </Box>
 
-        <Box sx={{ width: { xs: "100%", md: "75%" } }}>
+        <Box
+          sx={{
+            width: { xs: "100%", md: "75%" },
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {currentChapter ? (
             <>
               <Paper sx={{ mb: 2 }}>
@@ -161,34 +337,36 @@ const WritingPageContent: React.FC = () => {
               </Paper>
 
               {currentTabIndex === 0 && (
-                <Box sx={{ position: "relative" }}>
+                <Paper
+                  elevation={1}
+                  sx={{
+                    flexGrow: 1,
+                    p: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                  }}
+                >
                   <VerticalContentEditorWrapper
                     value={editorValue}
                     onChange={handleEditorChange}
                   />
-                  <Box
-                    sx={{
-                      position: "fixed",
-                      bottom: 32,
-                      right: 32,
-                      zIndex: 100,
-                    }}
+                  <Typography
+                    variant="caption"
+                    sx={{ textAlign: "right", p: 1, mt: "auto" }}
                   >
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="large"
-                      startIcon={<SaveIcon />}
-                      onClick={handleSaveContent}
-                    >
-                      保存
-                    </Button>
-                  </Box>
-                </Box>
+                    文字数: {serializeToText(editorValue).length}
+                  </Typography>
+                </Paper>
               )}
 
               {currentTabIndex === 1 && (
-                <WritingPreview content={serializeToText(editorValue)} />
+                <Paper
+                  elevation={1}
+                  sx={{ flexGrow: 1, p: 1, overflowY: "auto" }}
+                >
+                  <WritingPreview content={serializeToText(editorValue)} />
+                </Paper>
               )}
             </>
           ) : (
@@ -224,10 +402,11 @@ const WritingPageContent: React.FC = () => {
 
       <AssignEventsDialog
         open={assignEventsDialogOpen}
-        events={timelineEvents}
+        events={timelineEvents || []}
         selectedEvents={selectedEvents}
         characters={(currentProject as NovelProject).characters || []}
         places={(currentProject as NovelProject).worldBuilding?.places || []}
+        allPlots={(currentProject as NovelProject).plot || []}
         onClose={handleCloseAssignEventsDialog}
         onToggle={handleToggleEvent}
         onSave={handleAssignEvents}
@@ -252,6 +431,21 @@ const WritingPageContent: React.FC = () => {
         getCharacterName={getCharacterName}
         getPlaceName={getPlaceName}
       />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={closeSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={closeSnackbar}
+          severity={snackbarSeverity}
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

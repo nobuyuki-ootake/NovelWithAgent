@@ -209,8 +209,8 @@ const CharactersPageContent: React.FC = () => {
         title="AIにキャラクターを考えてもらう"
         description="あらすじとプロットを参照して、物語に必要なキャラクターのリストを生成します。物語の要件やリクエストがあれば入力してください。"
         defaultMessage="あらすじとプロットに基づいて、この物語にふさわしいキャラクターを考えてください。"
-        requestAssist={(message: string) =>
-          handleAIAssist(message) as Promise<ResponseData>
+        requestAssist={(params: { message: string; plotId?: string | null }) =>
+          handleAIAssist(params) as Promise<ResponseData>
         }
         onAssistComplete={(result) => handleAIAssistComplete(result)}
         supportsBatchGeneration={true}

@@ -14,7 +14,8 @@ const SocietyCultureTab: React.FC = () => {
 
   const currentProject = getCurrentProjectState();
 
-  const societyCulture = currentProject?.worldBuilding?.societyCulture as
+  // cultures 配列の最初の要素を編集対象とする (存在しない場合は undefined)
+  const targetCultureElement = currentProject?.worldBuilding?.cultures?.[0] as
     | CultureElement
     | undefined;
 
@@ -30,20 +31,28 @@ const SocietyCultureTab: React.FC = () => {
       if (
         !currentPrj ||
         !currentPrj.worldBuilding ||
-        !currentPrj.worldBuilding.societyCulture
+        !currentPrj.worldBuilding.cultures || // cultures を確認
+        !currentPrj.worldBuilding.cultures[0] // cultures[0] が存在するか確認
       )
         return;
 
-      const baseSocietyCulture = currentPrj.worldBuilding.societyCulture;
+      // 更新対象の CultureElement を取得
+      const baseCultureElement = currentPrj.worldBuilding.cultures[0];
 
-      const updatedSocietyCulture: CultureElement = {
-        ...baseSocietyCulture,
+      const updatedCultureElement: CultureElement = {
+        ...baseCultureElement,
         [fieldName]: e.target.value,
       };
 
+      // cultures 配列を更新
+      const updatedCultures = [
+        updatedCultureElement,
+        ...(currentPrj.worldBuilding.cultures.slice(1) || []),
+      ];
+
       const updatedWorldBuilding: NovelProject["worldBuilding"] = {
         ...currentPrj.worldBuilding,
-        societyCulture: updatedSocietyCulture,
+        cultures: updatedCultures, // societyCulture の代わりに cultures を更新
       };
 
       const updatedProject: NovelProject = {
@@ -65,7 +74,7 @@ const SocietyCultureTab: React.FC = () => {
       <TextField
         fullWidth
         label="名前 (Name)"
-        value={societyCulture?.name || ""}
+        value={targetCultureElement?.name || ""}
         onChange={handleFieldChange("name")}
         variant="outlined"
         margin="normal"
@@ -75,7 +84,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="説明 (Description)"
-        value={societyCulture?.description || ""}
+        value={targetCultureElement?.description || ""}
         onChange={handleFieldChange("description")}
         variant="outlined"
         margin="normal"
@@ -85,7 +94,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="特徴 (Features)"
-        value={societyCulture?.features || ""}
+        value={targetCultureElement?.features || ""}
         onChange={handleFieldChange("features")}
         variant="outlined"
         margin="normal"
@@ -93,7 +102,7 @@ const SocietyCultureTab: React.FC = () => {
       <TextField
         fullWidth
         label="重要性 (Importance)"
-        value={societyCulture?.importance || ""}
+        value={targetCultureElement?.importance || ""}
         onChange={handleFieldChange("importance")}
         variant="outlined"
         margin="normal"
@@ -103,7 +112,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="関連 (Relations)"
-        value={societyCulture?.relations || ""}
+        value={targetCultureElement?.relations || ""}
         onChange={handleFieldChange("relations")}
         variant="outlined"
         margin="normal"
@@ -117,7 +126,7 @@ const SocietyCultureTab: React.FC = () => {
         rows={3}
         label="社会構造 (Social Structure)"
         placeholder="階級制度、家族構成、コミュニティの組織など、社会の構造について記述してください"
-        value={societyCulture?.socialStructure || ""}
+        value={targetCultureElement?.socialStructure || ""}
         onChange={handleFieldChange("socialStructure")}
         variant="outlined"
         margin="normal"
@@ -131,7 +140,7 @@ const SocietyCultureTab: React.FC = () => {
         rows={3}
         label="政治と統治 (Government)"
         placeholder="統治形態、権力構造、法律、政治組織について記述してください"
-        value={societyCulture?.government || ""}
+        value={targetCultureElement?.government || ""}
         onChange={handleFieldChange("government")}
         variant="outlined"
         margin="normal"
@@ -145,7 +154,7 @@ const SocietyCultureTab: React.FC = () => {
         rows={3}
         label="宗教と信仰 (Religion)"
         placeholder="信仰体系、神話、儀式、宗教組織について記述してください"
-        value={societyCulture?.religion || ""}
+        value={targetCultureElement?.religion || ""}
         onChange={handleFieldChange("religion")}
         variant="outlined"
         margin="normal"
@@ -159,7 +168,7 @@ const SocietyCultureTab: React.FC = () => {
         rows={3}
         label="言語 (Language)"
         placeholder="話されている言語、方言、特殊な言語的特徴について記述してください"
-        value={societyCulture?.language || ""}
+        value={targetCultureElement?.language || ""}
         onChange={handleFieldChange("language")}
         variant="outlined"
         margin="normal"
@@ -173,7 +182,7 @@ const SocietyCultureTab: React.FC = () => {
         rows={3}
         label="芸術と娯楽 (Art)"
         placeholder="芸術形式、音楽、文学、娯楽活動について記述してください"
-        value={societyCulture?.art || ""}
+        value={targetCultureElement?.art || ""}
         onChange={handleFieldChange("art")}
         variant="outlined"
         margin="normal"
@@ -187,7 +196,7 @@ const SocietyCultureTab: React.FC = () => {
         rows={3}
         label="技術と発明 (Technology)"
         placeholder="技術レベル、重要な発明、科学的理解について記述してください"
-        value={societyCulture?.technology || ""}
+        value={targetCultureElement?.technology || ""}
         onChange={handleFieldChange("technology")}
         variant="outlined"
         margin="normal"
@@ -200,7 +209,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="カスタムテキスト (Custom Text)"
-        value={societyCulture?.customText || ""}
+        value={targetCultureElement?.customText || ""}
         onChange={handleFieldChange("customText")}
         variant="outlined"
         margin="normal"
@@ -210,7 +219,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="信仰・信念 (Beliefs)"
-        value={societyCulture?.beliefs || ""}
+        value={targetCultureElement?.beliefs || ""}
         onChange={handleFieldChange("beliefs")}
         variant="outlined"
         margin="normal"
@@ -220,7 +229,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="歴史 (History)"
-        value={societyCulture?.history || ""}
+        value={targetCultureElement?.history || ""}
         onChange={handleFieldChange("history")}
         variant="outlined"
         margin="normal"
@@ -230,7 +239,7 @@ const SocietyCultureTab: React.FC = () => {
         multiline
         rows={3}
         label="メモ (Notes)"
-        value={societyCulture?.notes || ""}
+        value={targetCultureElement?.notes || ""}
         onChange={handleFieldChange("notes")}
         variant="outlined"
         margin="normal"

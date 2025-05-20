@@ -681,3 +681,65 @@ export function createTypedWorldBuildingElement(
       throw new Error(`Unsupported WorldBuildingElementType: ${type}`);
   }
 }
+
+// AIリクエスト・レスポンスの標準形式定義
+export type AIModelType =
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "mistral"
+  | "ollama";
+
+export type AIDataFormat = "text" | "json" | "yaml";
+
+// AIリクエストの標準インターフェース
+export interface StandardAIRequest {
+  requestId?: string;
+  requestType?: string; // 例: "worldbuilding-list", "character-generation", "timeline-event-generation"
+  userPrompt: string;
+  systemPrompt?: string;
+  model?: string; // 例: "gpt-4o", "claude-3-opus-20240229"
+  context?: {
+    // リクエストの文脈情報 (プロジェクトID、現在のキャラクターリストなど)
+    projectId?: string;
+    [key: string]: any; // 柔軟性のため
+  };
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    responseFormat?: AIDataFormat; // "json", "yaml", "text"
+    timeout?: number; // ミリ秒
+    // その他モデル固有オプション
+    [key: string]: any;
+  };
+}
+
+// AIレスポンスの標準インターフェース
+export interface StandardAIResponse {
+  requestId: string;
+  timestamp: string; // ISO 8601形式
+  status: "success" | "error" | "partial"; // ステータス
+  responseFormat: AIDataFormat; // レスポンス形式
+  content: any | null; // パースされたレスポンスデータ (JSONオブジェクト、YAMLオブジェクト、テキストなど)
+  rawContent?: string; // AIからの生のレスポンス文字列
+  error?: AIError | null;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  debug?: {
+    model?: string;
+    requestType?: string;
+    processingTime?: number; // ミリ秒
+    // その他デバッグ情報
+    [key: string]: any;
+  };
+}
+
+// AIエラーの型定義 (ユーザー指定のものをベースに作成)
+export interface AIError {
+  code: string; // 例: "VALIDATION_ERROR", "API_ERROR", "TIMEOUT"
+  message: string;
+  details?: any;
+}

@@ -13,6 +13,7 @@ import {
 } from "@novel-ai-assistant/types";
 import { currentProjectState } from "../store/atoms";
 import { AIResponse, CharacterBatchResponse } from "../types/apiResponse";
+import { ResponseData } from "../components/modals/AIAssistModal";
 
 // Helper function to parse a single character from AI response
 const parseAIResponseToCharacter = (aiResponse: string): Character | null => {
@@ -169,7 +170,10 @@ interface CharactersContextType {
   setAiAssistModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isLoadingAI: boolean;
   handleOpenAIAssist: () => Promise<void>;
-  handleAIAssist: (message: string) => Promise<unknown>;
+  handleAIAssist: (params: {
+    message: string;
+    plotId?: string | null;
+  }) => Promise<ResponseData>;
   handleAIAssistComplete: (result: unknown) => void;
   parseAIResponseToCharacter: (aiResponse: string) => Character | null;
   parseAIResponseToCharacters: (aiResponse: string) => Character[];
@@ -275,35 +279,49 @@ export const CharactersProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   // AIアシストリクエスト実行
-  const handleAIAssist = async (message: string) => {
+  const handleAIAssist = async (params: {
+    message: string;
+    plotId?: string | null;
+  }): Promise<ResponseData> => {
+    if (isLoading) {
+      return {
+        response: "AIキャラクター生成処理が既に実行中です。",
+        error: true,
+      };
+    }
     try {
-      // 進捗バーを表示
-      setAiProgress(0);
-      // Snackbarで処理中を表示
-      handleCloseSnackbar(); // 既存のSnackbarを閉じる
-
-      // あらすじとプロットを参照してキャラクター生成をリクエスト
-      const synopsis = currentProject?.synopsis || "";
-      const plotElements = currentProject?.plot || [];
-      const existingCharacters = currentProject?.characters || [];
-
-      // 分割生成モードを使用
-      return await generateCharactersBatch(
-        message,
-        [
-          ...plotElements.map((item) => ({
-            type: "plotItem" as const,
-            content: item,
-          })),
-          { type: "synopsis" as const, content: synopsis },
-        ] as any[], // any[] にキャスト
-        existingCharacters
+      // plotId は generateCharactersBatch では直接使用しないが、互換性のために残す
+      // 必要であれば message に含めるなどの処理を追加
+      const result = await generateCharactersBatch(
+        params.message,
+        currentProject?.plot || [],
+        characters
       );
+
+      // CharacterBatchResponse を ResponseData に変換
+      // ここでは成功した旨のメッセージを返す。実際のキャラクターデータは onCharacterGenerated で処理される想定。
+      if ((result as AIBatchResponse)?.batchResponse) {
+        setAiAssistModalOpen(false); // 成功したらモーダルを閉じる
+        return {
+          response: `${
+            (result as AIBatchResponse).totalCharacters
+          }体のキャラクター生成処理を開始しました。完了までお待ちください。`,
+        };
+      } else {
+        // エラーか、予期しないレスポンスの場合
+        return {
+          response: "キャラクター生成リクエストで予期しない応答がありました。",
+          error: true,
+        };
+      }
     } catch (error) {
-      console.error("AIリクエストエラー:", error);
-      // エラーの場合もプログレスバーを非表示に
-      setAiProgress(null);
-      throw error;
+      console.error("AI Character batch assist error:", error);
+      return {
+        response: `AIキャラクター一括生成中にエラーが発生しました: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error: true,
+      };
     }
   };
 

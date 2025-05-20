@@ -12,5 +12,11 @@ export default defineConfig({
     port: 5173,
     host: "localhost",
     open: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:4001", // バックエンドサーバーのポートを4001に指定
+        changeOrigin: true,
+      },
+    },
   },
 });

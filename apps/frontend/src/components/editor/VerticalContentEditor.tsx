@@ -23,27 +23,28 @@ const GridPaper = styled(Box)(() => ({
 }));
 
 const PaperSheet = styled(Box)(({ theme }) => ({
-  width: "540px",
-  height: "500px",
+  width: "540px", // 18px * 30文字 (30列)
+  height: "720px", // 36px * 20行 (20行)
   position: "relative",
   backgroundColor: "white",
   boxShadow: theme.shadows[1],
   border: "1px solid #ddd",
   overflow: "hidden",
   display: "flex",
-  justifyContent: "flex-end", // 右端からスタート
-  alignItems: "flex-start", // 上部からスタート
-  // 余白
+  justifyContent: "flex-end",
+  alignItems: "flex-start",
+  padding: "18px", // 上下左右のパディングを文字サイズに合わせる (1文字分)
   "&::before": {
     content: '""',
     position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    background: `
-      linear-gradient(90deg, #f5f5f5 20px, transparent 20px, transparent calc(100% - 20px), #f5f5f5 calc(100% - 20px)),
-      linear-gradient(180deg, #f5f5f5 20px, transparent 20px, transparent calc(100% - 20px), #f5f5f5 calc(100% - 20px))
+    top: "18px", // paddingに合わせる
+    right: "18px", // paddingに合わせる
+    bottom: "18px", // paddingに合わせる
+    left: "18px", // paddingに合わせる
+    backgroundSize: "18px 36px", // 1文字の幅18px, 高さ36px
+    backgroundImage: `
+      linear-gradient(to right, #eee 1px, transparent 1px),
+      linear-gradient(to bottom, #eee 1px, transparent 1px)
     `,
     zIndex: 1,
     pointerEvents: "none",
@@ -51,23 +52,26 @@ const PaperSheet = styled(Box)(({ theme }) => ({
 }));
 
 const EditableContent = styled(ContentEditable)(() => ({
-  width: "calc(100% - 40px)",
-  height: "calc(100% - 40px)",
-  margin: "20px",
+  width: "100%", // PaperSheetのpadding内で100%
+  height: "100%", // PaperSheetのpadding内で100%
   outline: "none",
-  writingMode: "vertical-rl", // 縦書き - 右上から左下へ
-  WebkitWritingMode: "vertical-rl", // Safari対応
-  msWritingMode: "vertical-rl", // IE対応
-  textOrientation: "mixed", // 自然な縦書きの向き
+  writingMode: "vertical-rl",
+  WebkitWritingMode: "vertical-rl",
+  msWritingMode: "vertical-rl",
+  textOrientation: "mixed",
   fontSize: "18px",
   fontFamily: '"Noto Serif JP", serif',
-  lineHeight: "2em",
-  letterSpacing: "0.05em",
-  textIndent: "1em",
+  lineHeight: "2",
+  letterSpacing: "0", // グリッドに合わせるためletterSpacingを0に
+  // textIndent: "1em", // グリッドに合わせるため、一旦なし
   overflowWrap: "break-word",
-  wordBreak: "normal",
+  wordBreak: "keep-all", // 日本語の改行に適した設定
+  whiteSpace: "pre-wrap", // 空白や改行を保持
   position: "relative",
   zIndex: 2,
+  backgroundColor: "transparent",
+  padding: 0, // PaperSheet側でpaddingを制御
+  margin: 0,
 }));
 
 interface VerticalContentEditorProps {
@@ -102,53 +106,75 @@ const VerticalContentEditor: React.FC<VerticalContentEditorProps> = ({
     // 例: Enter押下時の改行など特別な処理
   }, []);
 
-  // ページ数の計算
-  const calculatePages = (text: string): number => {
-    // 1ページあたり約360文字として計算（20行 x 18文字）
-    const charsPerPage = 360;
-    return Math.max(1, Math.ceil(text.length / charsPerPage) + 1);
+  // コメントアウトされていた calculatePages を元に戻し、ページ計算ロジックとして利用
+  const charsPerPage = 360; // 1ページあたりの文字数（設定値）
+
+  const getPlainText = (htmlString: string): string => {
+    return htmlString.replace(/<[^>]*>/g, "");
   };
 
-  const pageCount = calculatePages(html.replace(/<[^>]*>/g, ""));
+  const plainText = getPlainText(html);
+  const totalPages = Math.max(1, Math.ceil(plainText.length / charsPerPage));
+
+  // 右パネルに表示するHTML（基本は全量だが、将来的に最適化するかも）
+  const rightPanelHtml = html;
+
+  // 左パネルに表示するHTML（右パネルの前のページ内容）
+  let leftPanelHtml = "";
+  if (totalPages > 1) {
+    // 現在の編集カーソルがどのページにあるか、という概念はないため、
+    // 単純に全体のテキストをページ分けし、最後のページの一つ前を表示する。
+    // しかし、ContentEditableのhtmlを直接substringするのは危険なので、
+    // プレーンテキストで計算し、表示は右パネルの先頭部分とするのが無難か。
+    // 今回は、シンプルに「最後のページの一つ前のページ」をプレーンテキストで切り出す。
+    const startIndex = Math.max(0, plainText.length - charsPerPage * 2);
+    const endIndex = plainText.length - charsPerPage;
+    if (endIndex > 0) {
+      leftPanelHtml = plainText.substring(
+        Math.max(0, endIndex - charsPerPage),
+        endIndex
+      );
+    }
+  }
+  // 左パネルは読み取り専用なので、divで囲んで ContentEditable の挙動を模倣する
+  if (leftPanelHtml) {
+    leftPanelHtml = `<div>${leftPanelHtml.split("\n").join("<br>")}</div>`;
+  }
 
   return (
     <VerticalEditorContainer>
       <GridPaper>
-        {/* 追加のページ（読み取り専用） */}
-        {Array.from({ length: pageCount - 1 }).map((_, index) => (
-          <PaperSheet key={index + 1}>
-            <Box
-              sx={{
-                width: "calc(100% - 40px)",
-                height: "calc(100% - 40px)",
-                margin: "20px",
-                writingMode: "vertical-rl",
-                WebkitWritingMode: "vertical-rl",
-                msWritingMode: "vertical-rl",
-                textOrientation: "mixed",
-                fontSize: "18px",
-                fontFamily: '"Noto Serif JP", serif',
-                lineHeight: "2em",
-                letterSpacing: "0.05em",
-                textIndent: "1em",
-                userSelect: "none",
-                position: "relative",
-                zIndex: 2,
-              }}
-              dangerouslySetInnerHTML={{
-                __html: html
-                  .replace(/<[^>]*>/g, "")
-                  .substring((index + 1) * 360, (index + 2) * 360),
-              }}
-            />
-          </PaperSheet>
-        ))}
+        {/* 左パネル (前のページ表示用・読み取り専用) */}
+        <PaperSheet key="left-preview-page">
+          <Box
+            sx={{
+              width: "100%",
+              height: "100%",
+              writingMode: "vertical-rl",
+              WebkitWritingMode: "vertical-rl",
+              msWritingMode: "vertical-rl",
+              textOrientation: "mixed",
+              fontSize: "18px",
+              fontFamily: '"Noto Serif JP", serif',
+              lineHeight: "2",
+              letterSpacing: "0",
+              wordBreak: "keep-all",
+              whiteSpace: "pre-wrap",
+              overflow: "hidden", // 内容がはみ出ないように
+              position: "relative",
+              zIndex: 2, // グリッドよりは手前
+              padding: 0, // PaperSheet側で制御
+              margin: 0,
+            }}
+            dangerouslySetInnerHTML={{ __html: leftPanelHtml }}
+          />
+        </PaperSheet>
 
-        {/* 編集可能なページ（右側に配置） */}
-        <PaperSheet>
+        {/* 右パネル (現在の編集ページ) */}
+        <PaperSheet key="editable-page-2">
           <EditableContent
-            ref={contentEditable}
-            html={html}
+            // ref={} // 2つ目のrefは現状不要か
+            html={rightPanelHtml} // 右パネルには全HTMLを渡す
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             tagName="div"

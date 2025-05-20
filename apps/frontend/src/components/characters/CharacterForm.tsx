@@ -23,14 +23,17 @@ import {
   Character,
   CharacterStatus,
   CharacterTrait,
+  PlotElement,
 } from "@novel-ai-assistant/types";
 import CharacterStatusList from "./CharacterStatusList";
 import CharacterStatusEditorDialog from "./CharacterStatusEditorDialog";
-import { AIAssistModal } from "../modals/AIAssistModal";
+import { AIAssistModal, ResponseData } from "../modals/AIAssistModal";
+import { AgentResponse } from "../../types/apiResponse";
 import { useAIAssist } from "../../hooks/useAIAssist";
 import { AIAssistButton } from "../ui/AIAssistButton";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../../store/atoms";
+// import { useCurrentProject } from "../../contexts/CurrentProjectContext"; // Unused
 // import { useCharactersContext } from "../../contexts/CharactersContext"; // Unused
 
 // キャラクターの役割に応じたアイコンとカラーを定義
@@ -133,6 +136,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   onSaveStatus,
   onDeleteStatus,
 }) => {
+  const currentProject = useRecoilValue(currentProjectState);
   const [statusEditorOpen, setStatusEditorOpen] = useState(false);
   const [editingStatus, setEditingStatus] = useState<
     CharacterStatus | undefined
@@ -141,14 +145,14 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   const [aiAssistTarget, setAiAssistTarget] = useState<
     "basic" | "background" | "personality"
   >("basic");
-  const currentProject = useRecoilValue(currentProjectState);
 
-  // AIアシスト機能
-  const { assistCharacter, isLoading } = useAIAssist({
-    onCharacterSuccess: (result) => {
-      if (result && result.response) {
-        applyAIResponse(result.response, aiAssistTarget);
-      }
+  // useAIAssistフックを使用
+  const { assistCharacter, isLoading: aiLoading } = useAIAssist({
+    onCharacterSuccess: (data) => {
+      console.log("AI Character assist success:", data);
+    },
+    onError: (error) => {
+      console.error("AI Character assist error:", error);
     },
   });
 
@@ -161,19 +165,48 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     };
 
   // AIアシストリクエスト実行
-  const handleAIAssist = async (message: string) => {
-    // AIが処理中の場合は実行しない
-    if (isLoading) return { response: "", batchResponse: false };
-
-    const existingCharacters = currentProject?.characters || [];
-
+  const handleAIAssist = async (params: {
+    message: string;
+    plotId?: string | null;
+  }): Promise<ResponseData> => {
+    if (aiLoading) {
+      console.warn("AI is already processing a request.");
+      return {
+        response: "AI処理中です。しばらくお待ちください。",
+        error: true,
+      };
+    }
     try {
-      // assistCharacter には message と existingCharacters (Character[]) のみを渡す
-      const result = await assistCharacter(message, existingCharacters);
-      return result;
+      const existingCharacters =
+        currentProject?.characters?.filter(
+          (c: Character) => c.id !== formData.id
+        ) || [];
+      const aiResult: AgentResponse = await assistCharacter(
+        params.message,
+        existingCharacters
+      );
+
+      const responseForModal: ResponseData = {
+        response: aiResult.response,
+      };
+
+      if (aiResult.response) {
+        applyAIResponse(
+          aiResult.response,
+          aiAssistTarget as "basic" | "background" | "personality"
+        );
+      }
+
+      setAiAssistModalOpen(false);
+      return responseForModal;
     } catch (error) {
-      console.error("キャラクター支援エラー:", error);
-      return { response: "エラーが発生しました", batchResponse: false };
+      console.error("AI Character支援エラー (handleAIAssist catch):", error);
+      return {
+        response: `キャラクター支援中にエラーが発生しました: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error: true,
+      };
     }
   };
 
@@ -340,6 +373,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             onAssist={handleOpenAIAssist("basic")}
             text="AIに基本情報を提案してもらう"
             variant="outline"
+            isLoading={aiLoading}
           />
         </Box>
         <TextField
@@ -406,6 +440,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             onAssist={handleOpenAIAssist("background")}
             text="AIに背景・動機を提案してもらう"
             variant="outline"
+            isLoading={aiLoading}
           />
         </Box>
         <TextField
@@ -439,6 +474,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             onAssist={handleOpenAIAssist("personality")}
             text="AIに性格・特性を提案してもらう"
             variant="outline"
+            isLoading={aiLoading}
           />
         </Box>
         <Box sx={{ display: "flex", mb: 1 }}>
@@ -629,15 +665,16 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             currentProject?.plot && currentProject.plot.length > 0
               ? "\n\nプロット：\n" +
                 currentProject.plot
-                  .map((p) => `- ${p.title}: ${p.description}`)
+                  .map((p: PlotElement) => `- ${p.title}: ${p.description}`)
                   .join("\n")
               : ""
           }`
         }
-        onAssistComplete={() => {
-          // モーダルは自動的に閉じる
+        onAssistComplete={(data) => {
+          console.log("AIAssistModal onAssistComplete:", data);
         }}
         requestAssist={handleAIAssist}
+        isLoading={aiLoading}
       />
 
       <CharacterStatusEditorDialog

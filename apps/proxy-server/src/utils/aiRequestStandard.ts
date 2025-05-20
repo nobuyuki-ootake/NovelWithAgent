@@ -1,59 +1,17 @@
+import type {
+  AIModelType,
+  AIDataFormat,
+  StandardAIRequest,
+  StandardAIResponse,
+  AIError,
+} from '@novel-ai-assistant/types';
+
 /**
  * AI リクエスト・レスポンスの標準形式定義
  * このファイルはAIとの通信における標準形式を一元管理するためのものです。
  */
 
-export type AIModelType =
-  | 'openai'
-  | 'anthropic'
-  | 'gemini'
-  | 'mistral'
-  | 'ollama';
-
-export type AIDataFormat = 'text' | 'json' | 'yaml';
-
-// AIリクエストの標準インターフェース
-export interface StandardAIRequest {
-  requestType: string; // リクエストタイプ（世界構築、キャラクター作成など）
-  model: AIModelType | string; // 使用するAIモデル
-  systemPrompt?: string; // システムプロンプト
-  userPrompt: string; // ユーザープロンプト
-  context?: Record<string, any>; // 追加コンテキスト情報
-  options?: {
-    temperature?: number; // 温度（創造性）
-    maxTokens?: number; // 最大トークン数
-    expectedFormat?: AIDataFormat; // 期待されるレスポンス形式
-    responseFormat?: 'json' | 'yaml' | 'text'; // レスポンス形式
-    retries?: number; // リトライ回数
-    timeout?: number; // タイムアウト（ミリ秒）
-  };
-}
-
-// AIレスポンスの標準インターフェース
-export interface StandardAIResponse {
-  requestId: string; // リクエストID
-  timestamp: string; // タイムスタンプ
-  status: 'success' | 'error' | 'partial'; // ステータス
-  responseFormat: AIDataFormat; // レスポンス形式
-  content: any; // レスポンス内容（テキストまたは構造化データ）
-  rawContent?: string; // 生のレスポンス内容（エラーデバッグ用）
-  usage?: {
-    promptTokens: number; // プロンプトトークン数
-    completionTokens: number; // 完了トークン数
-    totalTokens: number; // 合計トークン数
-  };
-  error?: {
-    code: string; // エラーコード
-    message: string; // エラーメッセージ
-    details?: any; // エラー詳細
-  };
-  debug?: {
-    model: string; // 使用したモデル
-    requestType: string; // リクエストタイプ
-    processingTime: number; // 処理時間（ミリ秒）
-    retries?: number; // リトライ回数
-  };
-}
+// ローカルの型定義をここから削除
 
 /**
  * AIレスポンスのフォーマットを検証するユーティリティ関数

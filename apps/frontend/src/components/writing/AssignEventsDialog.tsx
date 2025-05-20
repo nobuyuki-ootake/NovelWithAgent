@@ -17,7 +17,12 @@ import {
   SelectChangeEvent,
 } from "@mui/material";
 import { Event as EventIcon, Add as AddIcon } from "@mui/icons-material";
-import { TimelineEvent, Character, Place } from "@novel-ai-assistant/types";
+import {
+  TimelineEvent,
+  Character,
+  PlaceElement,
+  PlotElement,
+} from "@novel-ai-assistant/types";
 import TimelineEventDialog from "../timeline/TimelineEventDialog";
 import { v4 as uuidv4 } from "uuid";
 // import { useWritingContext } from "../../contexts/WritingContext"; // 未使用のためコメントアウト
@@ -27,7 +32,8 @@ interface AssignEventsDialogProps {
   events: TimelineEvent[];
   selectedEvents: string[];
   characters: Character[];
-  places: Place[];
+  places: PlaceElement[];
+  allPlots: PlotElement[];
   onClose: () => void;
   onToggle: (eventId: string) => void;
   onSave: () => void;
@@ -43,6 +49,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
   selectedEvents,
   characters,
   places,
+  allPlots,
   onClose,
   onToggle,
   onSave,
@@ -61,6 +68,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
     date: new Date().toISOString().split("T")[0],
     relatedCharacters: [],
     relatedPlaces: [],
+    relatedPlotIds: [],
     order: 0,
   });
 
@@ -73,6 +81,7 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
       date: new Date().toISOString().split("T")[0],
       relatedCharacters: [],
       relatedPlaces: [],
+      relatedPlotIds: [],
       order: 0,
     });
     setIsEditing(false);
@@ -86,14 +95,45 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
 
   // イベントの変更を処理
   const handleEventChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const { name, value } = e.target;
-      setNewEvent({
-        ...newEvent,
-        [name]: value,
-      });
+    (
+      e:
+        | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        | SelectChangeEvent<string>,
+      field?: string
+    ) => {
+      let nameAttribute: string | undefined;
+      let valueAttribute: unknown;
+
+      if (field) {
+        nameAttribute = field;
+        if (
+          (e as SelectChangeEvent<string>).target &&
+          typeof (e as SelectChangeEvent<string>).target.value !== "undefined"
+        ) {
+          valueAttribute = (e as SelectChangeEvent<string>).target.value;
+        } else {
+          valueAttribute = e;
+        }
+      } else if (e.target && typeof e.target === "object") {
+        const target = e.target as
+          | HTMLInputElement
+          | HTMLTextAreaElement
+          | { name?: string; value: unknown };
+        nameAttribute = target.name;
+        valueAttribute = target.value;
+      } else {
+        console.warn("Unexpected event type in handleEventChange:", e);
+        return;
+      }
+
+      if (nameAttribute) {
+        setNewEvent((prev) => ({
+          ...prev,
+          [nameAttribute as string]: valueAttribute,
+        }));
+      }
     },
-    [newEvent]
+    [setNewEvent]
   );
 
   // 関連キャラクターの変更を処理
@@ -102,12 +142,12 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
       const {
         target: { value },
       } = event;
-      setNewEvent({
-        ...newEvent,
+      setNewEvent((prev) => ({
+        ...prev,
         relatedCharacters: typeof value === "string" ? value.split(",") : value,
-      });
+      }));
     },
-    [newEvent]
+    [setNewEvent]
   );
 
   // 関連場所の変更を処理
@@ -116,12 +156,23 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
       const {
         target: { value },
       } = event;
-      setNewEvent({
-        ...newEvent,
+      setNewEvent((prev) => ({
+        ...prev,
         relatedPlaces: typeof value === "string" ? value.split(",") : value,
-      });
+      }));
     },
-    [newEvent]
+    [setNewEvent]
+  );
+
+  // 関連プロットの変更を処理
+  const handleRelatedPlotsChange = useCallback(
+    (selectedPlotIds: string[]) => {
+      setNewEvent((prev) => ({
+        ...prev,
+        relatedPlotIds: selectedPlotIds,
+      }));
+    },
+    [setNewEvent]
   );
 
   // 新しいイベントを保存
@@ -129,18 +180,10 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
     if (!newEvent.title.trim() || !newEvent.date) {
       return;
     }
-
-    const eventWithId = {
-      ...newEvent,
-      id: uuidv4(),
-    };
-
-    // 親コンポーネントに新しいイベントを通知
+    const eventWithId = { ...newEvent, id: uuidv4() };
     onAddNewEvent(eventWithId);
-
-    // ダイアログを閉じる
     setEventDialogOpen(false);
-  }, [newEvent, onAddNewEvent]);
+  }, [newEvent, onAddNewEvent, setEventDialogOpen]);
 
   if (events.length === 0) {
     return (
@@ -174,11 +217,13 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
           newEvent={newEvent}
           characters={characters}
           places={places}
+          allPlots={allPlots}
           onClose={handleCloseEventDialog}
           onSave={handleSaveEvent}
           onEventChange={handleEventChange}
           onCharactersChange={handleCharactersChange}
           onPlacesChange={handlePlacesChange}
+          onRelatedPlotsChange={handleRelatedPlotsChange}
           getCharacterName={getCharacterName}
           getPlaceName={getPlaceName}
           onPostEventStatusChange={() => {}}
@@ -278,11 +323,13 @@ const AssignEventsDialog: React.FC<AssignEventsDialogProps> = ({
         newEvent={newEvent}
         characters={characters}
         places={places}
+        allPlots={allPlots}
         onClose={handleCloseEventDialog}
         onSave={handleSaveEvent}
         onEventChange={handleEventChange}
         onCharactersChange={handleCharactersChange}
         onPlacesChange={handlePlacesChange}
+        onRelatedPlotsChange={handleRelatedPlotsChange}
         getCharacterName={getCharacterName}
         getPlaceName={getPlaceName}
         onPostEventStatusChange={() => {}}

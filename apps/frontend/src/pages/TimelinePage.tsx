@@ -30,11 +30,15 @@ import EventSeedReviewDialog from "../components/timeline/EventSeedReviewDialog"
 import {
   TimelineEventSeed,
   TimelineEvent,
-  CharacterStatus,
-  PlaceElement,
+  // NovelProject, // Unused
+  // PlotElement, // Unused
+  // Character, // Unused
+  // CharacterStatus, // Unused
+  // PlaceElement, // Unused
 } from "@novel-ai-assistant/types";
 import moment from "moment";
 import TimelineEventCard from "../components/timeline/TimelineEventCard";
+// import { TimelineProvider } from "../contexts/TimelineContext"; // Unused and path error
 
 const convertSeedToTimelineEvent = (
   seed: TimelineEventSeed,
@@ -425,6 +429,8 @@ const TimelinePage: React.FC = () => {
       prompt: params.message,
       plotId: params.plotId,
       allPlots: allPlots,
+      characters: characters,
+      places: places,
     });
   };
 

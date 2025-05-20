@@ -11,7 +11,6 @@ import {
   AccordionDetails,
 } from "@mui/material";
 import {
-  Event as EventIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   LocationOn as LocationIcon,

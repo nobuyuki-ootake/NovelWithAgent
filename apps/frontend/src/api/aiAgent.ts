@@ -1,25 +1,32 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { WorldBuildingApiResponse } from "../types/apiResponse";
-import { WorldBuildingElementType } from "@novel-ai-assistant/types";
+import {
+  WorldBuildingElementType,
+  PlotElement,
+  Character,
+  WorldBuildingElement,
+  Chapter,
+  TimelineEvent,
+  StandardAIResponse,
+} from "@novel-ai-assistant/types";
 
 // APIのベースURL
-const API_BASE_URL =
-  process.env.NODE_ENV === "production" ? "/api" : "http://localhost:4001/api";
+const API_BASE_URL = "/api/ai-agent"; // 常に相対パス /api/ai-agent を使用する
 
 // APIエラーハンドリング共通関数
-const handleApiError = (error: any, operationName: string) => {
-  // ネットワークエラーの処理
-  if (error.message === "Network Error") {
+const handleApiError = (error: AxiosError | Error, operationName: string) => {
+  // ネットワークエラーの処理 (Error 型の場合)
+  if (!(error instanceof AxiosError) && error.message === "Network Error") {
     console.error(`${operationName} - ネットワークエラー:`, error);
     throw new Error(
       `サーバーへの接続に失敗しました。ネットワーク接続を確認してください。`
     );
   }
 
-  // APIエラーレスポンスの処理
-  if (error.response) {
+  // Axiosエラーレスポンスの処理
+  if (error instanceof AxiosError && error.response) {
     const status = error.response.status;
-    const errorData = error.response.data;
+    const errorData = error.response.data as { error?: string }; // errorData の型を仮定
 
     console.error(`${operationName} - APIエラー (${status}):`, errorData);
 
@@ -29,7 +36,7 @@ const handleApiError = (error: any, operationName: string) => {
         throw new Error("認証に失敗しました。APIキーを確認してください。");
       case 400:
         throw new Error(
-          errorData.error || "リクエストが不正です。入力を確認してください。"
+          errorData?.error || "リクエストが不正です。入力を確認してください。"
         );
       case 429:
         throw new Error(
@@ -40,11 +47,11 @@ const handleApiError = (error: any, operationName: string) => {
           "サーバー内部エラーが発生しました。管理者に連絡してください。"
         );
       default:
-        throw new Error(errorData.error || "エラーが発生しました。");
+        throw new Error(errorData?.error || "エラーが発生しました。");
     }
   }
 
-  // その他のエラー
+  // その他のエラー (AxiosError ではない Error インスタンスなど)
   console.error(`${operationName} - 予期しないエラー:`, error);
   throw error;
 };
@@ -57,10 +64,13 @@ export const aiAgentApi = {
    */
   getStatus: async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/ai-agent/status`);
+      const response = await axios.get(`${API_BASE_URL}/status`);
       return response.data;
     } catch (error) {
-      return handleApiError(error, "AIエージェントステータス確認");
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "AIエージェントステータス確認");
+      }
+      throw error;
     }
   },
 
@@ -72,21 +82,26 @@ export const aiAgentApi = {
    */
   chat: async (
     message: string,
-    selectedElements: any[] = [],
+    selectedElements: Array<
+      PlotElement | Character | WorldBuildingElement
+    > = [],
     networkType:
       | "novel-creation"
       | "plot-development"
       | "writing-improvement" = "novel-creation"
   ) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/ai-agent/chat`, {
+      const response = await axios.post(`${API_BASE_URL}/chat`, {
         message,
         selectedElements,
         networkType,
       });
       return response.data;
     } catch (error) {
-      return handleApiError(error, "AIエージェントチャット");
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "AIエージェントチャット");
+      }
+      throw error;
     }
   },
 
@@ -95,18 +110,17 @@ export const aiAgentApi = {
    * @param message ユーザーのメッセージ
    * @param plotElements プロット要素
    */
-  getPlotAdvice: async (message: string, plotElements: any[] = []) => {
+  getPlotAdvice: async (message: string, plotElements: PlotElement[] = []) => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/plot-advice`,
-        {
-          message,
-          plotElements,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/plot-advice`, {
+        message,
+        plotElements,
+      });
       return response.data;
     } catch (error) {
-      console.error("プロットアドバイスエラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "プロットアドバイス取得");
+      }
       throw error;
     }
   },
@@ -116,18 +130,20 @@ export const aiAgentApi = {
    * @param message ユーザーのメッセージ
    * @param titleContext タイトル情報など
    */
-  getSynopsisAdvice: async (message: string, titleContext: any[] = []) => {
+  getSynopsisAdvice: async (
+    message: string,
+    titleContext: { title?: string; synopsis?: string }[] = []
+  ) => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/synopsis-advice`,
-        {
-          message,
-          titleContext,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/synopsis-advice`, {
+        message,
+        titleContext,
+      });
       return response.data;
     } catch (error) {
-      console.error("あらすじアドバイスエラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "あらすじアドバイス取得");
+      }
       throw error;
     }
   },
@@ -139,19 +155,18 @@ export const aiAgentApi = {
    */
   getCharacterAdvice: async (
     message: string,
-    characterElements: any[] = []
+    characterElements: Character[] = []
   ) => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/character-advice`,
-        {
-          message,
-          characterElements,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/character-advice`, {
+        message,
+        characterElements,
+      });
       return response.data;
     } catch (error) {
-      console.error("キャラクターアドバイスエラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "キャラクターアドバイス取得");
+      }
       throw error;
     }
   },
@@ -164,12 +179,12 @@ export const aiAgentApi = {
    */
   generateCharacter: async (
     message: string,
-    plotElements: any[] = [],
-    existingCharacters: any[] = []
+    plotElements: PlotElement[] = [],
+    existingCharacters: Character[] = []
   ) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/character-generation`,
+        `${API_BASE_URL}/character-generation`,
         {
           message,
           plotElements,
@@ -178,7 +193,9 @@ export const aiAgentApi = {
       );
       return response.data;
     } catch (error) {
-      console.error("キャラクター生成エラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "キャラクター生成");
+      }
       throw error;
     }
   },
@@ -192,12 +209,12 @@ export const aiAgentApi = {
    */
   generateCharacterList: async (
     message: string,
-    plotElements: any[] = [],
-    existingCharacters: any[] = []
+    plotElements: PlotElement[] = [],
+    existingCharacters: Character[] = []
   ) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/character-list-generation`,
+        `${API_BASE_URL}/character-list-generation`,
         {
           message,
           plotElements,
@@ -206,7 +223,9 @@ export const aiAgentApi = {
       );
       return response.data;
     } catch (error) {
-      console.error("キャラクターリスト生成エラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "キャラクターリスト生成");
+      }
       throw error;
     }
   },
@@ -224,12 +243,12 @@ export const aiAgentApi = {
     characterName: string,
     characterRole: string,
     message: string = "",
-    plotElements: any[] = [],
-    existingCharacters: any[] = []
+    plotElements: PlotElement[] = [],
+    existingCharacters: Character[] = []
   ) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/character-detail-generation`,
+        `${API_BASE_URL}/character-detail-generation`,
         {
           characterName,
           characterRole,
@@ -240,7 +259,9 @@ export const aiAgentApi = {
       );
       return response.data;
     } catch (error) {
-      console.error("キャラクター詳細生成エラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "キャラクター詳細生成");
+      }
       throw error;
     }
   },
@@ -252,16 +273,15 @@ export const aiAgentApi = {
    */
   getStyleAdvice: async (textContent: string, message?: string) => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/style-advice`,
-        {
-          message,
-          textContent,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/style-advice`, {
+        message,
+        textContent,
+      });
       return response.data;
     } catch (error) {
-      console.error("文体アドバイスエラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "文体アドバイス取得");
+      }
       throw error;
     }
   },
@@ -273,11 +293,11 @@ export const aiAgentApi = {
    */
   getWorldBuildingAdvice: async (
     message: string,
-    worldElements: any[] = []
+    worldElements: WorldBuildingElement[] = []
   ) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/worldbuilding-advice`,
+        `${API_BASE_URL}/worldbuilding-advice`,
         {
           message,
           worldElements,
@@ -285,7 +305,9 @@ export const aiAgentApi = {
       );
       return response.data;
     } catch (error) {
-      console.error("世界観構築アドバイスエラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "世界観構築アドバイス取得");
+      }
       throw error;
     }
   },
@@ -302,15 +324,15 @@ export const aiAgentApi = {
    */
   generateWorldBuildingList: async (
     message: string,
-    plotElements: any[] = [],
-    charactersElements: any[] = [],
+    plotElements: PlotElement[] = [],
+    charactersElements: Character[] = [],
     model: string = "gemini-1.5-pro",
     format: string = "json",
     elementType: string = "places"
   ) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ai-agent/worldbuilding-list-generation`,
+        `${API_BASE_URL}/worldbuilding-list-generation`,
         {
           message,
           plotElements,
@@ -322,7 +344,9 @@ export const aiAgentApi = {
       );
       return response.data;
     } catch (error) {
-      console.error("世界観要素リスト生成エラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "世界観要素リスト生成");
+      }
       throw error;
     }
   },
@@ -341,8 +365,8 @@ export const aiAgentApi = {
     elementName: string,
     elementType: string,
     message: string = "",
-    plotElements: any[] = [],
-    charactersElements: any[] = [],
+    plotElements: PlotElement[] = [],
+    charactersElements: Character[] = [],
     format: string = "json"
   ): Promise<WorldBuildingApiResponse> => {
     try {
@@ -352,7 +376,7 @@ export const aiAgentApi = {
 
       // APIリクエストを送信（プロンプト生成はバックエンド側で行われる）
       const response = await axios.post<WorldBuildingApiResponse>(
-        `${API_BASE_URL}/ai-agent/worldbuilding-detail-generation`,
+        `${API_BASE_URL}/worldbuilding-detail-generation`,
         {
           elementName,
           elementType: normalizedElementType,
@@ -382,7 +406,19 @@ export const aiAgentApi = {
 
       return response.data;
     } catch (error) {
-      console.error("世界観要素詳細生成エラー:", error);
+      if (error instanceof AxiosError || error instanceof Error) {
+        // handleApiError は void を返すことがあるため、Promise<WorldBuildingApiResponse> と型が合わない
+        // ここではエラーをそのまま throw するか、エラー用のレスポンスを整形して返す必要がある
+        console.error("世界観要素詳細生成エラー (詳細):", error);
+        if (error instanceof AxiosError && error.response) {
+          throw new Error(
+            `API Error ${error.response.status}: ${
+              error.response.data?.error || error.message
+            }`
+          );
+        }
+        throw error;
+      }
       throw error;
     }
   },
@@ -406,13 +442,16 @@ export const aiAgentApi = {
       const { apiKey, ...rest } = providerSettings;
       const encryptedKey = await encryptApiKey(apiKey);
 
-      const response = await axios.post(`${API_BASE_URL}/ai-agent/settings`, {
+      const response = await axios.post(`${API_BASE_URL}/settings`, {
         ...rest,
         apiKey: encryptedKey,
       });
       return response.data;
     } catch (error) {
-      return handleApiError(error, "API設定の保存");
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "API設定の保存");
+      }
+      throw error;
     }
   },
 
@@ -421,10 +460,13 @@ export const aiAgentApi = {
    */
   getApiSettings: async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/ai-agent/settings`);
+      const response = await axios.get(`${API_BASE_URL}/settings`);
       return response.data;
     } catch (error) {
-      return handleApiError(error, "API設定の取得");
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "API設定の取得");
+      }
+      throw error;
     }
   },
 
@@ -439,14 +481,76 @@ export const aiAgentApi = {
       // APIキーは暗号化してから送信
       const encryptedKey = await encryptApiKey(apiKey);
 
-      const response = await axios.post(`${API_BASE_URL}/ai-agent/test-key`, {
+      const response = await axios.post(`${API_BASE_URL}/test-key`, {
         provider,
         apiKey: encryptedKey,
         modelName,
       });
       return response.data;
     } catch (error) {
-      return handleApiError(error, "APIキーテスト");
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "APIキーテスト");
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * AIに章の本文を生成させる
+   * @param chapterTitle 章のタイトル
+   * @param relatedEvents 関連するタイムラインイベント (ID, title, description を含むオブジェクトの配列)
+   * @param charactersInChapter 登場キャラクター (ID, name, description, role を含むオブジェクトの配列)
+   * @param selectedLocations 関連する場所 (ID, name, description を含むオブジェクトの配列)
+   * @param userInstructions ユーザーからの追加指示
+   * @param targetChapterLength 目標とする章の長さ
+   * @param model 使用するAIモデル (オプション)
+   * @returns AIが生成した章の本文を含むレスポンス
+   */
+  generateChapterContent: async (
+    chapterTitle: string,
+    relatedEvents: Pick<TimelineEvent, "id" | "title" | "description">[],
+    charactersInChapter: Pick<
+      Character,
+      "id" | "name" | "description" | "role"
+    >[],
+    selectedLocations: Pick<
+      WorldBuildingElement,
+      "id" | "name" | "description"
+    >[],
+    userInstructions?: string,
+    targetChapterLength?: "short" | "medium" | "long",
+    model?: string
+  ): Promise<StandardAIResponse> => {
+    try {
+      const response = await axios.post<StandardAIResponse>(
+        `${API_BASE_URL}/chapter-generation`,
+        {
+          chapterTitle,
+          relatedEvents,
+          charactersInChapter,
+          selectedLocations,
+          userInstructions,
+          targetChapterLength,
+          model,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      if (error instanceof AxiosError || error instanceof Error) {
+        let errorMessage = "章の本文生成中にAPIエラーが発生しました";
+        if (
+          error instanceof AxiosError &&
+          error.response &&
+          typeof error.response.data?.error === "string"
+        ) {
+          errorMessage = error.response.data.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        console.error("章本文生成APIエラー (詳細):", error);
+        throw new Error(errorMessage);
+      }
+      throw error;
     }
   },
 };
@@ -463,18 +567,22 @@ const encryptApiKey = async (apiKey: string): Promise<string> => {
 
 // 型ガード関数の作成
 function isWorldBuildingApiResponse(
-  data: any
+  data: unknown
 ): data is WorldBuildingApiResponse {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  const d = data as Record<string, unknown>; // より安全な型アサーション
   return (
-    typeof data === "object" &&
-    data !== null &&
-    typeof data.status === "string" &&
-    typeof data.data === "object" &&
-    typeof data.rawContent === "string" &&
-    typeof data.metadata === "object" &&
-    typeof data.metadata.model === "string" &&
-    typeof data.metadata.processingTime === "number" &&
-    typeof data.metadata.requestType === "string" &&
-    typeof data.metadata.format === "string"
+    typeof d.status === "string" &&
+    typeof d.data === "object" && // data が object であることだけを確認 (中身は WorldBuildingApiResponse 型定義に依存)
+    d.rawContent !== undefined && // undefined チェックのみ (stringであるかは WorldBuildingApiResponse 型定義に依存)
+    typeof d.metadata === "object" &&
+    d.metadata !== null &&
+    typeof (d.metadata as Record<string, unknown>).model === "string" &&
+    typeof (d.metadata as Record<string, unknown>).processingTime ===
+      "number" &&
+    typeof (d.metadata as Record<string, unknown>).requestType === "string" &&
+    typeof (d.metadata as Record<string, unknown>).format === "string"
   );
 }

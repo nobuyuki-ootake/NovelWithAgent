@@ -44,6 +44,12 @@ export interface AIAssistButtonProps {
    * 追加のクラス名
    */
   className?: string;
+
+  /**
+   * 外部からローディング状態を制御する場合に指定
+   * @default false
+   */
+  isLoading?: boolean;
 }
 
 /**
@@ -57,19 +63,22 @@ export const AIAssistButton: React.FC<AIAssistButtonProps> = ({
   width = "auto",
   disabled = false,
   className = "",
+  isLoading: externalIsLoading,
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [internalIsLoading, setInternalIsLoading] = useState(false);
+  const effectiveIsLoading =
+    externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
 
   const handleClick = async () => {
-    if (isLoading) return;
+    if (effectiveIsLoading) return;
 
-    setIsLoading(true);
+    setInternalIsLoading(true);
     try {
       await onAssist();
     } catch (error) {
       console.error("AIアシスト処理エラー:", error);
     } finally {
-      setIsLoading(false);
+      setInternalIsLoading(false);
     }
   };
 
@@ -77,12 +86,12 @@ export const AIAssistButton: React.FC<AIAssistButtonProps> = ({
     <Button
       variant={variant}
       onClick={handleClick}
-      disabled={disabled || isLoading}
+      disabled={disabled || effectiveIsLoading}
       className={`flex items-center gap-2 ${
         width === "full" ? "w-full" : ""
       } ${className}`}
     >
-      {isLoading ? (
+      {effectiveIsLoading ? (
         <Spinner className="h-4 w-4" />
       ) : (
         <Wand className="h-4 w-4" />

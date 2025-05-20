@@ -1,12 +1,15 @@
 import express from 'express';
 import { processAIRequest } from '../services/aiIntegration';
-import { StandardAIRequest } from '../utils/aiRequestStandard';
+import { StandardAIRequest } from '@novel-ai-assistant/types';
 import templateManager from '../utils/aiTemplateManager';
 import { PLOT_DEVELOPER, WORLD_BUILDER } from '../utils/systemPrompts';
 import * as yaml from 'js-yaml';
 import {
   WorldBuildingElementType,
   WorldBuildingElementData,
+  Chapter,
+  TimelineEvent,
+  Character,
 } from '@novel-ai-assistant/types';
 import { generateElementPrompt } from '../utils/worldBuildingSchemas';
 
@@ -576,5 +579,233 @@ function determineModelByElementType(elementType: string): string {
     return 'gemini-1.5-pro'; // その他の場合も同様にGeminiを使用
   }
 }
+
+/**
+ * プロットアドバイス生成エンドポイント
+ */
+router.post('/plot-advice', async (req, res) => {
+  try {
+    const { userPrompt, context, model, requestType } =
+      req.body as StandardAIRequest;
+    console.log(`[API] プロットアドバイスリクエスト`);
+
+    const aiRequest: StandardAIRequest = {
+      requestType: requestType || 'plot-advice',
+      model: model || 'gemini-1.5-pro',
+      systemPrompt: 'あなたは優秀な小説のプロットアドバイザーです。',
+      userPrompt: userPrompt,
+      context: context,
+      options: {
+        temperature: 0.7,
+        maxTokens: 1500,
+      },
+    };
+
+    const aiResponse = await processAIRequest(aiRequest);
+
+    if (aiResponse.status === 'error') {
+      console.error(
+        '[API] プロットアドバイスAIリクエスト失敗:',
+        aiResponse.error,
+      );
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
+      });
+    }
+
+    res.json({
+      status: 'success',
+      content: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiRequest.model,
+        processingTime: aiResponse.debug?.processingTime,
+      },
+    });
+  } catch (error) {
+    console.error('[API] プロットアドバイス生成エラー:', error);
+    res.status(500).json({
+      status: 'error',
+      error:
+        error.message || 'プロットアドバイスの生成中にエラーが発生しました',
+    });
+  }
+});
+
+/**
+ * タイムラインイベント生成エンドポイント
+ */
+router.post('/timeline-event-generation', async (req, res) => {
+  try {
+    const { userPrompt, context, model, requestType } =
+      req.body as StandardAIRequest;
+    console.log(`[API] タイムラインイベント生成リクエスト`);
+
+    const aiRequest: StandardAIRequest = {
+      requestType: requestType || 'timeline-event-generation',
+      model: model || 'gemini-1.5-pro',
+      systemPrompt:
+        'あなたは物語のタイムラインに沿った出来事を考案する専門家です。',
+      userPrompt: userPrompt,
+      context: context,
+      options: {
+        temperature: 0.8,
+        maxTokens: 2000,
+        responseFormat: 'json',
+      },
+    };
+
+    const aiResponse = await processAIRequest(aiRequest);
+
+    if (aiResponse.status === 'error') {
+      console.error(
+        '[API] タイムラインイベントAIリクエスト失敗:',
+        aiResponse.error,
+      );
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
+      });
+    }
+
+    res.json({
+      status: 'success',
+      content: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiRequest.model,
+        processingTime: aiResponse.debug?.processingTime,
+      },
+    });
+  } catch (error) {
+    console.error('[API] タイムラインイベント生成エラー:', error);
+    res.status(500).json({
+      status: 'error',
+      error:
+        error.message || 'タイムラインイベントの生成中にエラーが発生しました',
+    });
+  }
+});
+
+/**
+ * 章の本文生成エンドポイント
+ */
+router.post('/chapter-generation', async (req, res) => {
+  try {
+    const {
+      chapterTitle,
+      relatedEvents,
+      charactersInChapter,
+      selectedLocations,
+      userInstructions,
+      targetChapterLength,
+      model,
+    } = req.body;
+
+    console.log(`[API] 章本文生成リクエスト: ${chapterTitle}`);
+
+    // AIに渡すプロンプトの組み立て
+    let eventDetails = '関連イベントはありません。';
+    if (relatedEvents && relatedEvents.length > 0) {
+      eventDetails = relatedEvents
+        .map(
+          (event: { title: string; description: string }) =>
+            `- ${event.title}: ${event.description || '説明なし'}`,
+        )
+        .join('\n');
+    }
+
+    let characterDetails = '登場キャラクター情報はありません。';
+    if (charactersInChapter && charactersInChapter.length > 0) {
+      characterDetails = charactersInChapter
+        .map(
+          (char: { name: string; role?: string; description?: string }) =>
+            `- ${char.name} (${char.role || '役割不明'}): ${char.description || '詳細不明'}`,
+        )
+        .join('\n');
+    }
+
+    let locationDetails = '関連する場所の情報はありません。';
+    if (selectedLocations && selectedLocations.length > 0) {
+      locationDetails = selectedLocations
+        .map(
+          (loc: { name: string; description?: string }) =>
+            `- ${loc.name}: ${loc.description || '詳細不明'}`,
+        )
+        .join('\n');
+    }
+
+    const lengthInstruction = targetChapterLength
+      ? `目標とする章の長さ: ${targetChapterLength === 'short' ? '短め' : targetChapterLength === 'medium' ? '普通' : '長め'}`
+      : '章の長さはお任せします。';
+
+    const userPrompt = `あなたはプロの小説家です。以下の情報に基づいて、魅力的な章の本文を執筆してください。
+
+章のタイトル: ${chapterTitle}
+
+関連するイベント:
+${eventDetails}
+
+登場キャラクター:
+${characterDetails}
+
+関連する場所:
+${locationDetails}
+
+${userInstructions ? `執筆にあたっての追加指示:\n${userInstructions}\n` : ''}
+${lengthInstruction}
+
+それでは、章の本文を執筆してください。`;
+
+    const aiRequest: StandardAIRequest = {
+      requestType: 'chapter-generation',
+      model: model || 'gpt-4o',
+      systemPrompt:
+        'あなたは熟練した小説の執筆アシスタントです。与えられた情報から、読者を引き込む物語の章を創作します。',
+      userPrompt: userPrompt,
+      context: {
+        chapterTitle,
+        relatedEvents,
+        charactersInChapter,
+        selectedLocations,
+      },
+      options: {
+        temperature: 0.7,
+        maxTokens: 3000,
+        responseFormat: 'text',
+      },
+    };
+
+    const aiResponse = await processAIRequest(aiRequest);
+
+    if (aiResponse.status === 'error') {
+      console.error('[API] 章本文生成AIリクエスト失敗:', aiResponse.error);
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
+      });
+    }
+
+    res.json({
+      status: 'success',
+      content: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiRequest.model,
+        processingTime: aiResponse.debug?.processingTime,
+      },
+    });
+  } catch (error) {
+    console.error('[API] 章本文生成エラー:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message || '章本文の生成中にエラーが発生しました',
+    });
+  }
+});
 
 export default router;

@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { useAIAssist } from "../../hooks/useAIAssist";
 import { AIAssistButton } from "../ui/AIAssistButton";
-import { AIAssistModal } from "../modals/AIAssistModal";
+import { AIAssistModal, ResponseData } from "../modals/AIAssistModal";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../../store/atoms";
 
@@ -94,22 +94,41 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
   };
 
   // AIアシストリクエスト実行
-  const handleAIAssist = async (message: string) => {
+  const handleAIAssist = async (params: {
+    message: string;
+    plotId?: string | null;
+  }): Promise<ResponseData> => {
     // AIが処理中の場合は実行しない
-    if (isLoading) return { response: "", batchResponse: false };
+    if (isLoading) {
+      return {
+        response: "AI処理中です。しばらくお待ちください。",
+        error: true,
+      };
+    }
 
     // プロット要素と一緒にリクエスト
     try {
-      const result = await assistPlot(message, [
-        { type: "synopsis", content: currentProject?.synopsis || "" } as any,
-        ...(currentProject?.plot || []).map(
-          (item) => ({ type: "plotItem", content: item } as any)
-        ),
-      ]);
-      return result;
+      const plotItemsForRequest = currentProject?.plot || [];
+      // TODO: synopsis を message に含めるか、API側の対応が必要か確認
+      const result = await assistPlot(params.message, plotItemsForRequest);
+      // AgentResponse を ResponseData に変換
+      const responseForModal: ResponseData = {
+        response: result.response, // result が { response: string } を持つと仮定
+      };
+      // applyAIResponse は assistPlot の onPlotSuccess で呼ばれるのでここでは不要かもしれない
+      // if (result.response) {
+      //   applyAIResponse(result.response);
+      // }
+      setAiAssistModalOpen(false); // 成功時モーダルを閉じる
+      return responseForModal;
     } catch (error) {
       console.error("プロット支援エラー:", error);
-      return { response: "エラーが発生しました", batchResponse: false };
+      return {
+        response: `プロット支援中にエラーが発生しました: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error: true,
+      };
     }
   };
 

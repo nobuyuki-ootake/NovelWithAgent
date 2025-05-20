@@ -16,7 +16,8 @@ import {
   AIModelType,
   StandardAIRequest,
   StandardAIResponse,
-} from '../utils/aiRequestStandard';
+  AIError,
+} from '@novel-ai-assistant/types';
 import {
   AIErrorType,
   handleAIResponseParsing,
@@ -135,13 +136,29 @@ export async function processAIRequest(
 
     const processingTime = Date.now() - startTime;
 
+    // ★★★ ID付与処理をここに追加 ★★★
+    let finalContent = content;
+    if (
+      request.requestType === 'timeline-event-generation' &&
+      Array.isArray(content)
+    ) {
+      finalContent = content.map((item) => ({
+        ...item,
+        id: item.id || uuidv4(), // 既存IDがあればそれを使い、なければ新規生成
+      }));
+      console.log(
+        '[AI] Timeline event seedsにIDを付与しました:',
+        finalContent.map((s) => s.id),
+      );
+    }
+
     // 標準レスポンスを作成
     return {
       requestId,
       timestamp: new Date().toISOString(),
       status: 'success',
       responseFormat: responseFormat as AIDataFormat,
-      content,
+      content: finalContent, // finalContent を使用
       rawContent,
       usage,
       debug: {
@@ -422,6 +439,17 @@ async function callGemini(
         specialInstruction =
           '以下の形式で文化のリストを生成してください。各文化には名前、説明、重要性を含めてください。';
       }
+    } else if (request.requestType === 'timeline-event-generation') {
+      specialInstruction =
+        'ユーザーの指示に基づき、物語のタイムラインに追加するイベントのアイデアを複数提案してください。\n' +
+        '各イベント提案には以下の情報を含めてください:\n' +
+        '- eventName: イベントの簡潔なタイトル (必須、文字列)\n' +
+        '- description: イベントのより詳細な説明 (省略可、文字列)\n' +
+        '- estimatedTime: イベントが発生すると推定される時期や日付 (省略可、文字列、可能であればISO 8601形式に近いと望ましいが、柔軟に解釈できる形式で良い)\n' +
+        '- characterIds: イベントに関連するキャラクターのIDの配列 (省略可、文字列の配列)\n' +
+        '- relatedPlaceIds: イベントに関連する場所のIDの配列 (省略可、文字列の配列)\n' +
+        '- relatedPlotIds: イベントに関連するプロットのIDの配列 (省略可、文字列の配列)\n' +
+        'ユーザープロンプトで既存のキャラクター、場所、プロットの情報が提供されている場合は、それらを参考にしてください。';
     }
 
     // 最終的なプロンプトを組み立て
