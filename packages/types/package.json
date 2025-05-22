@@ -2,6 +2,7 @@
   "name": "@novel-ai-assistant/types",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -9,7 +10,9 @@
     "lint": "eslint . --ext .ts,.tsx"
   },
   "devDependencies": {
+    "@eslint/js": "^9.22.0",
     "eslint": "^9.22.0",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^7.18.0"
   }
 }

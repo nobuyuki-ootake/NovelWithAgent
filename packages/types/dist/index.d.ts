@@ -123,11 +123,12 @@ export interface TimelineEventSeed {
 export interface Chapter {
     id: string;
     title: string;
-    synopsis: string;
+    synopsis?: string;
     content: string;
     order: number;
     scenes: Scene[];
     relatedEvents?: string[];
+    manuscriptPages?: string[];
     status?: ChapterStatus;
 }
 export interface Scene {

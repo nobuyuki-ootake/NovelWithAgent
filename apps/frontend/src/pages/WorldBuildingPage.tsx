@@ -30,6 +30,7 @@ import { useWorldBuildingContext } from "../contexts/WorldBuildingContext";
 import { useWorldBuildingAI } from "../hooks/useWorldBuildingAI";
 import { useElementAccumulator } from "../hooks/useElementAccumulator";
 import { ProgressSnackbar } from "../components/ui/ProgressSnackbar";
+import { toast } from "sonner";
 
 const WorldBuildingPage: React.FC = () => {
   const currentProject = useRecoilValue(currentProjectState);
@@ -78,7 +79,15 @@ const WorldBuildingPage: React.FC = () => {
   }, [hasUnsavedChanges, isAIProcessing]);
 
   // AIに世界観要素を考えてもらう
-  const handleAIAssist = async (message: string) => {
+  const handleAIAssist = async (params: {
+    message: string;
+    plotId?: string | null;
+  }) => {
+    const { message } = params; // message を取り出す
+    if (!currentProject) {
+      toast.error("プロジェクトがロードされていません。");
+      return;
+    }
     console.log("AIアシスト要求:", message);
     setIsAIProcessing(true); // AI処理開始
     try {

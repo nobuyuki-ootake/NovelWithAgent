@@ -55,3 +55,15 @@ export const getPageContent = (
   const allText = serializeToText(nodes);
   return allText.substring(pageIndex * 400, (pageIndex + 1) * 400);
 };
+
+// HTML文字列からプレーンテキストを抽出するヘルパー関数
+export const extractTextFromHtml = (html: string): string => {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return doc.body.textContent || "";
+  } catch (e) {
+    console.error("Error parsing HTML for text extraction:", e);
+    // フォールバックとして簡易的なタグ除去（不完全な場合あり）
+    return html.replace(/<[^>]+>/g, "");
+  }
+};

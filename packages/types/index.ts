@@ -147,11 +147,12 @@ export interface TimelineEventSeed {
 export interface Chapter {
   id: string;
   title: string;
-  synopsis: string;
-  content: string;
+  synopsis?: string;
+  content: string; // This is Slate serialized JSON or plain text
   order: number;
   scenes: Scene[];
   relatedEvents?: string[]; // 章に関連するタイムラインイベントのID配列
+  manuscriptPages?: string[]; // For vertical genko mode, array of HTML strings
   status?: ChapterStatus;
 }
 
@@ -589,7 +590,7 @@ export function createTypedWorldBuildingElement(
     relations: typeof data.relations === "string" ? data.relations : "", // TODO: relationsのオブジェクト型対応
   };
 
-  const id = data.id || crypto.randomUUID(); // idがない場合は新規生成
+  const id = data.id!;
 
   switch (type) {
     case WorldBuildingElementType.WORLDMAP:
@@ -675,7 +676,7 @@ export function createTypedWorldBuildingElement(
       } as StateDefinitionElement;
     default:
       // 未知のタイプや基本タイプで処理できない場合は、警告を出しつつ汎用的なオブジェクトを返すかエラーをスロー
-      console.warn(`Unsupported WorldBuildingElementType: ${type}`);
+      // console.warn(`Unsupported WorldBuildingElementType: ${type}`);
       // 安全策として、FreeFieldElementのような汎用的な型で返すか、エラーをスローするか検討
       // ここではエラーをスローする例
       throw new Error(`Unsupported WorldBuildingElementType: ${type}`);
@@ -702,7 +703,7 @@ export interface StandardAIRequest {
   context?: {
     // リクエストの文脈情報 (プロジェクトID、現在のキャラクターリストなど)
     projectId?: string;
-    [key: string]: any; // 柔軟性のため
+    [key: string]: unknown; // 柔軟性のため any から unknown へ変更
   };
   options?: {
     temperature?: number;
@@ -710,7 +711,7 @@ export interface StandardAIRequest {
     responseFormat?: AIDataFormat; // "json", "yaml", "text"
     timeout?: number; // ミリ秒
     // その他モデル固有オプション
-    [key: string]: any;
+    [key: string]: unknown; // 柔軟性のため any から unknown へ変更
   };
 }
 
@@ -720,7 +721,7 @@ export interface StandardAIResponse {
   timestamp: string; // ISO 8601形式
   status: "success" | "error" | "partial"; // ステータス
   responseFormat: AIDataFormat; // レスポンス形式
-  content: any | null; // パースされたレスポンスデータ (JSONオブジェクト、YAMLオブジェクト、テキストなど)
+  content: unknown | null; // パースされたレスポンスデータ (JSONオブジェクト、YAMLオブジェクト、テキストなど) any から unknown へ変更
   rawContent?: string; // AIからの生のレスポンス文字列
   error?: AIError | null;
   usage?: {
@@ -733,7 +734,7 @@ export interface StandardAIResponse {
     requestType?: string;
     processingTime?: number; // ミリ秒
     // その他デバッグ情報
-    [key: string]: any;
+    [key: string]: unknown; // 柔軟性のため any から unknown へ変更
   };
 }
 
@@ -741,5 +742,5 @@ export interface StandardAIResponse {
 export interface AIError {
   code: string; // 例: "VALIDATION_ERROR", "API_ERROR", "TIMEOUT"
   message: string;
-  details?: any;
+  details?: unknown; // any から unknown へ変更
 }

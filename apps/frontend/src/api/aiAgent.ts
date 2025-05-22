@@ -5,7 +5,6 @@ import {
   PlotElement,
   Character,
   WorldBuildingElement,
-  Chapter,
   TimelineEvent,
   StandardAIResponse,
 } from "@novel-ai-assistant/types";

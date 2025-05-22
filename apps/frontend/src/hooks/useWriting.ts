@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { currentChapterSelector } from "../store/selectors";
 import { currentProjectState, currentChapterIdState } from "../store/atoms";
-import { createEditorValue, serializeToText } from "../utils/editorUtils";
+import {
+  createEditorValue,
+  serializeToText,
+  createEmptyEditor,
+} from "../utils/editorUtils";
 import { v4 as uuidv4 } from "uuid";
 import { Descendant } from "slate";
 import {
@@ -33,6 +37,11 @@ export function useWriting() {
   const [eventDetailDialogOpen, setEventDetailDialogOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
+  // 原稿用紙モード関連
+  const [manuscriptPages, setManuscriptPages] = useState<string[]>([""]);
+  const [currentManuscriptPageIndex, setCurrentManuscriptPageIndex] =
+    useState(0);
+
   // プロジェクトのタイムラインイベント
   const timelineEvents: TimelineEvent[] = currentProject?.timeline || [];
 
@@ -40,23 +49,50 @@ export function useWriting() {
   useEffect(() => {
     console.log("Current project timeline:", currentProject?.timeline);
     console.log("Timeline events in useWriting:", timelineEvents);
-  }, [currentProject, timelineEvents]);
+  }, [currentProject?.timeline]);
 
   // 選択されたイベントの詳細情報
   const selectedEvent: TimelineEvent | null =
     currentProject?.timeline?.find((event) => event.id === selectedEventId) ||
     null;
 
+  // 章が切り替わった時 (currentChapterId が変更された時) にエディタとページを初期化
   useEffect(() => {
     if (currentChapter) {
+      console.log(
+        `useWriting useEffect (triggered by currentChapterId change): Initializing for chapter ${currentChapter.id} (${currentChapter.title}). currentChapterId state: ${currentChapterId}`
+      );
       setEditorValue(createEditorValue(currentChapter.content));
+
+      if (
+        currentChapter.manuscriptPages &&
+        currentChapter.manuscriptPages.length > 0
+      ) {
+        setManuscriptPages(currentChapter.manuscriptPages);
+      } else {
+        setManuscriptPages([""]);
+      }
+      setCurrentManuscriptPageIndex(0);
     } else {
-      // 選択されている章がない場合は最初の章を選択
-      if (currentProject && currentProject.chapters.length > 0) {
-        setCurrentChapterId(currentProject.chapters[0].id);
+      // currentChapter が null の場合 (例: プロジェクトに章がない、またはIDが不正など)
+      // 以前は currentProject?.chapters.length を見ていたが、
+      // currentChapter が null ならエディタは空にするのが一貫している
+      setEditorValue(createEmptyEditor());
+      setManuscriptPages([""]);
+      setCurrentManuscriptPageIndex(0);
+      if (currentChapterId) {
+        // IDがあるのにチャプターが取得できない場合
+        console.log(
+          `useWriting useEffect: No current chapter found for ID ${currentChapterId}, resetting editor.`
+        );
+      } else {
+        // IDすらない（例えばプロジェクト初期状態など）
+        console.log(
+          "useWriting useEffect: No current chapter ID, resetting editor."
+        );
       }
     }
-  }, [currentChapter, currentProject, setCurrentChapterId]);
+  }, [currentChapterId]); // 依存配列を currentChapterId に限定
 
   const handleEditorChange = (value: Descendant[]) => {
     setEditorValue(value);
@@ -97,6 +133,9 @@ export function useWriting() {
   // 章の選択を処理する関数
   const handleChapterSelect = (chapterId: string) => {
     setCurrentChapterId(chapterId);
+    console.log(
+      `useWriting handleChapterSelect: chapterId set to: ${chapterId}`
+    );
   };
 
   // 新規章作成ダイアログを開く
@@ -129,10 +168,10 @@ export function useWriting() {
       content: "",
       order: newOrder,
       scenes: [],
-      relatedEvents: [], // 関連イベントの配列を追加
+      relatedEvents: [],
+      manuscriptPages: [""],
     };
 
-    // プロジェクトを更新
     const updatedProject = {
       ...currentProject,
       chapters: [...currentProject.chapters, newChapter],
@@ -140,20 +179,14 @@ export function useWriting() {
     };
 
     setCurrentProject(updatedProject);
-    setCurrentChapterId(newChapter.id); // 新しい章を選択
-
-    // ローカルストレージに保存
+    setCurrentChapterId(newChapter.id);
     saveProject(updatedProject);
-
-    // ダイアログを閉じる
     handleCloseNewChapterDialog();
   };
 
   // イベント割り当てダイアログを開く
   const handleOpenAssignEventsDialog = () => {
     if (!currentChapter) return;
-
-    // 現在の章に割り当てられているイベントIDを設定
     setSelectedEvents(currentChapter.relatedEvents || []);
     setAssignEventsDialogOpen(true);
   };
@@ -175,27 +208,18 @@ export function useWriting() {
   // 選択したイベントを章に割り当てる
   const handleAssignEvents = () => {
     if (!currentProject || !currentChapter) return;
-
-    // 章を更新
     const updatedChapters = currentProject.chapters.map((chapter) =>
       chapter.id === currentChapter.id
         ? { ...chapter, relatedEvents: selectedEvents }
         : chapter
     );
-
-    // プロジェクトを更新
     const updatedProject = {
       ...currentProject,
       chapters: updatedChapters,
       updatedAt: new Date(),
     };
-
     setCurrentProject(updatedProject);
-
-    // ローカルストレージに保存
     saveProject(updatedProject);
-
-    // ダイアログを閉じる
     handleCloseAssignEventsDialog();
   };
 
@@ -223,35 +247,181 @@ export function useWriting() {
     }
   }, []);
 
+  // 原稿用紙のページ内容が変更されたときのハンドラ
+  const handleManuscriptPageChange = useCallback(
+    (pageIndex: number, newHtml: string) => {
+      if (!currentProject || !currentChapter) return;
+
+      // manuscriptPages のコピーを作成して更新
+      const updatedManuscriptPages = [...manuscriptPages];
+      if (pageIndex >= 0 && pageIndex < updatedManuscriptPages.length) {
+        updatedManuscriptPages[pageIndex] = newHtml;
+        setManuscriptPages(updatedManuscriptPages); // ローカルステートを更新
+
+        // 現在の章の manuscriptPages を更新
+        const updatedChapters = currentProject.chapters.map((chapter) =>
+          chapter.id === currentChapter.id
+            ? { ...chapter, manuscriptPages: updatedManuscriptPages }
+            : chapter
+        );
+
+        const updatedProject = {
+          ...currentProject,
+          chapters: updatedChapters,
+          updatedAt: new Date(),
+        };
+        setCurrentProject(updatedProject);
+        saveProject(updatedProject);
+      } else {
+        console.warn(
+          `handleManuscriptPageChange: Invalid pageIndex: ${pageIndex}`
+        );
+      }
+    },
+    [
+      currentProject,
+      currentChapter,
+      manuscriptPages,
+      setCurrentProject,
+      saveProject,
+    ]
+  );
+
+  // 新しい原稿用紙ページを追加するハンドラ
+  const handleAddManuscriptPage = useCallback(() => {
+    if (!currentProject || !currentChapter) {
+      console.warn("handleAddManuscriptPage: No current project or chapter.");
+      return;
+    }
+    console.log(
+      "handleAddManuscriptPage: Start. Current manuscriptPages state:",
+      [...manuscriptPages] // スプレッド構文で現在の値をキャプチャ
+    );
+
+    const newPages = [...manuscriptPages, ""]; // 新しい空のページを追加
+    console.log("handleAddManuscriptPage: newPages created:", [...newPages]);
+    setManuscriptPages(newPages); // まずローカルのReactステートを更新
+    console.log(
+      "handleAddManuscriptPage: Called setManuscriptPages with newPages. currentManuscriptPageIndex before update:",
+      currentManuscriptPageIndex
+    );
+
+    // 新しく追加されたページを現在のページとして設定
+    setCurrentManuscriptPageIndex(newPages.length - 1);
+    console.log(
+      "handleAddManuscriptPage: Called setCurrentManuscriptPageIndex. New index:",
+      newPages.length - 1
+    );
+
+    // 次に、Recoilで管理しているプロジェクトデータを更新
+    const updatedChapters = currentProject.chapters.map((chapter) =>
+      chapter.id === currentChapter.id
+        ? { ...chapter, manuscriptPages: newPages } // 更新されたページ配列で上書き
+        : chapter
+    );
+    console.log(
+      "handleAddManuscriptPage: updatedChapters created. Chapter being updated:",
+      currentChapter.id,
+      "New manuscriptPages for this chapter:",
+      newPages
+    );
+
+    const updatedProject = {
+      ...currentProject,
+      chapters: updatedChapters,
+      updatedAt: new Date(),
+    };
+    setCurrentProject(updatedProject); // Recoilのステートを更新
+    console.log(
+      "handleAddManuscriptPage: Called setCurrentProject. Project's chapter manuscriptPages should be updated now."
+    );
+
+    saveProject(updatedProject); // ローカルストレージに保存
+
+    console.log(
+      `handleAddManuscriptPage: End. manuscriptPages state potentially updated. Total pages: ${
+        newPages.length
+      }, Current index: ${newPages.length - 1}`
+    );
+  }, [
+    currentProject,
+    currentChapter,
+    manuscriptPages,
+    setCurrentProject,
+    saveProject,
+  ]);
+
+  const handleRemoveManuscriptPage = useCallback(() => {
+    if (!currentProject || !currentChapter) return;
+    const updatedChapters = currentProject.chapters.map((chapter) =>
+      chapter.id === currentChapter.id
+        ? {
+            ...chapter,
+            manuscriptPages: manuscriptPages.filter(
+              (_, index) => index !== currentManuscriptPageIndex
+            ),
+          }
+        : chapter
+    );
+    const updatedProject = {
+      ...currentProject,
+      chapters: updatedChapters,
+      updatedAt: new Date(),
+    };
+    setCurrentProject(updatedProject);
+    saveProject(updatedProject);
+  }, [
+    currentProject,
+    currentChapter,
+    manuscriptPages,
+    currentManuscriptPageIndex,
+    setCurrentProject,
+    saveProject,
+  ]);
+
+  const handlePreviousManuscriptPage = () => {
+    setCurrentManuscriptPageIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextManuscriptPage = () => {
+    setCurrentManuscriptPageIndex((prev) =>
+      Math.min(manuscriptPages.length - 1, prev + 1)
+    );
+  };
+
   // 現在の編集内容を手動で保存する関数
   const handleSaveContent = useCallback(() => {
     if (!currentChapter || !currentProject) return;
 
-    // 章の内容を更新
-    const updatedChapters = currentProject.chapters.map((chapter) =>
+    // 章の内容を更新 (エディタの値から)
+    const updatedChaptersWithContent = currentProject.chapters.map((chapter) =>
       chapter.id === currentChapter.id
         ? { ...chapter, content: serializeToText(editorValue) }
+        : chapter
+    );
+
+    // 原稿用紙の内容を更新 (現在のページ配列から)
+    const finalChapters = updatedChaptersWithContent.map((chapter) =>
+      chapter.id === currentChapter.id
+        ? { ...chapter, manuscriptPages: manuscriptPages }
         : chapter
     );
 
     // プロジェクトを更新
     const updatedProject = {
       ...currentProject,
-      chapters: updatedChapters,
+      chapters: finalChapters,
       updatedAt: new Date(),
     };
 
     setCurrentProject(updatedProject);
-
-    // ローカルストレージに保存
     saveProject(updatedProject);
-
-    // ユーザーに通知（実際には通知コンポーネントなどを使うと良い）
-    alert("内容を保存しました");
+    alert("内容を保存しました"); // TODO: Snackbarに置き換える
   }, [
     currentChapter,
     currentProject,
     editorValue,
+    manuscriptPages,
     saveProject,
     setCurrentProject,
   ]);
@@ -259,11 +429,6 @@ export function useWriting() {
   // イベントを章に追加する処理
   const handleAddEventToChapter = (eventId: string) => {
     if (!currentProject || !currentChapter) return;
-
-    // 既に追加されていれば何もしない
-    if (currentChapter.relatedEvents?.includes(eventId)) return;
-
-    // 章を更新
     const updatedChapters = currentProject.chapters.map((chapter) =>
       chapter.id === currentChapter.id
         ? {
@@ -272,89 +437,90 @@ export function useWriting() {
           }
         : chapter
     );
-
-    // プロジェクトを更新
     const updatedProject = {
       ...currentProject,
       chapters: updatedChapters,
       updatedAt: new Date(),
     };
-
     setCurrentProject(updatedProject);
-
-    // ローカルストレージに保存
     saveProject(updatedProject);
   };
 
-  // イベントを追加する処理
+  // イベントを章から削除する処理
+  const handleRemoveEventFromChapter = (eventId: string) => {
+    if (!currentProject || !currentChapter) return;
+    const updatedChapters = currentProject.chapters.map((chapter) =>
+      chapter.id === currentChapter.id
+        ? {
+            ...chapter,
+            relatedEvents: chapter.relatedEvents?.filter(
+              (id) => id !== eventId
+            ),
+          }
+        : chapter
+    );
+    const updatedProject = {
+      ...currentProject,
+      chapters: updatedChapters,
+      updatedAt: new Date(),
+    };
+    setCurrentProject(updatedProject);
+    saveProject(updatedProject);
+  };
+
+  // 新規イベントを追加する処理 (プロジェクト全体へ)
   const handleAddNewEvent = useCallback(
     (newEvent: TimelineEvent) => {
       if (!currentProject) return;
-
-      // タイムラインに新しいイベントを追加
-      const updatedTimeline = [...(currentProject.timeline || []), newEvent];
-
-      // プロジェクトを更新
       const updatedProject = {
         ...currentProject,
-        timeline: updatedTimeline,
+        timeline: [...(currentProject.timeline || []), newEvent],
         updatedAt: new Date(),
       };
-
-      console.log("新しいイベントを追加:", newEvent);
-      console.log("更新後のタイムライン:", updatedTimeline);
-
-      // Recoilのステートを更新
       setCurrentProject(updatedProject);
-
-      // ローカルストレージに保存
       saveProject(updatedProject);
-
-      // 作成したイベントを自動的に現在の章に関連付ける
-      if (currentChapter) {
-        handleAddEventToChapter(newEvent.id);
-      }
     },
-    [
-      currentProject,
-      currentChapter,
-      setCurrentProject,
-      saveProject,
-      handleAddEventToChapter,
-    ]
+    [currentProject, setCurrentProject, saveProject]
   );
 
   return {
     editorValue,
     currentChapter,
     currentProject,
-    currentTabIndex,
     currentChapterId,
-    timelineEvents,
+    currentTabIndex,
     newChapterDialogOpen,
     newChapterTitle,
     newChapterSynopsis,
     assignEventsDialogOpen,
-    selectedEvents,
     eventDetailDialogOpen,
     selectedEvent,
+    selectedEvents,
+    timelineEvents,
+    manuscriptPages,
+    currentManuscriptPageIndex,
     handleEditorChange,
     handleTabChange,
     handleChapterSelect,
     handleOpenNewChapterDialog,
     handleCloseNewChapterDialog,
+    handleCreateChapter,
     setNewChapterTitle,
     setNewChapterSynopsis,
-    handleCreateChapter,
     handleOpenAssignEventsDialog,
     handleCloseAssignEventsDialog,
     handleToggleEvent,
     handleAssignEvents,
     handleOpenEventDetailDialog,
     handleCloseEventDetailDialog,
-    handleAddEventToChapter,
-    handleAddNewEvent,
     handleSaveContent,
-    serializeToText,
+    handleAddEventToChapter,
+    handleRemoveEventFromChapter,
+    handleAddNewEvent,
+    handleManuscriptPageChange,
+    handleAddManuscriptPage,
+    handleRemoveManuscriptPage,
+    handlePreviousManuscriptPage,
+    handleNextManuscriptPage,
   };
 }

@@ -29,8 +29,8 @@ const EditorTest: React.FC = () => {
         </Paper>
 
         <VerticalContentEditor
-          initialValue={editorContent}
-          onChange={setEditorContent}
+          pageHtml={editorContent}
+          onPageHtmlChange={setEditorContent}
         />
 
         <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>

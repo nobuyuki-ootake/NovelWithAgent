@@ -51,6 +51,10 @@ interface WritingContextType {
   aiUserInstructions: string;
   aiTargetLength: "short" | "medium" | "long" | "";
 
+  // 原稿用紙モード関連の状態
+  manuscriptPages: string[];
+  currentManuscriptPageIndex: number;
+
   // Snackbar関連の状態
   snackbarOpen: boolean;
   snackbarMessage: string;
@@ -74,7 +78,7 @@ interface WritingContextType {
   handleAddEventToChapter: (eventId: string) => void;
   handleAddNewEvent: (event: TimelineEvent) => void;
   handleSaveContent: () => void;
-  serializeToText: (nodes: Descendant[]) => string;
+  handleRemoveEventFromChapter: (eventId: string) => void;
 
   // AI関連のアクション
   setIsAiProcessing: React.Dispatch<React.SetStateAction<boolean>>;
@@ -83,6 +87,13 @@ interface WritingContextType {
     React.SetStateAction<"short" | "medium" | "long" | "">
   >;
   generateChapterByAI: (params: AIChapterGenerationParams) => Promise<void>;
+
+  // 原稿用紙モード関連のアクション
+  handleManuscriptPageChange: (pageIndex: number, newHtml: string) => void;
+  handleAddManuscriptPage: () => void;
+  handleRemoveManuscriptPage: () => void;
+  handlePreviousManuscriptPage: () => void;
+  handleNextManuscriptPage: () => void;
 
   // Snackbar関連のアクション
   showSnackbar: (message: string, severity: AlertColor) => void;
@@ -136,7 +147,10 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
 
       if (response.content && typeof response.content === "string") {
         const newEditorValue = convertTextToSlateValue(response.content);
-        writingHookData.handleEditorChange(newEditorValue);
+        // AI生成結果を通常の執筆エディタに反映
+        if (writingHookData.handleEditorChange) {
+          writingHookData.handleEditorChange(newEditorValue);
+        }
         showSnackbar("AIによる本文生成が完了しました。", "success");
       } else {
         console.warn(
@@ -161,10 +175,23 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   // コンテキストで提供する値
-  const value: WritingContextType = {
-    ...writingHookData,
+  console.log(
+    "WritingProvider: creating value. manuscriptPages length:",
+    writingHookData.manuscriptPages?.length,
+    "currentIndex:",
+    writingHookData.currentManuscriptPageIndex,
+    "currentChapterId:",
+    writingHookData.currentChapterId,
+    "currentChapter title:",
+    writingHookData.currentChapter?.title,
+    "currentChapter manuscriptPages:",
+    writingHookData.currentChapter?.manuscriptPages
+  );
 
-    // AI関連の状態とアクション
+  const value: WritingContextType = {
+    ...writingHookData, // useWriting() からの全ての値（原稿用紙関連も含む）
+
+    // AI関連の状態とアクション (これらはProvider固有)
     isAiProcessing,
     aiUserInstructions,
     aiTargetLength,
@@ -173,7 +200,7 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
     setAiTargetLength,
     generateChapterByAI,
 
-    // Snackbar
+    // Snackbar関連の状態とアクション (これらもProvider固有)
     snackbarOpen,
     snackbarMessage,
     snackbarSeverity,

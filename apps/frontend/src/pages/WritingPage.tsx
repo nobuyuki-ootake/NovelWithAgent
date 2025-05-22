@@ -1,4 +1,4 @@
-import React, { JSX } from "react";
+import React, { JSX, useEffect } from "react";
 import {
   Typography,
   Box,
@@ -13,11 +13,14 @@ import {
   FormControl,
   InputLabel,
   CircularProgress,
+  // IconButton, // 未使用のため削除
+  // Tooltip, // 未使用のため削除
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { VerticalContentEditorWrapper } from "../components/editor";
+import VerticalContentEditor from "../components/editor/VerticalContentEditor";
 import ChapterList from "../components/writing/ChapterList";
 import WritingPreview from "../components/writing/WritingPreview";
 import NewChapterDialog from "../components/writing/NewChapterDialog";
@@ -32,7 +35,9 @@ import {
 } from "@novel-ai-assistant/types";
 import { AIChapterGenerationParams } from "../contexts/WritingContext";
 import Snackbar from "@mui/material/Snackbar";
-import Alert, { AlertColor } from "@mui/material/Alert";
+import Alert from "@mui/material/Alert";
+import { serializeToText, extractTextFromHtml } from "../utils/editorUtils";
+import { DeleteIcon } from "lucide-react";
 
 // WritingPageの実装コンポーネント
 const WritingPageContent: () => JSX.Element | null = () => {
@@ -67,7 +72,6 @@ const WritingPageContent: () => JSX.Element | null = () => {
     handleAddEventToChapter,
     handleAddNewEvent,
     handleSaveContent,
-    serializeToText,
     isAiProcessing,
     aiUserInstructions,
     aiTargetLength,
@@ -78,7 +82,70 @@ const WritingPageContent: () => JSX.Element | null = () => {
     snackbarMessage,
     snackbarSeverity,
     closeSnackbar,
+    manuscriptPages,
+    currentManuscriptPageIndex,
+    handleManuscriptPageChange,
+    handleAddManuscriptPage,
+    handleRemoveManuscriptPage,
+    handlePreviousManuscriptPage,
+    handleNextManuscriptPage,
   } = useWritingContext();
+
+  // ★ デバッグログ追加
+  console.log(
+    "WritingPageContent: receiving context. manuscriptPages length:",
+    manuscriptPages?.length,
+    "currentIndex:",
+    currentManuscriptPageIndex,
+    "currentChapterId:",
+    currentChapterId,
+    "currentChapter title:",
+    currentChapter?.title,
+    "currentChapter manuscriptPages:",
+    currentChapter?.manuscriptPages,
+    "manuscriptPages content:",
+    manuscriptPages // コンテンツもログに出してみる
+  );
+
+  useEffect(() => {
+    console.log(
+      "WritingPageContent useEffect triggered. manuscriptPages:",
+      manuscriptPages,
+      "currentIndex:",
+      currentManuscriptPageIndex
+    );
+    if (
+      manuscriptPages &&
+      manuscriptPages.length > 0 &&
+      currentManuscriptPageIndex >= 0 &&
+      currentManuscriptPageIndex < manuscriptPages.length
+    ) {
+      console.log(
+        `WritingPageContent: Pages updated. Total: ${
+          manuscriptPages.length
+        }, Current Index: ${currentManuscriptPageIndex}, Current Page Mojisu: ${
+          extractTextFromHtml(manuscriptPages[currentManuscriptPageIndex] || "")
+            .length
+        }`
+      );
+    } else if (manuscriptPages) {
+      console.log(
+        `WritingPageContent: Pages updated (condition not fully met). Total: ${manuscriptPages?.length}, Current Index: ${currentManuscriptPageIndex}, manuscriptPages content:`,
+        manuscriptPages
+      );
+    } else {
+      console.log(
+        "WritingPageContent useEffect: manuscriptPages is null or undefined."
+      );
+    }
+  }, [manuscriptPages, currentManuscriptPageIndex]);
+
+  const handleRequestNewPageTrigger = () => {
+    console.log(
+      "WritingPageContent: handleRequestNewPageTrigger called. About to call handleAddManuscriptPage."
+    );
+    handleAddManuscriptPage();
+  };
 
   const localHandleGenerateChapterByAI = async () => {
     if (!currentChapter || !currentProject || !timelineEvents) return;
@@ -223,56 +290,54 @@ const WritingPageContent: () => JSX.Element | null = () => {
                 保存
               </Button>
             )}
-            {currentChapter && currentTabIndex === 0 && (
-              <>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel id="ai-target-length-label">章の長さ</InputLabel>
-                  <Select
-                    labelId="ai-target-length-label"
-                    value={aiTargetLength}
-                    label="章の長さ"
-                    onChange={(e) =>
-                      setAiTargetLength(
-                        e.target.value as "short" | "medium" | "long" | ""
-                      )
-                    }
-                    disabled={isAiProcessing}
-                  >
-                    <MenuItem value="">
-                      <em>指定なし</em>
-                    </MenuItem>
-                    <MenuItem value="short">短め</MenuItem>
-                    <MenuItem value="medium">普通</MenuItem>
-                    <MenuItem value="long">長め</MenuItem>
-                  </Select>
-                </FormControl>
-                <TextField
-                  label="AIへの追加指示"
-                  size="small"
-                  variant="outlined"
-                  value={aiUserInstructions}
-                  onChange={(e) => setAiUserInstructions(e.target.value)}
-                  disabled={isAiProcessing}
-                  sx={{ flexGrow: 1, minWidth: 150 }}
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={
-                    isAiProcessing ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      <AutoFixHighIcon />
+            <>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="ai-target-length-label">章の長さ</InputLabel>
+                <Select
+                  labelId="ai-target-length-label"
+                  value={aiTargetLength}
+                  label="章の長さ"
+                  onChange={(e) =>
+                    setAiTargetLength(
+                      e.target.value as "short" | "medium" | "long" | ""
                     )
                   }
-                  onClick={localHandleGenerateChapterByAI}
-                  disabled={isAiProcessing || !currentChapter}
-                  sx={{ whiteSpace: "nowrap" }}
+                  disabled={isAiProcessing}
                 >
-                  AIに執筆してもらう
-                </Button>
-              </>
-            )}
+                  <MenuItem value="">
+                    <em>指定なし</em>
+                  </MenuItem>
+                  <MenuItem value="short">短め</MenuItem>
+                  <MenuItem value="medium">普通</MenuItem>
+                  <MenuItem value="long">長め</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="AIへの追加指示"
+                size="small"
+                variant="outlined"
+                value={aiUserInstructions}
+                onChange={(e) => setAiUserInstructions(e.target.value)}
+                disabled={isAiProcessing}
+                sx={{ flexGrow: 1, minWidth: 150 }}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={
+                  isAiProcessing ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    <AutoFixHighIcon />
+                  )
+                }
+                onClick={localHandleGenerateChapterByAI}
+                disabled={isAiProcessing || !currentChapter}
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                AIに執筆してもらう
+              </Button>
+            </>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -325,49 +390,70 @@ const WritingPageContent: () => JSX.Element | null = () => {
           {currentChapter ? (
             <>
               <Paper sx={{ mb: 2 }}>
-                <Tabs
-                  value={currentTabIndex}
-                  onChange={handleTabChange}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                >
-                  <Tab label="原稿用紙モード" />
-                  <Tab label="プレビューモード" />
-                </Tabs>
-              </Paper>
-
-              {currentTabIndex === 0 && (
-                <Paper
-                  elevation={1}
+                <Box
                   sx={{
-                    flexGrow: 1,
-                    p: 1,
                     display: "flex",
-                    flexDirection: "column",
-                    overflow: "hidden",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    mt: 1,
+                    gap: 1,
                   }}
                 >
-                  <VerticalContentEditorWrapper
-                    value={editorValue}
-                    onChange={handleEditorChange}
-                  />
-                  <Typography
-                    variant="caption"
-                    sx={{ textAlign: "right", p: 1, mt: "auto" }}
+                  <Button
+                    onClick={handlePreviousManuscriptPage}
+                    disabled={currentManuscriptPageIndex === 0}
                   >
-                    文字数: {serializeToText(editorValue).length}
+                    前のページ
+                  </Button>
+                  <Typography>
+                    {currentManuscriptPageIndex + 1} / {manuscriptPages.length}
                   </Typography>
-                </Paper>
-              )}
+                  <Button
+                    onClick={handleNextManuscriptPage}
+                    disabled={
+                      currentManuscriptPageIndex >= manuscriptPages.length - 1
+                    }
+                  >
+                    次のページ
+                  </Button>
+                  <Button
+                    onClick={handleAddManuscriptPage}
+                    startIcon={<AddIcon />}
+                  >
+                    新しいページを追加
+                  </Button>
+                  <Button
+                    onClick={handleRemoveManuscriptPage}
+                    startIcon={<DeleteIcon />}
+                  >
+                    ページを削除
+                  </Button>
+                </Box>
+              </Paper>
 
-              {currentTabIndex === 1 && (
-                <Paper
-                  elevation={1}
-                  sx={{ flexGrow: 1, p: 1, overflowY: "auto" }}
-                >
-                  <WritingPreview content={serializeToText(editorValue)} />
-                </Paper>
-              )}
+              <Box
+                sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
+              >
+                <VerticalContentEditorWrapper
+                  value={editorValue}
+                  onChange={handleEditorChange}
+                />
+              </Box>
+
+              <Box
+                sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
+              >
+                <VerticalContentEditor
+                  pageHtml={manuscriptPages[currentManuscriptPageIndex] || ""}
+                  onPageHtmlChange={(newHtml) =>
+                    handleManuscriptPageChange(
+                      currentManuscriptPageIndex,
+                      manuscriptPages[currentManuscriptPageIndex]
+                    )
+                  }
+                  onRequestNewPage={handleRequestNewPageTrigger}
+                />
+              </Box>
             </>
           ) : (
             <Paper elevation={1} sx={{ p: 3, textAlign: "center" }}>

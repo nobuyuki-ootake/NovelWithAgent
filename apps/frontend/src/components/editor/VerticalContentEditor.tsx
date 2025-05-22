@@ -1,47 +1,60 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import { styled } from "@mui/material/styles";
 import { Box, Paper } from "@mui/material";
+// import { extractTextFromHtml } from "../../utils/editorUtils"; // 不要になったためコメントアウト
 
 // スタイル付きコンポーネント
 const VerticalEditorContainer = styled(Paper)(({ theme }) => ({
   width: "100%",
-  overflowX: "auto",
-  overflowY: "auto",
+  flexGrow: 1, // 親のBox内で高さを最大限利用する
+  display: "flex", // 中のGridPaperをflexアイテムとして扱うため
+  flexDirection: "column", // GridPaperを縦に配置（現在は1つだけだが将来的な拡張性）
+  overflow: "hidden", // VerticalEditorContainer自体はスクロールさせず、中の要素でスクロール
   padding: theme.spacing(1),
   backgroundColor: "#f8f8f8",
-  display: "flex",
-  justifyContent: "flex-start",
+}));
+
+const GridPaperContainer = styled(Box)(() => ({
+  // GridPaperをラップするコンテナを追加
+  width: "100%",
+  flexGrow: 1,
+  overflowX: "auto", // 水平スクロールはこちらで担当
+  overflowY: "hidden", // PaperSheetの高さは固定なので、ここはhidden
+  paddingBottom: "16px", // スクロールバーのためのスペース（任意）
 }));
 
 const GridPaper = styled(Box)(() => ({
-  display: "flex",
-  flexDirection: "row", // 原稿用紙を横に並べる
+  display: "inline-flex", // PaperSheetを横並びにするため(現在は1つ)
+  flexDirection: "row",
   gap: "16px",
-  padding: "8px",
-  minHeight: "600px",
+  padding: "8px", // GridPaperContainerに移しても良い
+  minHeight: "720px", // PaperSheetの高さに合わせる
+  width: "max-content",
+  // margin: "0 auto", // 中央寄せは一旦解除、GridPaperContainerの幅が100%なので不要なはず
 }));
 
 const PaperSheet = styled(Box)(({ theme }) => ({
-  width: "540px", // 18px * 30文字 (30列)
-  height: "720px", // 36px * 20行 (20行)
+  width: "max-content", // コンテンツ幅に追従
+  minWidth: "min(max(600px, 70vw), 1000px)", // 最小幅を調整 (600px以上、かつビューポート70%か1000pxの小さい方)
+  height: "590px",
   position: "relative",
   backgroundColor: "white",
   boxShadow: theme.shadows[1],
   border: "1px solid #ddd",
-  overflow: "hidden",
+  overflow: "hidden", // PaperSheet自体はスクロールさせない
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "flex-start",
-  padding: "18px", // 上下左右のパディングを文字サイズに合わせる (1文字分)
+  padding: "18px",
   "&::before": {
     content: '""',
     position: "absolute",
-    top: "18px", // paddingに合わせる
-    right: "18px", // paddingに合わせる
-    bottom: "18px", // paddingに合わせる
-    left: "18px", // paddingに合わせる
-    backgroundSize: "18px 36px", // 1文字の幅18px, 高さ36px
+    top: "18px",
+    right: "18px",
+    bottom: "18px",
+    left: "18px",
+    backgroundSize: "18px 36px",
     backgroundImage: `
       linear-gradient(to right, #eee 1px, transparent 1px),
       linear-gradient(to bottom, #eee 1px, transparent 1px)
@@ -52,138 +65,89 @@ const PaperSheet = styled(Box)(({ theme }) => ({
 }));
 
 const EditableContent = styled(ContentEditable)(() => ({
-  width: "100%", // PaperSheetのpadding内で100%
-  height: "100%", // PaperSheetのpadding内で100%
+  width: "max-content",
+  minWidth: "calc(100% - 36px)", // PaperSheetのpadding(18px*2)を考慮
+  height: "100%",
   outline: "none",
   writingMode: "vertical-rl",
   WebkitWritingMode: "vertical-rl",
   msWritingMode: "vertical-rl",
   textOrientation: "mixed",
   fontSize: "18px",
-  fontFamily: '"Noto Serif JP", serif',
+  fontFamily: "monospace",
   lineHeight: "2",
-  letterSpacing: "0", // グリッドに合わせるためletterSpacingを0に
-  // textIndent: "1em", // グリッドに合わせるため、一旦なし
+  letterSpacing: "0",
   overflowWrap: "break-word",
-  wordBreak: "keep-all", // 日本語の改行に適した設定
-  whiteSpace: "pre-wrap", // 空白や改行を保持
+  wordBreak: "keep-all",
+  whiteSpace: "pre-wrap",
   position: "relative",
   zIndex: 2,
   backgroundColor: "transparent",
-  padding: 0, // PaperSheet側でpaddingを制御
+  padding: 0,
   margin: 0,
+  overflowY: "auto",
 }));
 
 interface VerticalContentEditorProps {
-  initialValue?: string;
-  onChange?: (value: string) => void;
+  /**
+   * 現在のページに表示するHTMLコンテンツ全体。
+   * 親コンポーネントがページ単位で管理しているHTML文字列を想定。
+   */
+  pageHtml: string;
+  /**
+   * ページ内容が変更されたときに呼び出されるコールバック。
+   * 変更後のページ全体のHTMLコンテンツを引数として渡す。
+   */
+  onPageHtmlChange: (newPageHtml: string) => void;
+  // onRequestNewPage?: () => void; // 不要になったため削除
 }
 
+// const MAX_CHARS_PER_PAGE = 600; // 不要になったため削除
+
 const VerticalContentEditor: React.FC<VerticalContentEditorProps> = ({
-  initialValue = "",
-  onChange,
+  pageHtml,
+  onPageHtmlChange,
+  // onRequestNewPage, // 不要になったため削除
 }) => {
-  const [html, setHtml] = useState(initialValue);
+  const editableRef = useRef<ContentEditable>(null);
+  // const lastRequestedHtmlRef = useRef<string | null>(null); // 不要になったため削除
 
-  // 編集可能なコンテンツのインスタンス
-  const contentEditable = React.createRef<ContentEditable>();
-
-  // コンテンツ変更時のハンドラー
   const handleChange = useCallback(
     (evt: ContentEditableEvent) => {
-      const newValue = evt.target.value;
-      setHtml(newValue);
-      if (onChange) {
-        onChange(newValue);
-      }
+      const newHtml = evt.target.value;
+      onPageHtmlChange(newHtml);
+
+      // 文字数チェックと onRequestNewPage 呼び出しロジックは削除
     },
-    [onChange]
+    [onPageHtmlChange]
   );
 
-  // 入力でのキーボードイベント処理
-  const handleKeyDown = useCallback(() => {
-    // キー操作が必要な場合ここに実装
-    // 例: Enter押下時の改行など特別な処理
-  }, []);
-
-  // コメントアウトされていた calculatePages を元に戻し、ページ計算ロジックとして利用
-  const charsPerPage = 360; // 1ページあたりの文字数（設定値）
-
-  const getPlainText = (htmlString: string): string => {
-    return htmlString.replace(/<[^>]*>/g, "");
-  };
-
-  const plainText = getPlainText(html);
-  const totalPages = Math.max(1, Math.ceil(plainText.length / charsPerPage));
-
-  // 右パネルに表示するHTML（基本は全量だが、将来的に最適化するかも）
-  const rightPanelHtml = html;
-
-  // 左パネルに表示するHTML（右パネルの前のページ内容）
-  let leftPanelHtml = "";
-  if (totalPages > 1) {
-    // 現在の編集カーソルがどのページにあるか、という概念はないため、
-    // 単純に全体のテキストをページ分けし、最後のページの一つ前を表示する。
-    // しかし、ContentEditableのhtmlを直接substringするのは危険なので、
-    // プレーンテキストで計算し、表示は右パネルの先頭部分とするのが無難か。
-    // 今回は、シンプルに「最後のページの一つ前のページ」をプレーンテキストで切り出す。
-    const startIndex = Math.max(0, plainText.length - charsPerPage * 2);
-    const endIndex = plainText.length - charsPerPage;
-    if (endIndex > 0) {
-      leftPanelHtml = plainText.substring(
-        Math.max(0, endIndex - charsPerPage),
-        endIndex
-      );
-    }
-  }
-  // 左パネルは読み取り専用なので、divで囲んで ContentEditable の挙動を模倣する
-  if (leftPanelHtml) {
-    leftPanelHtml = `<div>${leftPanelHtml.split("\n").join("<br>")}</div>`;
-  }
+  // pageHtml が外部から変更された場合の lastRequestedHtmlRef のリセットも不要
+  // React.useEffect(() => {
+  //   lastRequestedHtmlRef.current = null;
+  // }, [pageHtml]);
 
   return (
     <VerticalEditorContainer>
-      <GridPaper>
-        {/* 左パネル (前のページ表示用・読み取り専用) */}
-        <PaperSheet key="left-preview-page">
-          <Box
-            sx={{
-              width: "100%",
-              height: "100%",
-              writingMode: "vertical-rl",
-              WebkitWritingMode: "vertical-rl",
-              msWritingMode: "vertical-rl",
-              textOrientation: "mixed",
-              fontSize: "18px",
-              fontFamily: '"Noto Serif JP", serif',
-              lineHeight: "2",
-              letterSpacing: "0",
-              wordBreak: "keep-all",
-              whiteSpace: "pre-wrap",
-              overflow: "hidden", // 内容がはみ出ないように
-              position: "relative",
-              zIndex: 2, // グリッドよりは手前
-              padding: 0, // PaperSheet側で制御
-              margin: 0,
-            }}
-            dangerouslySetInnerHTML={{ __html: leftPanelHtml }}
-          />
-        </PaperSheet>
-
-        {/* 右パネル (現在の編集ページ) */}
-        <PaperSheet key="editable-page-2">
-          <EditableContent
-            // ref={} // 2つ目のrefは現状不要か
-            html={rightPanelHtml} // 右パネルには全HTMLを渡す
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            tagName="div"
-            placeholder="ここに文章を入力してください..."
-            spellCheck={false}
-            lang="ja"
-          />
-        </PaperSheet>
-      </GridPaper>
+      <GridPaperContainer>
+        {" "}
+        {/* ラッパーコンテナを追加 */}
+        <GridPaper>
+          <PaperSheet key="editable-page-single">
+            {" "}
+            {/* 複数ページ表示する場合はkeyの動的生成が必要 */}
+            <EditableContent
+              ref={editableRef}
+              html={pageHtml}
+              onChange={handleChange}
+              tagName="div"
+              placeholder="(本文)"
+              spellCheck={false}
+              lang="ja"
+            />
+          </PaperSheet>
+        </GridPaper>
+      </GridPaperContainer>
     </VerticalEditorContainer>
   );
 };

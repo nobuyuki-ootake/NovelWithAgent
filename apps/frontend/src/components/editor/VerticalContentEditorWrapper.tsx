@@ -55,7 +55,10 @@ const VerticalContentEditorWrapper: React.FC<
   };
 
   return (
-    <VerticalContentEditor initialValue={textValue} onChange={handleChange} />
+    <VerticalContentEditor
+      pageHtml={textValue}
+      onPageHtmlChange={handleChange}
+    />
   );
 };
 

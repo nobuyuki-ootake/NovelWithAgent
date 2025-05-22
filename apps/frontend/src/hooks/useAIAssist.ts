@@ -357,7 +357,16 @@ ${message}`;
           charInfo.role,
           detailMessage,
           plotElements,
-          [...existingCharacters, ...generatedCharacters]
+          [
+            ...existingCharacters,
+            ...(generatedCharacters.filter(
+              (char) =>
+                char &&
+                typeof char.id === "string" &&
+                typeof char.name === "string" &&
+                typeof char.role === "string"
+            ) as unknown as Character[]),
+          ]
         );
 
         // 結果を解析してキャラクター情報を抽出
