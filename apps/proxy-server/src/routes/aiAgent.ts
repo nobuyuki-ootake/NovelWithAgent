@@ -119,7 +119,8 @@ router.post('/worldbuilding-detail-generation', async (req, res) => {
       responseData = {
         name: elementName,
         type: normalizedElementType,
-        description: aiResponse.rawContent || aiResponse.content || '',
+        description:
+          aiResponse.rawContent || (aiResponse.content as string) || '',
         features: '特徴',
         importance: '重要性',
       };

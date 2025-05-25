@@ -15,6 +15,11 @@ import {
   CircularProgress,
   // IconButton, // 未使用のため削除
   // Tooltip, // 未使用のため削除
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
@@ -45,7 +50,6 @@ const WritingPageContent: () => JSX.Element | null = () => {
     editorValue,
     currentChapter,
     currentProject,
-    currentTabIndex,
     currentChapterId,
     timelineEvents,
     newChapterDialogOpen,
@@ -56,7 +60,6 @@ const WritingPageContent: () => JSX.Element | null = () => {
     eventDetailDialogOpen,
     selectedEvent,
     handleEditorChange,
-    handleTabChange,
     handleChapterSelect,
     handleOpenNewChapterDialog,
     handleCloseNewChapterDialog,
@@ -78,74 +81,23 @@ const WritingPageContent: () => JSX.Element | null = () => {
     setAiUserInstructions,
     setAiTargetLength,
     generateChapterByAI,
+    startAiGeneration,
+    aiOverwriteConfirmOpen,
+    handleCloseAiOverwriteConfirm,
+    handleConfirmAiOverwrite,
     snackbarOpen,
     snackbarMessage,
     snackbarSeverity,
     closeSnackbar,
-    manuscriptPages,
-    currentManuscriptPageIndex,
-    handleManuscriptPageChange,
-    handleAddManuscriptPage,
-    handleRemoveManuscriptPage,
-    handlePreviousManuscriptPage,
-    handleNextManuscriptPage,
+    currentPageInEditor,
+    totalPagesInEditor,
+    editorRef,
+    editorKey,
+    handleAddPageBreak,
+    handlePreviousPageInEditor,
+    handleNextPageInEditor,
+    updateCurrentPageFromSelection,
   } = useWritingContext();
-
-  // ★ デバッグログ追加
-  console.log(
-    "WritingPageContent: receiving context. manuscriptPages length:",
-    manuscriptPages?.length,
-    "currentIndex:",
-    currentManuscriptPageIndex,
-    "currentChapterId:",
-    currentChapterId,
-    "currentChapter title:",
-    currentChapter?.title,
-    "currentChapter manuscriptPages:",
-    currentChapter?.manuscriptPages,
-    "manuscriptPages content:",
-    manuscriptPages // コンテンツもログに出してみる
-  );
-
-  useEffect(() => {
-    console.log(
-      "WritingPageContent useEffect triggered. manuscriptPages:",
-      manuscriptPages,
-      "currentIndex:",
-      currentManuscriptPageIndex
-    );
-    if (
-      manuscriptPages &&
-      manuscriptPages.length > 0 &&
-      currentManuscriptPageIndex >= 0 &&
-      currentManuscriptPageIndex < manuscriptPages.length
-    ) {
-      console.log(
-        `WritingPageContent: Pages updated. Total: ${
-          manuscriptPages.length
-        }, Current Index: ${currentManuscriptPageIndex}, Current Page Mojisu: ${
-          extractTextFromHtml(manuscriptPages[currentManuscriptPageIndex] || "")
-            .length
-        }`
-      );
-    } else if (manuscriptPages) {
-      console.log(
-        `WritingPageContent: Pages updated (condition not fully met). Total: ${manuscriptPages?.length}, Current Index: ${currentManuscriptPageIndex}, manuscriptPages content:`,
-        manuscriptPages
-      );
-    } else {
-      console.log(
-        "WritingPageContent useEffect: manuscriptPages is null or undefined."
-      );
-    }
-  }, [manuscriptPages, currentManuscriptPageIndex]);
-
-  const handleRequestNewPageTrigger = () => {
-    console.log(
-      "WritingPageContent: handleRequestNewPageTrigger called. About to call handleAddManuscriptPage."
-    );
-    handleAddManuscriptPage();
-  };
 
   const localHandleGenerateChapterByAI = async () => {
     if (!currentChapter || !currentProject || !timelineEvents) return;
@@ -219,7 +171,7 @@ const WritingPageContent: () => JSX.Element | null = () => {
       targetChapterLength: aiTargetLength || undefined,
     };
 
-    await generateChapterByAI(params);
+    startAiGeneration(params);
   };
 
   // キャラクター名を取得する関数
@@ -400,33 +352,22 @@ const WritingPageContent: () => JSX.Element | null = () => {
                   }}
                 >
                   <Button
-                    onClick={handlePreviousManuscriptPage}
-                    disabled={currentManuscriptPageIndex === 0}
+                    onClick={handlePreviousPageInEditor}
+                    disabled={currentPageInEditor <= 1}
                   >
                     前のページ
                   </Button>
                   <Typography>
-                    {currentManuscriptPageIndex + 1} / {manuscriptPages.length}
+                    {currentPageInEditor} / {totalPagesInEditor}
                   </Typography>
                   <Button
-                    onClick={handleNextManuscriptPage}
-                    disabled={
-                      currentManuscriptPageIndex >= manuscriptPages.length - 1
-                    }
+                    onClick={handleNextPageInEditor}
+                    disabled={currentPageInEditor >= totalPagesInEditor}
                   >
                     次のページ
                   </Button>
-                  <Button
-                    onClick={handleAddManuscriptPage}
-                    startIcon={<AddIcon />}
-                  >
-                    新しいページを追加
-                  </Button>
-                  <Button
-                    onClick={handleRemoveManuscriptPage}
-                    startIcon={<DeleteIcon />}
-                  >
-                    ページを削除
+                  <Button onClick={handleAddPageBreak} startIcon={<AddIcon />}>
+                    改ページ追加
                   </Button>
                 </Box>
               </Paper>
@@ -437,21 +378,9 @@ const WritingPageContent: () => JSX.Element | null = () => {
                 <VerticalContentEditorWrapper
                   value={editorValue}
                   onChange={handleEditorChange}
-                />
-              </Box>
-
-              <Box
-                sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
-              >
-                <VerticalContentEditor
-                  pageHtml={manuscriptPages[currentManuscriptPageIndex] || ""}
-                  onPageHtmlChange={(newHtml) =>
-                    handleManuscriptPageChange(
-                      currentManuscriptPageIndex,
-                      manuscriptPages[currentManuscriptPageIndex]
-                    )
-                  }
-                  onRequestNewPage={handleRequestNewPageTrigger}
+                  editorRef={editorRef}
+                  editorKey={editorKey}
+                  onSelectionChange={updateCurrentPageFromSelection}
                 />
               </Box>
             </>
@@ -518,17 +447,44 @@ const WritingPageContent: () => JSX.Element | null = () => {
         getPlaceName={getPlaceName}
       />
 
+      {/* 確認ダイアログ */}
+      <Dialog
+        open={aiOverwriteConfirmOpen}
+        onClose={handleCloseAiOverwriteConfirm}
+        aria-labelledby="ai-overwrite-dialog-title"
+        aria-describedby="ai-overwrite-dialog-description"
+      >
+        <DialogTitle id="ai-overwrite-dialog-title">
+          内容の上書き確認
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="ai-overwrite-dialog-description">
+            この操作により現在の章の内容を上書きします。よろしいですか？
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAiOverwriteConfirm} color="primary">
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleConfirmAiOverwrite}
+            color="primary"
+            variant="contained"
+            disabled={isAiProcessing}
+          >
+            上書きする
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
         onClose={closeSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
       >
-        <Alert
-          onClose={closeSnackbar}
-          severity={snackbarSeverity}
-          sx={{ width: "100%" }}
-        >
+        <Alert onClose={closeSnackbar} severity={snackbarSeverity}>
           {snackbarMessage}
         </Alert>
       </Snackbar>

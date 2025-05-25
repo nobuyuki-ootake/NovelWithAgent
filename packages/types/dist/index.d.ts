@@ -1,3 +1,4 @@
+import type { Descendant } from "slate";
 export interface NovelProject {
     id: string;
     title: string;
@@ -124,7 +125,7 @@ export interface Chapter {
     id: string;
     title: string;
     synopsis?: string;
-    content: string;
+    content: Descendant[];
     order: number;
     scenes: Scene[];
     relatedEvents?: string[];
@@ -458,14 +459,14 @@ export interface StandardAIRequest {
     model?: string;
     context?: {
         projectId?: string;
-        [key: string]: any;
+        [key: string]: unknown;
     };
     options?: {
         temperature?: number;
         maxTokens?: number;
         responseFormat?: AIDataFormat;
         timeout?: number;
-        [key: string]: any;
+        [key: string]: unknown;
     };
 }
 export interface StandardAIResponse {
@@ -473,7 +474,7 @@ export interface StandardAIResponse {
     timestamp: string;
     status: "success" | "error" | "partial";
     responseFormat: AIDataFormat;
-    content: any | null;
+    content: unknown | null;
     rawContent?: string;
     error?: AIError | null;
     usage?: {
@@ -485,12 +486,12 @@ export interface StandardAIResponse {
         model?: string;
         requestType?: string;
         processingTime?: number;
-        [key: string]: any;
+        [key: string]: unknown;
     };
 }
 export interface AIError {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
 }
 //# sourceMappingURL=index.d.ts.map

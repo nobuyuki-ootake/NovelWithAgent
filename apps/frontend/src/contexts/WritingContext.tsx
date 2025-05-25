@@ -1,6 +1,12 @@
-import React, { createContext, useContext, ReactNode, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  MutableRefObject,
+} from "react";
 import { useWriting } from "../hooks/useWriting";
-import { Descendant } from "slate";
+import { Descendant, Editor, Transforms } from "slate";
 import { AlertColor } from "@mui/material";
 import {
   Chapter,
@@ -11,6 +17,7 @@ import {
 } from "@novel-ai-assistant/types";
 import { aiAgentApi } from "../api/aiAgent";
 import { convertTextToSlateValue } from "../utils/slateUtils";
+import { serializeToText } from "../utils/editorUtils";
 
 // AIによる章生成関数のパラメータ型
 export interface AIChapterGenerationParams {
@@ -30,12 +37,11 @@ export interface AIChapterGenerationParams {
 }
 
 // Contextで提供する値の型定義
-interface WritingContextType {
+export interface WritingContextType {
   // 状態
   editorValue: Descendant[];
   currentChapter: Chapter | null;
   currentProject: NovelProject | null;
-  currentTabIndex: number;
   currentChapterId: string | null;
   timelineEvents: TimelineEvent[];
   newChapterDialogOpen: boolean;
@@ -46,14 +52,20 @@ interface WritingContextType {
   eventDetailDialogOpen: boolean;
   selectedEvent: TimelineEvent | null;
 
+  // ページ管理 (改ページマーカー用)
+  currentPageInEditor: number;
+  totalPagesInEditor: number;
+  editorRef: MutableRefObject<Editor | null>;
+  editorKey: number;
+
   // AI関連の状態
   isAiProcessing: boolean;
   aiUserInstructions: string;
   aiTargetLength: "short" | "medium" | "long" | "";
 
-  // 原稿用紙モード関連の状態
-  manuscriptPages: string[];
-  currentManuscriptPageIndex: number;
+  // AI執筆確認ダイアログの状態
+  aiOverwriteConfirmOpen: boolean;
+  pendingAiParams: AIChapterGenerationParams | null;
 
   // Snackbar関連の状態
   snackbarOpen: boolean;
@@ -62,7 +74,6 @@ interface WritingContextType {
 
   // アクション
   handleEditorChange: (value: Descendant[]) => void;
-  handleTabChange: (event: React.SyntheticEvent, newValue: number) => void;
   handleChapterSelect: (chapterId: string) => void;
   handleOpenNewChapterDialog: () => void;
   handleCloseNewChapterDialog: () => void;
@@ -80,6 +91,11 @@ interface WritingContextType {
   handleSaveContent: () => void;
   handleRemoveEventFromChapter: (eventId: string) => void;
 
+  // ページ管理 (改ページマーカー用)
+  handleAddPageBreak: () => void;
+  handlePreviousPageInEditor: () => void;
+  handleNextPageInEditor: () => void;
+
   // AI関連のアクション
   setIsAiProcessing: React.Dispatch<React.SetStateAction<boolean>>;
   setAiUserInstructions: React.Dispatch<React.SetStateAction<string>>;
@@ -87,17 +103,19 @@ interface WritingContextType {
     React.SetStateAction<"short" | "medium" | "long" | "">
   >;
   generateChapterByAI: (params: AIChapterGenerationParams) => Promise<void>;
+  startAiGeneration: (params: AIChapterGenerationParams) => void;
 
-  // 原稿用紙モード関連のアクション
-  handleManuscriptPageChange: (pageIndex: number, newHtml: string) => void;
-  handleAddManuscriptPage: () => void;
-  handleRemoveManuscriptPage: () => void;
-  handlePreviousManuscriptPage: () => void;
-  handleNextManuscriptPage: () => void;
+  // AI執筆確認ダイアログのアクション
+  handleOpenAiOverwriteConfirm: (params: AIChapterGenerationParams) => void;
+  handleCloseAiOverwriteConfirm: () => void;
+  handleConfirmAiOverwrite: () => Promise<void>;
 
   // Snackbar関連のアクション
   showSnackbar: (message: string, severity: AlertColor) => void;
   closeSnackbar: () => void;
+
+  // 新しいプロパティを追加
+  updateCurrentPageFromSelection: () => void;
 }
 
 // コンテキストの作成
@@ -107,7 +125,45 @@ const WritingContext = createContext<WritingContextType | undefined>(undefined);
 export const WritingProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const writingHookData = useWriting();
+  const {
+    editorValue,
+    currentChapter,
+    currentProject,
+    currentChapterId,
+    timelineEvents,
+    newChapterDialogOpen,
+    newChapterTitle,
+    newChapterSynopsis,
+    assignEventsDialogOpen,
+    eventDetailDialogOpen,
+    selectedEvent,
+    selectedEvents,
+    currentPageInEditor,
+    totalPagesInEditor,
+    editorRef,
+    editorKey,
+    handleEditorChange,
+    handleChapterSelect,
+    handleOpenNewChapterDialog,
+    handleCloseNewChapterDialog,
+    handleCreateChapter,
+    setNewChapterTitle,
+    setNewChapterSynopsis,
+    handleOpenAssignEventsDialog,
+    handleCloseAssignEventsDialog,
+    handleToggleEvent,
+    handleAssignEvents,
+    handleOpenEventDetailDialog,
+    handleCloseEventDetailDialog,
+    handleSaveContent,
+    handleAddEventToChapter,
+    handleRemoveEventFromChapter,
+    handleAddNewEvent,
+    handleAddPageBreak,
+    handlePreviousPageInEditor,
+    handleNextPageInEditor,
+    updateCurrentPageFromSelection,
+  } = useWriting();
 
   // AI関連のstate
   const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -115,6 +171,11 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
   const [aiTargetLength, setAiTargetLength] = useState<
     "short" | "medium" | "long" | ""
   >("");
+
+  // AI執筆確認ダイアログのstate
+  const [aiOverwriteConfirmOpen, setAiOverwriteConfirmOpen] = useState(false);
+  const [pendingAiParams, setPendingAiParams] =
+    useState<AIChapterGenerationParams | null>(null);
 
   // Snackbarのstate
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -135,6 +196,8 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
   const generateChapterByAI = async (params: AIChapterGenerationParams) => {
     setIsAiProcessing(true);
     try {
+      console.log("AIに章本文生成リクエスト送信中...", params);
+
       const response = await aiAgentApi.generateChapterContent(
         params.chapterTitle,
         params.relatedEvents,
@@ -142,14 +205,33 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
         params.selectedLocations,
         params.userInstructions,
         params.targetChapterLength || undefined,
-        params.model
+        "gemini-1.5-pro"
       );
 
+      console.log("AIからのレスポンス受信:", response);
+      console.log("レスポンスのcontentプロパティ:", response.content);
+      console.log("contentの型:", typeof response.content);
+
       if (response.content && typeof response.content === "string") {
+        console.log("content文字列の長さ:", response.content.length);
+        console.log(
+          "content文字列の最初の100文字:",
+          response.content.substring(0, 100)
+        );
+
         const newEditorValue = convertTextToSlateValue(response.content);
-        // AI生成結果を通常の執筆エディタに反映
-        if (writingHookData.handleEditorChange) {
-          writingHookData.handleEditorChange(newEditorValue);
+        console.log("Slate変換後のデータ:", newEditorValue);
+
+        if (handleEditorChange) {
+          console.log("React stateを通じてエディタ更新を実行中...");
+
+          // React stateのみを更新（Slateエディタの直接操作は避ける）
+          handleEditorChange(newEditorValue);
+          console.log("React state (editorValue) 更新完了");
+
+          console.log("エディタ更新完了");
+        } else {
+          console.error("handleEditorChange が undefined です");
         }
         showSnackbar("AIによる本文生成が完了しました。", "success");
       } else {
@@ -157,6 +239,8 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
           "AIからのレスポンス形式が不正か、コンテントがありません。",
           response
         );
+        console.warn("response.content:", response.content);
+        console.warn("typeof response.content:", typeof response.content);
         showSnackbar(
           "AIからのレスポンス形式が不正か、内容が空でした。",
           "warning"
@@ -164,6 +248,11 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
       }
     } catch (error) {
       console.error("AIによる章本文生成エラー:", error);
+      console.error("エラーの詳細:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+      });
       const message = error instanceof Error ? error.message : String(error);
       showSnackbar(
         `AIによる章本文生成中にエラーが発生しました: ${message}`,
@@ -174,24 +263,77 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // コンテキストで提供する値
-  console.log(
-    "WritingProvider: creating value. manuscriptPages length:",
-    writingHookData.manuscriptPages?.length,
-    "currentIndex:",
-    writingHookData.currentManuscriptPageIndex,
-    "currentChapterId:",
-    writingHookData.currentChapterId,
-    "currentChapter title:",
-    writingHookData.currentChapter?.title,
-    "currentChapter manuscriptPages:",
-    writingHookData.currentChapter?.manuscriptPages
-  );
+  // 内容チェック付きのAI執筆開始関数
+  const startAiGeneration = (params: AIChapterGenerationParams) => {
+    // 現在のエディタ内容をチェック
+    const currentText = serializeToText(editorValue).trim();
+
+    if (currentText && currentText !== "") {
+      // 内容がある場合は確認ダイアログを表示
+      handleOpenAiOverwriteConfirm(params);
+    } else {
+      // 内容が空の場合は直接実行
+      generateChapterByAI(params);
+    }
+  };
+
+  // AI執筆確認ダイアログのアクション
+  const handleOpenAiOverwriteConfirm = (params: AIChapterGenerationParams) => {
+    setAiOverwriteConfirmOpen(true);
+    setPendingAiParams(params);
+  };
+
+  const handleCloseAiOverwriteConfirm = () => {
+    setAiOverwriteConfirmOpen(false);
+    setPendingAiParams(null);
+  };
+
+  const handleConfirmAiOverwrite = async () => {
+    if (pendingAiParams) {
+      await generateChapterByAI(pendingAiParams);
+      handleCloseAiOverwriteConfirm();
+    }
+  };
 
   const value: WritingContextType = {
-    ...writingHookData, // useWriting() からの全ての値（原稿用紙関連も含む）
+    editorValue,
+    currentChapter,
+    currentProject,
+    currentChapterId,
+    timelineEvents,
+    newChapterDialogOpen,
+    newChapterTitle,
+    newChapterSynopsis,
+    assignEventsDialogOpen,
+    eventDetailDialogOpen,
+    selectedEvent,
+    selectedEvents,
+    currentPageInEditor,
+    totalPagesInEditor,
+    editorRef,
+    editorKey,
+    handleEditorChange,
+    handleChapterSelect,
+    handleOpenNewChapterDialog,
+    handleCloseNewChapterDialog,
+    handleCreateChapter,
+    setNewChapterTitle,
+    setNewChapterSynopsis,
+    handleOpenAssignEventsDialog,
+    handleCloseAssignEventsDialog,
+    handleToggleEvent,
+    handleAssignEvents,
+    handleOpenEventDetailDialog,
+    handleCloseEventDetailDialog,
+    handleSaveContent,
+    handleAddEventToChapter,
+    handleRemoveEventFromChapter,
+    handleAddNewEvent,
+    handleAddPageBreak,
+    handlePreviousPageInEditor,
+    handleNextPageInEditor,
 
-    // AI関連の状態とアクション (これらはProvider固有)
+    // AI関連の状態とアクション
     isAiProcessing,
     aiUserInstructions,
     aiTargetLength,
@@ -199,13 +341,24 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
     setAiUserInstructions,
     setAiTargetLength,
     generateChapterByAI,
+    startAiGeneration,
 
-    // Snackbar関連の状態とアクション (これらもProvider固有)
+    // AI執筆確認ダイアログの状態とアクション
+    aiOverwriteConfirmOpen,
+    pendingAiParams,
+    handleOpenAiOverwriteConfirm,
+    handleCloseAiOverwriteConfirm,
+    handleConfirmAiOverwrite,
+
+    // Snackbar関連の状態とアクション
     snackbarOpen,
     snackbarMessage,
     snackbarSeverity,
     showSnackbar,
     closeSnackbar,
+
+    // 新しいプロパティを追加
+    updateCurrentPageFromSelection,
   };
 
   return (

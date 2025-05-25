@@ -36,10 +36,10 @@ if (process.env.REDIS_URL) {
   try {
     redisClient = new Redis(process.env.REDIS_URL);
     redisClient.on('error', (err: any) => {
-      logger.error('Redisエラー:', err);
+      // logger.error('Redisエラー:', err);
       // 接続エラーが続く場合はクライアントをnullに設定
       if (err.code === 'ECONNREFUSED') {
-        logger.warn('Redis接続に失敗しました。キャッシュなしで続行します。');
+        // logger.warn('Redis接続に失敗しました。キャッシュなしで続行します。');
         redisClient = null;
       }
     });

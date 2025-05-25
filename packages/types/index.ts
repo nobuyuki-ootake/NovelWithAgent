@@ -1,3 +1,5 @@
+import type { Descendant } from "slate";
+
 export interface NovelProject {
   id: string;
   title: string;
@@ -148,7 +150,7 @@ export interface Chapter {
   id: string;
   title: string;
   synopsis?: string;
-  content: string; // This is Slate serialized JSON or plain text
+  content: Descendant[];
   order: number;
   scenes: Scene[];
   relatedEvents?: string[]; // 章に関連するタイムラインイベントのID配列

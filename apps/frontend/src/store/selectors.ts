@@ -17,11 +17,12 @@ export const currentChapterSelector = selector<Chapter | null>({
       return null;
     }
 
-    return (
+    const foundChapter =
       currentProject.chapters.find(
         (chapter) => chapter.id === currentChapterId
-      ) || null
-    );
+      ) || null;
+
+    return foundChapter;
   },
 });
 

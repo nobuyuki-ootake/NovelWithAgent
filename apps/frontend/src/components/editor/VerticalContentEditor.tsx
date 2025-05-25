@@ -1,8 +1,24 @@
-import React, { useCallback, useRef } from "react";
-import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
+import React, { useCallback, useMemo } from "react";
+import {
+  createEditor,
+  Descendant,
+  Editor,
+  Transforms,
+  Element as SlateElement,
+  Text,
+} from "slate";
+import {
+  Slate,
+  Editable,
+  withReact,
+  RenderElementProps,
+  RenderLeafProps,
+  ReactEditor,
+} from "slate-react";
+import { withHistory } from "slate-history";
 import { styled } from "@mui/material/styles";
 import { Box, Paper } from "@mui/material";
-// import { extractTextFromHtml } from "../../utils/editorUtils"; // 不要になったためコメントアウト
+import type { CustomElement, CustomText } from "../../types/slate";
 
 // スタイル付きコンポーネント
 const VerticalEditorContainer = styled(Paper)(({ theme }) => ({
@@ -19,7 +35,7 @@ const GridPaperContainer = styled(Box)(() => ({
   // GridPaperをラップするコンテナを追加
   width: "100%",
   flexGrow: 1,
-  overflowX: "auto", // 水平スクロールはこちらで担当
+  overflowX: "hidden", // 水平スクロールはこちらで担当
   overflowY: "hidden", // PaperSheetの高さは固定なので、ここはhidden
   paddingBottom: "16px", // スクロールバーのためのスペース（任意）
 }));
@@ -29,7 +45,7 @@ const GridPaper = styled(Box)(() => ({
   flexDirection: "row",
   gap: "16px",
   padding: "8px", // GridPaperContainerに移しても良い
-  minHeight: "720px", // PaperSheetの高さに合わせる
+  minHeight: "590px", // PaperSheetの高さに合わせる
   width: "max-content",
   // margin: "0 auto", // 中央寄せは一旦解除、GridPaperContainerの幅が100%なので不要なはず
 }));
@@ -47,26 +63,27 @@ const PaperSheet = styled(Box)(({ theme }) => ({
   justifyContent: "flex-end",
   alignItems: "flex-start",
   padding: "18px",
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    top: "18px",
-    right: "18px",
-    bottom: "18px",
-    left: "18px",
-    backgroundSize: "18px 36px",
-    backgroundImage: `
-      linear-gradient(to right, #eee 1px, transparent 1px),
-      linear-gradient(to bottom, #eee 1px, transparent 1px)
-    `,
-    zIndex: 1,
-    pointerEvents: "none",
-  },
+  // グリッド表示を削除
+  // "&::before": {
+  //   content: '""',
+  //   position: "absolute",
+  //   top: "18px",
+  //   right: "18px",
+  //   bottom: "18px",
+  //   left: "18px",
+  //   backgroundSize: "18px 25px",
+  //   backgroundImage: `
+  //     linear-gradient(to right, #eee 1px, transparent 1px),
+  //     linear-gradient(to bottom, #eee 1px, transparent 1px)
+  //   `,
+  //   zIndex: 1,
+  //   pointerEvents: "none",
+  // },
 }));
 
-const EditableContent = styled(ContentEditable)(() => ({
+const StyledEditable = styled(Editable)(() => ({
   width: "max-content",
-  minWidth: "calc(100% - 36px)", // PaperSheetのpadding(18px*2)を考慮
+  minWidth: "calc(100% - 36px)",
   height: "100%",
   outline: "none",
   writingMode: "vertical-rl",
@@ -74,9 +91,10 @@ const EditableContent = styled(ContentEditable)(() => ({
   msWritingMode: "vertical-rl",
   textOrientation: "mixed",
   fontSize: "18px",
-  fontFamily: "monospace",
-  lineHeight: "2",
-  letterSpacing: "0",
+  fontFamily:
+    '"Noto Serif JP", "Yu Mincho", "YuMincho", "Hiragino Mincho Pro", serif',
+  lineHeight: "1.6",
+  letterSpacing: "0.05em",
   overflowWrap: "break-word",
   wordBreak: "keep-all",
   whiteSpace: "pre-wrap",
@@ -86,70 +104,140 @@ const EditableContent = styled(ContentEditable)(() => ({
   padding: 0,
   margin: 0,
   overflowY: "auto",
+  "& > div": {
+    margin: 0,
+    padding: 0,
+  },
+  "& p": {
+    margin: 0,
+    padding: 0,
+    lineHeight: "inherit",
+  },
+  "& div:empty": {
+    minHeight: "1.6em",
+    height: "1.6em",
+  },
+  "& br": {
+    lineHeight: "inherit",
+  },
+  "& div:has(br:only-child)": {
+    height: "1.6em",
+    minHeight: "1.6em",
+  },
 }));
 
 interface VerticalContentEditorProps {
-  /**
-   * 現在のページに表示するHTMLコンテンツ全体。
-   * 親コンポーネントがページ単位で管理しているHTML文字列を想定。
-   */
-  pageHtml: string;
-  /**
-   * ページ内容が変更されたときに呼び出されるコールバック。
-   * 変更後のページ全体のHTMLコンテンツを引数として渡す。
-   */
-  onPageHtmlChange: (newPageHtml: string) => void;
-  // onRequestNewPage?: () => void; // 不要になったため削除
+  value: Descendant[];
+  onChange: (value: Descendant[]) => void;
+  editorRef: React.RefObject<Editor | null>;
+  onSelectionChange?: () => void;
+  key?: number; // エディタの再作成用
+  // placeholder?: string; // 必要に応じて追加
+  // readOnly?: boolean; // 必要に応じて追加
 }
 
-// const MAX_CHARS_PER_PAGE = 600; // 不要になったため削除
-
-const VerticalContentEditor: React.FC<VerticalContentEditorProps> = ({
-  pageHtml,
-  onPageHtmlChange,
-  // onRequestNewPage, // 不要になったため削除
-}) => {
-  const editableRef = useRef<ContentEditable>(null);
-  // const lastRequestedHtmlRef = useRef<string | null>(null); // 不要になったため削除
-
-  const handleChange = useCallback(
-    (evt: ContentEditableEvent) => {
-      const newHtml = evt.target.value;
-      onPageHtmlChange(newHtml);
-
-      // 文字数チェックと onRequestNewPage 呼び出しロジックは削除
-    },
-    [onPageHtmlChange]
+const DefaultElement = (props: RenderElementProps) => {
+  return (
+    <div
+      {...props.attributes}
+      style={{
+        margin: 0,
+        padding: 0,
+        lineHeight: "inherit",
+      }}
+    >
+      {props.children}
+    </div>
   );
+};
 
-  // pageHtml が外部から変更された場合の lastRequestedHtmlRef のリセットも不要
-  // React.useEffect(() => {
-  //   lastRequestedHtmlRef.current = null;
-  // }, [pageHtml]);
+const PageBreakElement = (props: RenderElementProps) => {
+  return (
+    <div
+      {...props.attributes}
+      contentEditable={false}
+      data-slate-type="page-break"
+    >
+      <span>改ページ</span>
+      {props.children}
+    </div>
+  );
+};
+
+const Leaf = ({ attributes, children, leaf }: RenderLeafProps) => {
+  const baseStyle: React.CSSProperties = {
+    margin: 0,
+    padding: 0,
+    lineHeight: "inherit",
+  };
+
+  const customLeaf = leaf as CustomText;
+
+  const style: React.CSSProperties = {
+    ...baseStyle,
+    ...(customLeaf.bold && { fontWeight: "bold" }),
+    ...(customLeaf.italic && { fontStyle: "italic" }),
+    ...(customLeaf.underline && { textDecoration: "underline" }),
+  };
+
+  return (
+    <span {...attributes} style={style}>
+      {children}
+    </span>
+  );
+};
+
+function VerticalContentEditor({
+  value,
+  onChange,
+  editorRef,
+  onSelectionChange,
+}: // placeholder = "(本文)", // デフォルトプレースホルダー
+// readOnly = false,
+VerticalContentEditorProps): React.ReactNode {
+  const renderElement = useCallback((props: RenderElementProps) => {
+    switch ((props.element as CustomElement).type) {
+      case "page-break":
+        return <PageBreakElement {...props} />;
+      case "paragraph":
+        return <DefaultElement {...props} />;
+      default:
+        return <DefaultElement {...props} />;
+    }
+  }, []);
+
+  const renderLeaf = useCallback((props: RenderLeafProps) => {
+    return <Leaf {...props} />;
+  }, []);
+
+  if (!editorRef.current) {
+    return null;
+  }
+  // editorRef.current が null でないことを確認した後で CustomEditor にキャスト
+  const editor = editorRef.current as Editor;
 
   return (
     <VerticalEditorContainer>
       <GridPaperContainer>
-        {" "}
-        {/* ラッパーコンテナを追加 */}
         <GridPaper>
-          <PaperSheet key="editable-page-single">
-            {" "}
-            {/* 複数ページ表示する場合はkeyの動的生成が必要 */}
-            <EditableContent
-              ref={editableRef}
-              html={pageHtml}
-              onChange={handleChange}
-              tagName="div"
-              placeholder="(本文)"
-              spellCheck={false}
-              lang="ja"
-            />
+          <PaperSheet>
+            <Slate
+              editor={editor}
+              initialValue={value}
+              onValueChange={onChange}
+            >
+              <StyledEditable
+                renderElement={renderElement}
+                renderLeaf={renderLeaf}
+                placeholder="執筆を開始..."
+                onSelect={onSelectionChange}
+              />
+            </Slate>
           </PaperSheet>
         </GridPaper>
       </GridPaperContainer>
     </VerticalEditorContainer>
   );
-};
+}
 
 export default VerticalContentEditor;

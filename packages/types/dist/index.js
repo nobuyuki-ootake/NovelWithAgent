@@ -82,7 +82,7 @@ data) {
         importance: data.importance || data.significance || "不明",
         relations: typeof data.relations === "string" ? data.relations : "", // TODO: relationsのオブジェクト型対応
     };
-    const id = data.id || crypto.randomUUID(); // idがない場合は新規生成
+    const id = data.id;
     switch (type) {
         case WorldBuildingElementType.WORLDMAP:
             return {
@@ -167,7 +167,7 @@ data) {
             };
         default:
             // 未知のタイプや基本タイプで処理できない場合は、警告を出しつつ汎用的なオブジェクトを返すかエラーをスロー
-            console.warn(`Unsupported WorldBuildingElementType: ${type}`);
+            // console.warn(`Unsupported WorldBuildingElementType: ${type}`);
             // 安全策として、FreeFieldElementのような汎用的な型で返すか、エラーをスローするか検討
             // ここではエラーをスローする例
             throw new Error(`Unsupported WorldBuildingElementType: ${type}`);

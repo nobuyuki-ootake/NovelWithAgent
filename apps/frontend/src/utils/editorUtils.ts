@@ -1,8 +1,13 @@
-import { Descendant, Node } from "slate";
-import { CustomElement } from "../types/editor";
+import {
+  Descendant,
+  Node as SlateNode,
+  Text as SlateText,
+  Element as SlateElement,
+} from "slate";
+import type { CustomElement, CustomText } from "../types/slate";
 
 // エディタの初期値を設定する関数
-export const createEmptyEditor = (): Descendant[] => {
+export const createEmptyEditor = (): CustomElement[] => {
   return [
     {
       type: "paragraph",
@@ -11,22 +16,8 @@ export const createEmptyEditor = (): Descendant[] => {
   ];
 };
 
-// 既存のコンテンツからエディタの値を作成する関数
-export const createEditorValue = (content: string): Descendant[] => {
-  if (!content) return createEmptyEditor();
-
-  // 段落に分割して値を作成
-  // 400文字ごとにページを分割する場合は、そのままテキストを流し込む
-  return [
-    {
-      type: "paragraph",
-      children: [{ text: content }],
-    } as CustomElement,
-  ];
-};
-
 // 編集不可能なプレーンテキストとしてのエディタ値を作成
-export const createReadOnlyValue = (content: string): Descendant[] => {
+export const createReadOnlyValue = (content: string): CustomElement[] => {
   return [
     {
       type: "paragraph",
@@ -37,17 +28,18 @@ export const createReadOnlyValue = (content: string): Descendant[] => {
 
 // エディタの値からプレーンテキストを抽出
 export const serializeToText = (nodes: Descendant[]): string => {
-  return nodes.map((n) => Node.string(n)).join("\n");
+  return nodes.map((n) => SlateNode.string(n)).join("\n");
 };
 
 // 文字数を計算する関数
 export const countCharacters = (nodes: Descendant[]): number => {
   return nodes.reduce((count, node) => {
-    return count + Node.string(node).length;
+    return count + SlateNode.string(node).length;
   }, 0);
 };
 
 // 指定されたページの内容を取得する関数（20x20=400文字ごと）
+// この関数は現在の改ページマーカー方式では直接使用されない可能性が高い
 export const getPageContent = (
   nodes: Descendant[],
   pageIndex: number
@@ -57,6 +49,7 @@ export const getPageContent = (
 };
 
 // HTML文字列からプレーンテキストを抽出するヘルパー関数
+// この関数はHTMLを扱わなくなるため、不要になる可能性が高い
 export const extractTextFromHtml = (html: string): string => {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html");

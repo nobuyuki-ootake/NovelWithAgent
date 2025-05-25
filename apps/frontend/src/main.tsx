@@ -1,8 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
-import { NovelProject } from "@novel-ai-assistant/types";
+import "./index.css";
 import { v4 as uuidv4 } from "uuid";
+import { NovelProject } from "@novel-ai-assistant/types";
+import { convertTextToSlateValue } from "./utils/slateUtils";
 
 // Recoil用の回避策を追加（修正版）
 if (!("__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED" in React)) {
@@ -22,32 +24,32 @@ if (!("__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED" in React)) {
 // 開発用のダミーデータを作成
 const dummyProject: NovelProject = {
   id: uuidv4(),
-  title: "テストプロジェクト",
+  title: "思考が現実になる世界",
   createdAt: new Date(),
   updatedAt: new Date(),
   synopsis:
-    "主人公の山田太郎は、平凡な日常の中で突如として不思議な能力に目覚める。彼は自分の考えたことが現実になる力を持っていた。しかし、その力は使えば使うほど、彼の寿命を縮めていく。それを知った太郎は、自分の命と引き換えに、大切な人たちの幸せを願うことを決意する。",
+    "主人公が思ったことが現実になる能力を手に入れ、その力を使って世界を変えていく物語。",
   plot: [
     {
       id: uuidv4(),
-      title: "プロット1",
-      description: "説明1",
+      title: "能力の発見",
+      description: "主人公が自分の思考が現実になることに気づく",
       order: 1,
       status: "決定",
     },
     {
       id: uuidv4(),
-      title: "プロット2",
-      description: "説明2",
+      title: "能力の制御",
+      description: "能力をコントロールする方法を学ぶ",
       order: 2,
-      status: "決定",
+      status: "検討中",
     },
     {
       id: uuidv4(),
-      title: "プロット3",
-      description: "説明3",
+      title: "世界への影響",
+      description: "能力を使って世界に変化をもたらす",
       order: 3,
-      status: "決定",
+      status: "検討中",
     },
   ],
   characters: [
@@ -55,85 +57,80 @@ const dummyProject: NovelProject = {
       id: uuidv4(),
       name: "山田太郎",
       role: "protagonist",
-      description:
-        "28歳、普通のサラリーマン。誠実で優しい性格だが、自己肯定感が低い。",
-      background:
-        "両親は既に他界しており、一人暮らし。幼い頃から不思議な夢をよく見ていた。",
-      motivation: "自分の命より大切な人たちの幸せを願う。",
+      description: "平凡なサラリーマンだったが、思考が現実になる能力を得る",
+      background: "東京在住の28歳のサラリーマン",
+      motivation: "この能力を使って世界をより良くしたい",
       traits: [
-        { id: uuidv4(), name: "誠実", value: "" },
-        { id: uuidv4(), name: "優しい", value: "" },
-        { id: uuidv4(), name: "自己犠牲的", value: "" },
-        { id: uuidv4(), name: "内向的", value: "" },
+        {
+          id: uuidv4(),
+          name: "責任感",
+          value: "強い",
+        },
       ],
       relationships: [],
-      imageUrl: undefined,
     },
   ],
   worldBuilding: {
     id: uuidv4(),
-    setting:
-      "現代日本とよく似ているが、「願い」の力を持つ人間がごく稀に存在する世界",
-    rules: [
-      {
-        id: "rule1",
-        name: "思考実現能力",
-        description: "思ったことが現実になる能力がある",
-        features: "物語の中核となる超能力",
-        impact: "物語の中核となる超能力",
-        exceptions: "物語の中核となる超能力",
-        origin: "物語の中核となる超能力",
-        type: "物語の中核となる超能力",
-        originalType: "rule",
-        importance: "物語の中核となる超能力",
-        relations: "物語の中核となる超能力",
-      },
-      {
-        id: "rule2",
-        name: "寿命の代償",
-        description: "その能力を使うほど、使用者の寿命は縮まる",
-        features: "能力の使用に関する制約と代償",
-        impact: "物語の中核となる超能力",
-        exceptions: "物語の中核となる超能力",
-        origin: "物語の中核となる超能力",
-        type: "物語の中核となる超能力",
-        originalType: "rule",
-        importance: "物語の中核となる超能力",
-        relations: "物語の中核となる超能力",
-      },
-      {
-        id: "rule3",
-        name: "不可逆性",
-        description: "一度実現したことは元に戻せない",
-        features: "物語における緊張感と取り返しのつかない決断の重要性",
-        impact: "物語の中核となる超能力",
-        exceptions: "物語の中核となる超能力",
-        origin: "物語の中核となる超能力",
-        type: "物語の中核となる超能力",
-        originalType: "rule",
-        importance: "物語の中核となる超能力",
-        relations: "物語の中核となる超能力",
-      },
-    ],
-    places: [],
-    cultures: [],
-    historyLegend: [],
+    setting: "現代日本",
     worldmaps: [],
     settings: [],
+    rules: [
+      {
+        id: uuidv4(),
+        name: "思考現実化の法則",
+        type: "rule",
+        originalType: "rule",
+        description: "強く思ったことが現実になる",
+        features: "意識的な思考のみが対象",
+        importance: "高",
+        relations: "主人公の能力の根幹",
+        exceptions: "無意識の思考は対象外",
+        origin: "不明",
+      },
+    ],
+    places: [
+      {
+        id: uuidv4(),
+        name: "東京",
+        type: "place",
+        originalType: "place",
+        description: "物語の主な舞台",
+        features: "現代的な都市",
+        importance: "高",
+        relations: "主人公の生活の場",
+        location: "日本",
+        population: "1400万人",
+        culturalFeatures: "多様性に富む",
+      },
+    ],
+    cultures: [],
     geographyEnvironment: [],
+    historyLegend: [],
     magicTechnology: [],
     stateDefinition: [],
     freeFields: [],
   },
-  timeline: [],
+  timeline: [
+    {
+      id: uuidv4(),
+      title: "能力の発見",
+      description: "主人公が思考現実化能力に気づく",
+      date: "2024-01-01",
+      relatedCharacters: [],
+      relatedPlaces: [],
+      order: 1,
+    },
+  ],
   chapters: [
     {
       id: uuidv4(),
       title: "序章：能力の発見",
       synopsis:
         "平凡な日常を送っていた主人公が、自分の思ったことが現実になる能力に気づく。",
-      content:
-        "山田太郎は、いつもと変わらない月曜日の朝を迎えていた。満員電車に揺られながら、「今日は早く帰りたいな」と考えていた。\n\nそして不思議なことに、その日は予定されていた会議がすべてキャンセルとなり、上司から「今日は早く帰っていいよ」と言われた。偶然だと思った太郎だったが、次に「雨が降らないといいな」と思った瞬間、曇っていた空が晴れ渡った。",
+      content: convertTextToSlateValue(
+        "山田太郎は、いつもと変わらない月曜日の朝を迎えていた。満員電車に揺られながら、「今日は早く帰りたいな」と考えていた。\n\nそして不思議なことに、その日は予定されていた会議がすべてキャンセルとなり、上司から「今日は早く帰っていいよ」と言われた。偶然だと思った太郎だったが、次に「雨が降らないといいな」と思った瞬間、曇っていた空が晴れ渡った。"
+      ),
       order: 1,
       scenes: [],
     },
@@ -145,6 +142,59 @@ const dummyProject: NovelProject = {
 const saveProjectsToLocalStorage = (projects: NovelProject[]) => {
   localStorage.setItem("novelProjects", JSON.stringify(projects));
 };
+
+// 既存データを新しい形式に移行する関数
+const migrateExistingData = () => {
+  const projectsStr = localStorage.getItem("novelProjects");
+  if (projectsStr) {
+    try {
+      const projects = JSON.parse(projectsStr) as NovelProject[];
+      let needsMigration = false;
+
+      const migratedProjects = projects.map((project) => {
+        const migratedChapters = project.chapters.map((chapter) => {
+          // contentがstring型の場合、Descendant[]に変換
+          if (typeof chapter.content === "string") {
+            needsMigration = true;
+            return {
+              ...chapter,
+              content: convertTextToSlateValue(chapter.content),
+            };
+          }
+          return chapter;
+        });
+
+        return {
+          ...project,
+          chapters: migratedChapters,
+        };
+      });
+
+      if (needsMigration) {
+        console.log("Migrating existing data to new format...");
+        saveProjectsToLocalStorage(migratedProjects);
+        console.log("Data migration completed.");
+      }
+    } catch (error) {
+      console.error("Error during data migration:", error);
+    }
+  }
+};
+
+// 初期化処理
+const initializeApp = () => {
+  // 既存データの移行
+  migrateExistingData();
+
+  // プロジェクトリストの初期化
+  const projectsStr = localStorage.getItem("novelProjects");
+  if (!projectsStr) {
+    saveProjectsToLocalStorage([dummyProject]);
+  }
+};
+
+// アプリ初期化
+initializeApp();
 
 // ローカルストレージからプロジェクトリストを読み込む関数
 const loadProjectsFromLocalStorage = (): NovelProject[] => {
