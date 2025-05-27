@@ -50,10 +50,12 @@ export default defineConfig({
     */
   ],
 
-  /* ローカル開発サーバーの設定 */
+  /* ローカル開発サーバーの設定 - 手動起動のため一時的にコメントアウト */
+  /*
   webServer: {
     command: "npm run dev",
     port: 5173,
     reuseExistingServer: !process.env.CI,
   },
+  */
 });

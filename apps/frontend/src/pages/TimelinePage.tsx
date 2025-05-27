@@ -91,7 +91,6 @@ const TimelinePage: React.FC = () => {
     handleCloseDialog,
     handleEventChange,
     handleCharactersChange,
-    handlePlacesChange,
     handleSaveEvent,
     handleOpenSettingsDialog,
     handleCloseSettingsDialog,
@@ -538,12 +537,10 @@ const TimelinePage: React.FC = () => {
               newEvent={newEvent}
               isEditing={isEditing}
               characters={characters}
-              places={places}
               definedCharacterStatuses={definedCharacterStatuses}
               onEventChange={handleEventChange}
               onSave={handleSaveEvent}
               onCharactersChange={handleCharactersChange}
-              onPlacesChange={handlePlacesChange}
               getCharacterName={getCharacterName}
               getPlaceName={getPlaceName}
               onPostEventStatusChange={handlePostEventStatusChange}

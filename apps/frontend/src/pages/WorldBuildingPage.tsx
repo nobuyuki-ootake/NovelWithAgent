@@ -54,7 +54,6 @@ const WorldBuildingPage: React.FC = () => {
     notificationOpen,
     notificationMessage,
     setNotificationOpen,
-    freeFields,
     hasUnsavedChanges,
     setHasUnsavedChanges,
   } = useWorldBuildingContext();
@@ -432,7 +431,7 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
 
         {/* 自由記述欄タブ */}
         <TabPanel value={tabValue} index={8}>
-          <FreeFieldsTab freeFields={freeFields || []} />
+          <FreeFieldsTab />
         </TabPanel>
 
         {/* 状態定義タブ */}

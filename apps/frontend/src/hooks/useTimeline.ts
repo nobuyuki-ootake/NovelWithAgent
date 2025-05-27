@@ -1,32 +1,24 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRecoilState } from "recoil";
-import { currentProjectState } from "../store/atoms";
-import {
-  Character,
-  CharacterStatus,
-  PlaceElement,
-  TimelineEvent,
-  NovelProject,
-  PlotElement,
-  // WorldBuilding, // 未使用のためコメントアウト
-  // WorldBuildingElement, // 未使用のためコメントアウト
-  // WorldBuildingElementType, // 未使用のためコメントアウト
-} from "@novel-ai-assistant/types";
-// import { v4 as uuidv4 } from "uuid"; // 未使用のため削除
+import { SelectChangeEvent } from "@mui/material";
 import moment from "moment";
-import "moment/locale/ja";
-import { SelectChangeEvent } from "@mui/material"; // SelectChangeEvent をインポート
+import {
+  NovelProject,
+  TimelineEvent,
+  Character,
+  PlaceElement,
+  CharacterStatus,
+  PlotElement,
+} from "@novel-ai-assistant/types";
+import { currentProjectState } from "../store/atoms";
 
-// moment.jsの日本語化
-moment.locale("ja");
-
-// タイムラインのグループ型定義（X軸: 場所）
+// タイムライングループの型定義
 export interface TimelineGroup {
   id: string;
   title: string;
 }
 
-// タイムラインのアイテム型定義（イベント）
+// タイムラインアイテムの型定義（表示用）
 export interface TimelineItem {
   id: string;
   placeId: string;
@@ -41,67 +33,10 @@ export interface TimelineItem {
   eventType?: string;
 }
 
-// 設定ダイアログの状態
+// タイムライン設定の型定義
 export interface TimelineSettings {
   startDate: string; // yyyy-MM-dd
 }
-
-// ファイル先頭の仮定義ハンドラのうち、今回実装しないものは残す
-// const handleOpenDialog = () => {}; // 実装するため削除
-// const handleOpenSettingsDialog = () => {}; // 実装するため削除
-// const handleCloseSettingsDialog = () => {}; // 実装するため削除
-const handleSaveSettings = () => {};
-// const handleSettingsChange = (_: any) => {}; // SelectChangeEvent<string> に合わせる
-// const handleCloseDialog = () => {}; // 実装するため削除
-// const handleEventChange = (..) => {}; // 下で修正
-// const handleCharactersChange = (..) => {}; // 下で修正
-// const handlePlacesChange = (..) => {}; // 下で修正
-const handleSaveEvent = () => {}; // handleSave にリネームされる可能性あり
-// const handleEventClick = (_: TimelineItem) => {}; // 実装済み
-const handleCloseSnackbar = () => {};
-const getCharacterName = (_: string): string => "";
-const getPlaceName = (_: string): string => "";
-const calculateEventPosition = (_: number, __: number) => {};
-const createEventFromPosition = (_: number, __: number) => {};
-const handleReorderEvents = (_: TimelineEvent[]) => {};
-// const handlePostEventStatusChange = (..) => {}; // 下で修正
-// const handleRelatedPlotsChange = (..) => {}; // 下で修正
-
-// TimelineEventDialogProps に合わせたハンドラの仮定義
-const handleSettingsChange = (
-  _e:
-    | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-    | SelectChangeEvent<string>,
-  _field?: string
-) => {};
-
-const handleEventChange = (
-  _e:
-    | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-    | SelectChangeEvent<string>,
-  _field?: string
-) => {
-  // TODO: setNewEvent を使ってnewEventを更新するロジック
-};
-
-const handleCharactersChange = (_event: SelectChangeEvent<string[]>) => {
-  // TODO: setNewEvent を使ってnewEvent.relatedCharactersを更新するロジック
-};
-
-const handlePlacesChange = (_event: SelectChangeEvent<string[]>) => {
-  // TODO: setNewEvent を使ってnewEvent.relatedPlacesを更新するロジック
-};
-
-const handlePostEventStatusChange = (
-  _characterId: string,
-  _newStatuses: CharacterStatus[]
-) => {
-  // TODO: setNewEvent を使ってnewEvent.postEventCharacterStatusesを更新するロジック
-};
-
-const handleRelatedPlotsChange = (_selectedPlotIds: string[]) => {
-  // TODO: setNewEvent を使ってnewEvent.relatedPlotIdsを更新するロジック
-};
 
 export function useTimeline() {
   const [currentProject, setCurrentProject] =
@@ -122,7 +57,7 @@ export function useTimeline() {
 
   // タイムラインの設定
   const [timelineSettings, setTimelineSettings] = useState<TimelineSettings>({
-    startDate: moment().format("YYYY-MM-DD"), // 初期値を yyyy-MM-dd に
+    startDate: moment().format("YYYY-MM-DD"),
   });
 
   // 設定ダイアログの状態
@@ -133,7 +68,7 @@ export function useTimeline() {
     id: "",
     title: "",
     description: "",
-    date: moment().toISOString(), // 初期値はISOString
+    date: moment().toISOString(),
     relatedCharacters: [],
     relatedPlaces: [],
     order: 0,
@@ -158,7 +93,7 @@ export function useTimeline() {
     setDefinedCharacterStatusesForDialog,
   ] = useState<CharacterStatus[]>([]);
 
-  // ★ 新しい関数: イベントの場所と日時を更新
+  // イベントの場所と日時を更新
   const handleUpdateEventLocationAndDate = useCallback(
     (eventId: string, newPlaceId: string, newDate: string) => {
       setTimelineEvents((prevEvents) =>
@@ -173,8 +108,173 @@ export function useTimeline() {
         `[useTimeline] Event ${eventId} updated via D&D: placeId=${newPlaceId}, date=${newDate}`
       );
     },
-    [setTimelineEvents, setHasUnsavedChanges]
+    []
   );
+
+  // イベント変更ハンドラー
+  const handleEventChange = useCallback(
+    (
+      e:
+        | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        | SelectChangeEvent<string>,
+      field?: string
+    ) => {
+      const target = e.target;
+      const name = field || target.name;
+      const value = target.value;
+
+      // 日付フィールドの場合、ISO文字列に変換
+      let processedValue = value;
+      if (name === "date" && value) {
+        // YYYY-MM-DD形式をISO文字列に変換
+        processedValue = moment(value).toISOString();
+      }
+
+      setNewEvent((prev) => ({
+        ...prev,
+        [name]: processedValue,
+      }));
+      setHasUnsavedChanges(true);
+    },
+    []
+  );
+
+  // キャラクター選択ハンドラー
+  const handleCharactersChange = useCallback(
+    (event: SelectChangeEvent<string[]>) => {
+      const value = event.target.value;
+      const selectedCharacterIds =
+        typeof value === "string" ? value.split(",") : value;
+
+      setNewEvent((prev) => ({
+        ...prev,
+        relatedCharacters: selectedCharacterIds,
+      }));
+      setHasUnsavedChanges(true);
+    },
+    []
+  );
+
+  // キャラクター状態変更ハンドラー
+  const handlePostEventStatusChange = useCallback(
+    (characterId: string, newStatuses: CharacterStatus[]) => {
+      setNewEvent((prev) => ({
+        ...prev,
+        postEventCharacterStatuses: {
+          ...prev.postEventCharacterStatuses,
+          [characterId]: newStatuses,
+        },
+      }));
+      setHasUnsavedChanges(true);
+    },
+    []
+  );
+
+  // 関連プロット変更ハンドラー
+  const handleRelatedPlotsChange = useCallback((selectedPlotIds: string[]) => {
+    setNewEvent((prev) => ({
+      ...prev,
+      relatedPlotIds: selectedPlotIds,
+    }));
+    setHasUnsavedChanges(true);
+  }, []);
+
+  // 設定変更ハンドラー
+  const handleSettingsChange = useCallback(
+    (
+      e:
+        | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+        | SelectChangeEvent<string>,
+      field?: string
+    ) => {
+      const target = e.target;
+      const name = field || target.name;
+      const value = target.value;
+
+      setTimelineSettings((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      setHasUnsavedChanges(true);
+    },
+    []
+  );
+
+  // 設定保存ハンドラー
+  const handleSaveSettings = useCallback(() => {
+    setSettingsDialogOpen(false);
+    setSnackbarMessage("設定が保存されました。");
+    setSnackbarOpen(true);
+  }, []);
+
+  // イベント保存ハンドラー
+  const handleSaveEvent = useCallback(() => {
+    if (!newEvent.title.trim() || !newEvent.date) {
+      return;
+    }
+
+    if (isEditing && currentEventId) {
+      // 既存イベントの更新
+      setTimelineEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === currentEventId
+            ? { ...newEvent, id: currentEventId }
+            : event
+        )
+      );
+    } else {
+      // 新規イベントの追加
+      const newEventWithId = {
+        ...newEvent,
+        id: crypto.randomUUID(),
+        order: timelineEvents.length,
+      };
+      setTimelineEvents((prevEvents) => [...prevEvents, newEventWithId]);
+    }
+
+    setHasUnsavedChanges(true);
+    setDialogOpen(false);
+    setSnackbarMessage(
+      isEditing ? "イベントが更新されました。" : "イベントが追加されました。"
+    );
+    setSnackbarOpen(true);
+  }, [newEvent, isEditing, currentEventId, timelineEvents.length]);
+
+  // スナックバー閉じるハンドラー
+  const handleCloseSnackbar = useCallback(() => {
+    setSnackbarOpen(false);
+  }, []);
+
+  // キャラクター名取得関数
+  const getCharacterName = useCallback(
+    (id: string): string => {
+      const character = characters.find((c) => c.id === id);
+      return character ? character.name : "不明なキャラクター";
+    },
+    [characters]
+  );
+
+  // 地名取得関数
+  const getPlaceName = useCallback(
+    (id: string): string => {
+      const place = places.find((p) => p.id === id);
+      return place ? place.name : "不明な場所";
+    },
+    [places]
+  );
+
+  // その他の未実装関数（仮実装）
+  const calculateEventPosition = useCallback((_: number, __: number) => {
+    // TODO: 実装が必要な場合は後で追加
+  }, []);
+
+  const createEventFromPosition = useCallback((_: number, __: number) => {
+    // TODO: 実装が必要な場合は後で追加
+  }, []);
+
+  const handleReorderEvents = useCallback((_: TimelineEvent[]) => {
+    // TODO: 実装が必要な場合は後で追加
+  }, []);
 
   // 初期データのロード
   useEffect(() => {
@@ -183,14 +283,10 @@ export function useTimeline() {
         "[useTimeline] useEffect - START - currentProject.id:",
         currentProject.id
       );
-      console.log(
-        "[useTimeline] useEffect - START - currentProject.definedCharacterStatuses:",
-        currentProject.definedCharacterStatuses
-      );
 
-      let projectDataToUse = { ...currentProject }; // Start with Recoil state
+      let projectDataToUse = { ...currentProject };
 
-      // 最新のデータをローカルストレージから直接読み込み（優先的に使用）
+      // 最新のデータをローカルストレージから直接読み込み
       const projectId = currentProject.id;
       const projectsStr = localStorage.getItem("novelProjects");
       if (projectsStr) {
@@ -205,11 +301,6 @@ export function useTimeline() {
               "[useTimeline] Found project in localStorage:",
               latestProjectFromLocalStorage.id
             );
-            console.log(
-              "[useTimeline] localStorage project.definedCharacterStatuses:",
-              latestProjectFromLocalStorage.definedCharacterStatuses
-            );
-            // 簡単な比較ロジック: ローカルストレージの方が新しいか、Recoil側が空ならローカルストレージを優先
             if (
               latestProjectFromLocalStorage.updatedAt >
                 projectDataToUse.updatedAt ||
@@ -223,7 +314,6 @@ export function useTimeline() {
                 "[useTimeline] Using project data from localStorage as it seems newer or more complete for statuses."
               );
               projectDataToUse = { ...latestProjectFromLocalStorage };
-              // Recoilのatomも更新する
               setCurrentProject(projectDataToUse);
             }
           }
@@ -232,18 +322,13 @@ export function useTimeline() {
         }
       }
 
-      console.log(
-        "[useTimeline] useEffect - projectDataToUse.definedCharacterStatuses (after LS check):",
-        projectDataToUse.definedCharacterStatuses
-      );
-
       setTimelineEvents(projectDataToUse.timeline || []);
       setCharacters(projectDataToUse.characters || []);
       setPlaces(projectDataToUse.worldBuilding?.places || []);
       setDefinedCharacterStatusesForDialog(
         projectDataToUse.definedCharacterStatuses || []
-      ); // useStateで更新
-      setAllPlots(projectDataToUse.plot || []); // プロット情報をセット
+      );
+      setAllPlots(projectDataToUse.plot || []);
 
       // 設定を読み込み
       if (projectDataToUse.worldBuilding?.timelineSettings?.startDate) {
@@ -251,10 +336,6 @@ export function useTimeline() {
           startDate: projectDataToUse.worldBuilding.timelineSettings.startDate,
         });
       }
-      console.log(
-        "[useTimeline] useEffect - END - currentProject.definedCharacterStatuses (Recoil state after potential update):",
-        currentProject?.definedCharacterStatuses // Log Recoil state again
-      );
     } else {
       console.log("[useTimeline] useEffect - currentProject is null");
     }
@@ -272,7 +353,6 @@ export function useTimeline() {
       setDateArray(dates);
       if (dates.length > 0) {
         const minY = moment(dates[0], "YYYY-MM-DD").valueOf();
-        // 最終日は終日を含むように、またチャートの表示領域を考慮して、最終日の翌日の0時をMaxとする
         const maxY = moment(dates[dates.length - 1], "YYYY-MM-DD")
           .add(1, "day")
           .startOf("day")
@@ -292,10 +372,8 @@ export function useTimeline() {
   // 地名（グループ）の更新
   useEffect(() => {
     if (places.length > 0) {
-      // 未分類グループを先頭に追加
       const groups: TimelineGroup[] = [{ id: "unassigned", title: "未分類" }];
 
-      // 地名をグループとして追加
       places.forEach((place) => {
         groups.push({
           id: place.id,
@@ -307,13 +385,13 @@ export function useTimeline() {
     }
   }, [places]);
 
+  // ソート済みタイムラインイベント
   const sortedTimelineEvents = useMemo(() => {
     if (
       !currentProject ||
       !currentProject.plot ||
       currentProject.plot.length === 0
     ) {
-      // プロット情報がない場合は、日付でソートし、次に order でソート
       return [...timelineEvents].sort((a, b) => {
         const dateA = moment(a.date).valueOf();
         const dateB = moment(b.date).valueOf();
@@ -329,7 +407,6 @@ export function useTimeline() {
     );
 
     return [...timelineEvents].sort((a, b) => {
-      // 関連プロットIDの最初の有効なものを取得、なければ未定義
       const getFirstValidPlotId = (
         event: TimelineEvent
       ): string | undefined => {
@@ -353,99 +430,78 @@ export function useTimeline() {
       if (dateA !== dateB) {
         return dateA - dateB;
       }
-      return (a.order || 0) - (b.order || 0); // 同じプロット、同じ日付の場合は元の order
+      return (a.order || 0) - (b.order || 0);
     });
   }, [timelineEvents, currentProject]);
 
-  // timelineItemsの生成ロジックを修正
+  // timelineItemsの生成
   useEffect(() => {
-    // timelineEventsが未定義または空でも、charactersやplacesが処理されるように条件を調整
-    // sortedTimelineEventsを使うので、timelineEvents自体の長さチェックは不要になるケースもある
     if (characters && places) {
       const items = sortedTimelineEvents.map((event) => {
-        // index は未使用
-        // sortedTimelineEvents を使用
-        const place = places.find((p) => p.id === event.placeId);
-        const relatedCharacterNames = event.relatedCharacters
-          .map((charId) => {
-            const char = characters.find((c) => c.id === charId);
-            return char ? char.name : "不明";
-          })
+        const relatedCharacterData = event.relatedCharacters
+          .map((charId) => characters.find((c) => c.id === charId))
+          .filter((char): char is Character => char !== undefined);
+
+        const relatedCharacterNames = relatedCharacterData
+          .map((char) => char.name)
           .join(", ");
 
-        const relatedCharacterData = (event.relatedCharacters || [])
-          .map((charId) => characters.find((c) => c.id === charId))
-          .filter((c) => !!c) as Character[];
+        const placeName =
+          (event.placeId && places.find((p) => p.id === event.placeId)?.name) ||
+          "未分類";
 
         return {
           id: event.id,
           placeId: event.placeId || "unassigned",
-          placeName: place ? place.name : "未分類",
+          placeName,
           title: event.title,
           date: event.date,
           dateValue: moment(event.date).valueOf(),
           description: event.description,
           relatedCharacters: event.relatedCharacters,
-          relatedCharacterNames: relatedCharacterNames,
-          relatedCharacterData: relatedCharacterData,
+          relatedCharacterNames,
+          relatedCharacterData,
           eventType: event.eventType,
         };
       });
+
       setTimelineItems(items);
     }
   }, [sortedTimelineEvents, characters, places]);
 
-  // ダイアログ用の登場人物ステータス定義の取得
+  // definedCharacterStatuses の計算
   const definedCharacterStatuses = useMemo(() => {
-    // console.log(
-    //   "[useTimeline] definedCharacterStatuses useMemo - currentProject.definedCharacterStatuses:",
-    //   currentProject?.definedCharacterStatuses
-    // );
-    // console.log(
-    //   "[useTimeline] definedCharacterStatuses useMemo - definedCharacterStatusesForDialog (useState):",
-    //   definedCharacterStatusesForDialog
-    // );
-    return (
-      currentProject?.definedCharacterStatuses ||
-      definedCharacterStatusesForDialog ||
-      []
-    );
-  }, [
-    currentProject?.definedCharacterStatuses,
-    definedCharacterStatusesForDialog,
-  ]);
+    return definedCharacterStatusesForDialog || [];
+  }, [definedCharacterStatusesForDialog]);
 
   // イベントを一括で追加する関数
-  const addTimelineEventsBatch = useCallback(
-    (newEvents: TimelineEvent[]) => {
-      setTimelineEvents((prevEvents) => {
-        const updatedEvents = [...prevEvents];
-        let maxOrderInBatch = prevEvents.reduce(
-          (max, item) => Math.max(max, item.order || 0),
-          0
-        );
-        newEvents.forEach((newEvent) => {
-          if (!updatedEvents.find((e) => e.id === newEvent.id)) {
-            maxOrderInBatch++;
-            updatedEvents.push({
-              ...newEvent,
-              order: newEvent.order || maxOrderInBatch,
-            });
-          }
-        });
-        return updatedEvents;
+  const addTimelineEventsBatch = useCallback((newEvents: TimelineEvent[]) => {
+    setTimelineEvents((prevEvents) => {
+      const updatedEvents = [...prevEvents];
+      let maxOrderInBatch = prevEvents.reduce(
+        (max, item) => Math.max(max, item.order || 0),
+        0
+      );
+      newEvents.forEach((newEvent) => {
+        if (!updatedEvents.find((e) => e.id === newEvent.id)) {
+          maxOrderInBatch++;
+          updatedEvents.push({
+            ...newEvent,
+            order: newEvent.order || maxOrderInBatch,
+          });
+        }
       });
-      setHasUnsavedChanges(true);
-    },
-    [setTimelineEvents, setHasUnsavedChanges]
-  );
+      return updatedEvents;
+    });
+    setHasUnsavedChanges(true);
+  }, []);
 
   // 変更をプロジェクトに保存する関数
   const handleSave = useCallback(async () => {
     if (currentProject) {
       const updatedProject: NovelProject = {
         ...currentProject,
-        timeline: sortedTimelineEvents, // 保存時はソート済みのイベントリストを使用
+        timeline: sortedTimelineEvents,
         worldBuilding: {
           ...currentProject.worldBuilding,
           timelineSettings: timelineSettings,
@@ -454,7 +510,7 @@ export function useTimeline() {
         characters: characters,
         plot: allPlots,
         definedCharacterStatuses: definedCharacterStatuses,
-        updatedAt: new Date(), // toISOString() を削除して Date 型に
+        updatedAt: new Date(),
       };
 
       try {
@@ -489,7 +545,7 @@ export function useTimeline() {
   }, [
     currentProject,
     setCurrentProject,
-    sortedTimelineEvents, // timelineEvents から sortedTimelineEvents に変更
+    sortedTimelineEvents,
     timelineSettings,
     characters,
     places,
@@ -503,42 +559,41 @@ export function useTimeline() {
     setIsEditing(false);
     setCurrentEventId("");
     setNewEvent({
-      id: "", // 新規作成時はuuidv4()などで生成するべきだが、一旦空文字
+      id: "",
       title: "",
       description: "",
       date: moment().toISOString(),
       relatedCharacters: [],
       relatedPlaces: [],
-      order: timelineEvents.length, // 仮。実際はもっと賢いロジックが必要
+      order: timelineEvents.length,
       eventType: "",
       postEventCharacterStatuses: {},
       relatedPlotIds: [],
     });
-  }, [
-    timelineEvents.length,
-    setNewEvent,
-    setDialogOpen,
-    setIsEditing,
-    setCurrentEventId,
-  ]);
+  }, [timelineEvents.length]);
 
   const handleCloseDialog = useCallback(() => {
     setDialogOpen(false);
-  }, [setDialogOpen]);
+  }, []);
 
   const handleOpenSettingsDialog = useCallback(() => {
     setSettingsDialogOpen(true);
-  }, [setSettingsDialogOpen]);
+  }, []);
 
   const handleCloseSettingsDialog = useCallback(() => {
     setSettingsDialogOpen(false);
-  }, [setSettingsDialogOpen]);
+  }, []);
 
   const handleEventClick = useCallback(
     (id: string) => {
       const eventToEdit = timelineEvents.find((event) => event.id === id);
       if (eventToEdit) {
-        setNewEvent(eventToEdit);
+        // 日付をYYYY-MM-DD形式に変換してセット
+        const formattedEvent = {
+          ...eventToEdit,
+          date: moment(eventToEdit.date).format("YYYY-MM-DD"),
+        };
+        setNewEvent(formattedEvent);
         setIsEditing(true);
         setCurrentEventId(id);
         setDialogOpen(true);
@@ -549,14 +604,7 @@ export function useTimeline() {
         handleOpenDialog();
       }
     },
-    [
-      timelineEvents,
-      setNewEvent,
-      setIsEditing,
-      setCurrentEventId,
-      setDialogOpen,
-      handleOpenDialog,
-    ]
+    [timelineEvents, handleOpenDialog]
   );
 
   return {
@@ -569,14 +617,14 @@ export function useTimeline() {
     timelineGroups,
     timelineSettings,
     settingsDialogOpen,
-    newEvent, // newEvent を返すように修正
-    dialogOpen, // dialogOpen を返すように修正
-    isEditing, // isEditing を返すように修正
-    currentEventId, // currentEventId を返すように修正
+    newEvent,
+    dialogOpen,
+    isEditing,
+    currentEventId,
     snackbarOpen,
     snackbarMessage,
     hasUnsavedChanges,
-    definedCharacterStatuses: definedCharacterStatusesForDialog,
+    definedCharacterStatuses,
     allPlots,
     safeMinY,
     safeMaxY,
@@ -591,7 +639,7 @@ export function useTimeline() {
     handleCloseDialog,
     handleEventChange,
     handleCharactersChange,
-    handlePlacesChange,
+    handlePostEventStatusChange,
     handleSaveEvent,
     handleEventClick,
     handleSave,
@@ -601,9 +649,8 @@ export function useTimeline() {
     calculateEventPosition,
     createEventFromPosition,
     handleReorderEvents,
-    handlePostEventStatusChange,
-    addTimelineEventsBatch,
     handleRelatedPlotsChange,
     handleUpdateEventLocationAndDate,
+    addTimelineEventsBatch,
   };
 }

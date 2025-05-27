@@ -39,7 +39,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
         章一覧
       </Typography>
       <List sx={{ maxHeight: "400px", overflow: "auto" }}>
-        {chapters
+        {[...chapters]
           .sort((a, b) => a.order - b.order)
           .map((chapter) => (
             <ListItem key={chapter.id} disablePadding>

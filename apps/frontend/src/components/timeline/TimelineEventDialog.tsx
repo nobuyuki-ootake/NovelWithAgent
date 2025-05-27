@@ -22,12 +22,12 @@ import {
 } from "@mui/material";
 import {
   Character,
-  PlaceElement,
   TimelineEvent,
   CharacterStatus,
   PlotElement,
 } from "@novel-ai-assistant/types";
 import { getCharacterIcon, eventTypes } from "./TimelineUtils";
+import moment from "moment";
 
 // イベント種別の定義 (TimelineUtils.tsx に移動したためコメントアウトまたは削除)
 // export const eventTypes = [
@@ -57,7 +57,6 @@ interface TimelineEventDialogProps {
   isEditing: boolean;
   newEvent: TimelineEvent;
   characters: Character[];
-  places: PlaceElement[];
   onClose: () => void;
   onSave: () => void;
   onEventChange: (
@@ -67,7 +66,6 @@ interface TimelineEventDialogProps {
     field?: string
   ) => void;
   onCharactersChange: (event: SelectChangeEvent<string[]>) => void;
-  onPlacesChange: (event: SelectChangeEvent<string[]>) => void;
   getCharacterName: (id: string) => string;
   getPlaceName: (id: string) => string;
   onPostEventStatusChange: (
@@ -84,12 +82,10 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
   isEditing,
   newEvent,
   characters,
-  places,
   onClose,
   onSave,
   onEventChange,
   onCharactersChange,
-  onPlacesChange,
   getCharacterName,
   getPlaceName,
   onPostEventStatusChange,
@@ -180,7 +176,7 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
             label="日付"
             type="date"
             fullWidth
-            value={newEvent.date}
+            value={moment(newEvent.date).format("YYYY-MM-DD")}
             onChange={onEventChange}
             InputLabelProps={{ shrink: true }}
           />
@@ -243,6 +239,16 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
                         key={value}
                         label={getCharacterName(value)}
                         size="small"
+                        onDelete={() => {
+                          // キャラクターを削除
+                          const newCharacters =
+                            newEvent.relatedCharacters.filter(
+                              (id) => id !== value
+                            );
+                          onCharactersChange({
+                            target: { value: newCharacters },
+                          } as SelectChangeEvent<string[]>);
+                        }}
                         avatar={
                           character?.imageUrl ? (
                             <Avatar
@@ -296,50 +302,36 @@ const TimelineEventDialog: React.FC<TimelineEventDialogProps> = ({
             </Select>
           </FormControl>
 
-          <FormControl fullWidth>
-            <InputLabel id="places-select-label">関連地名</InputLabel>
-            <Select
-              labelId="places-select-label"
-              multiple
-              value={newEvent.relatedPlaces}
-              onChange={onPlacesChange}
-              renderValue={(selected) => (
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                  {selected.map((value) => (
-                    <Chip
-                      key={value}
-                      label={getPlaceName(value)}
-                      size="small"
-                    />
-                  ))}
-                </Box>
-              )}
-              label="関連地名"
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 250,
-                  },
-                },
+          {/* 関連場所（表示のみ） */}
+          <Box>
+            <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
+              関連場所
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                p: 1.5,
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 1,
+                backgroundColor: "grey.50",
+                minHeight: "40px",
+                display: "flex",
+                alignItems: "center",
               }}
             >
-              {places.length === 0 ? (
-                <MenuItem disabled>
-                  <Box sx={{ textAlign: "center", width: "100%", py: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      地名が登録されていません。世界観構築ページで地名を追加してください。
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              ) : (
-                places.map((place) => (
-                  <MenuItem key={place.id} value={place.id}>
-                    {place.name}
-                  </MenuItem>
-                ))
-              )}
-            </Select>
-          </FormControl>
+              {newEvent.placeId
+                ? getPlaceName(newEvent.placeId)
+                : "タイムラインチャートで場所を設定してください"}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mt: 0.5, display: "block" }}
+            >
+              場所はタイムラインチャート上でイベントをドラッグ&ドロップして設定できます
+            </Typography>
+          </Box>
 
           {/* 関連プロット選択 */}
           <FormControl fullWidth>
