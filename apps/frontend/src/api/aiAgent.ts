@@ -127,6 +127,35 @@ export const aiAgentApi = {
   },
 
   /**
+   * あらすじ生成を行う
+   * @param message ユーザーのメッセージ
+   * @param projectData プロジェクトデータ
+   * @param model 使用するAIモデル
+   * @param format 出力フォーマット
+   */
+  generateSynopsis: async (
+    message: string,
+    projectData: Record<string, unknown> = {},
+    model: string = "gpt-4o",
+    format: "text" | "json" | "yaml" = "text"
+  ) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/synopsis-generation`, {
+        userMessage: message,
+        projectData,
+        model,
+        format,
+      });
+      return response.data;
+    } catch (error) {
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "あらすじ生成");
+      }
+      throw error;
+    }
+  },
+
+  /**
    * あらすじに関するアドバイスを取得
    * @param message ユーザーのメッセージ
    * @param titleContext タイトル情報など
