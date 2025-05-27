@@ -60,17 +60,8 @@ const PlotPageContent: React.FC = () => {
         description:
           "あらすじを参照して、物語に必要なプロットアイテムを生成します。",
         defaultMessage: `あらすじを参照して、物語に必要なプロットアイテムを複数考えてください。
-それぞれ以下の形式でプロットアイテムを記述してください：
 
-プロットアイテム1
-タイトル: [プロットのタイトル]
-詳細: [具体的な説明]
-
-プロットアイテム2
-タイトル: [プロットのタイトル]
-詳細: [具体的な説明]
-
-※解説や分析は不要です。プロットアイテムのみをシンプルな形式で提示してください。
+物語の展開や重要な出来事、転換点などを含めて、魅力的なストーリーを構成するプロット要素を提案してください。
 
 現在のあらすじ:
 ${(currentProject as NovelProject)?.synopsis || "（あらすじがありません）"}`,
@@ -78,7 +69,14 @@ ${(currentProject as NovelProject)?.synopsis || "（あらすじがありませ�
           // プロット生成完了時の処理
           console.log("プロット生成完了:", result);
           if (result.content) {
-            applyAIPlotResponse(result.content);
+            // result.contentが配列の場合は構造化されたデータ、文字列の場合は従来のレスポンス
+            if (Array.isArray(result.content)) {
+              applyAIPlotResponse(result.content);
+            } else if (typeof result.content === "string") {
+              applyAIPlotResponse(result.content);
+            } else {
+              console.warn("予期しないレスポンス形式:", result.content);
+            }
           }
         },
       },
