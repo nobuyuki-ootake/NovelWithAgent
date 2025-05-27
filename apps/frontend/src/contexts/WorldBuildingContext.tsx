@@ -58,8 +58,6 @@ export interface WorldBuildingContextType {
   getCurrentProjectState: () => NovelProject | null;
   updateProjectState: (project: NovelProject) => void;
   markTabAsUpdated: (tabIndex: number) => void;
-  aiModalOpen: boolean;
-  setAIModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   aiGenerationProgress: number;
   currentGeneratingElementName: string;
   totalElements: number;
@@ -67,7 +65,7 @@ export interface WorldBuildingContextType {
   handleTabChange: (event: React.SyntheticEvent, newValue: number) => void;
   notificationOpen: boolean;
   notificationMessage: string;
-  setNotificationOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setNotificationOpen: (open: boolean) => void;
   setNotificationMessage: React.Dispatch<React.SetStateAction<string>>;
   showNotification: (message: string) => void;
   worldmap?: WorldmapElement[];
@@ -82,12 +80,12 @@ export interface WorldBuildingContextType {
   freeField?: FreeFieldElement[];
   stateDefinition?: StateDefinitionElement[];
   custom?: WorldBuildingCustomElement[];
-  handleMapImageUpload?: (url: string) => void;
-  handleSettingChange?: (value: string) => void;
-  handleHistoryChange?: (value: string) => void;
-  handleSaveWorldBuilding?: () => void;
+  handleMapImageUpload: (url: string) => void;
+  handleSettingChange: (value: string) => void;
+  handleHistoryChange: (value: string) => void;
+  handleSaveWorldBuilding: () => void;
   hasUnsavedChanges: boolean;
-  setHasUnsavedChanges: React.Dispatch<React.SetStateAction<boolean>>;
+  setHasUnsavedChanges: (hasChanges: boolean) => void;
   snackbarOpen: boolean;
   snackbarMessage: string;
   setSnackbarMessage: React.Dispatch<React.SetStateAction<string>>;
@@ -165,6 +163,9 @@ export const WorldBuildingProvider: React.FC<{ children: ReactNode }> = ({
     tabValue: worldBuildingHook.tabValue,
     handleTabChange: worldBuildingHook.handleTabChange,
     handleMapImageUpload: worldBuildingHook.handleMapImageUpload,
+    handleSettingChange: worldBuildingHook.handleSettingChange,
+    handleHistoryChange: worldBuildingHook.handleHistoryChange,
+    isGenerating: false, // ダミー実装
     handleSaveWorldBuilding: () => {
       const projectToSave = restOfElementAccumulator.getCurrentProjectState();
       updateAndSaveCurrentProject(projectToSave);

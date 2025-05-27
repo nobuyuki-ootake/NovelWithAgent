@@ -1,17 +1,19 @@
 import React from "react";
 import {
-  Paper,
+  Box,
   Typography,
   List,
   ListItem,
-  ListItemButton,
-  ListItemIcon,
   ListItemText,
+  ListItemButton,
+  Paper,
   Button,
-  Box,
-  Tooltip,
+  IconButton,
 } from "@mui/material";
-import { Event as EventIcon, Add as AddIcon } from "@mui/icons-material";
+import {
+  Visibility as VisibilityIcon,
+  Assignment as AssignmentIcon,
+} from "@mui/icons-material";
 import { TimelineEvent } from "@novel-ai-assistant/types";
 // import { useWritingContext } from "../../contexts/WritingContext"; // 未使用のためコメントアウト
 
@@ -34,65 +36,85 @@ const RelatedEventsList: React.FC<RelatedEventsListProps> = ({
   );
 
   return (
-    <Paper elevation={1} sx={{ mb: 2 }}>
+    <Paper sx={{ p: 2, height: "100%" }}>
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          p: 2,
-          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+          mb: 2,
         }}
       >
         <Typography variant="h6">関連イベント</Typography>
         <Button
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={onAssignEvents}
           variant="outlined"
+          size="small"
+          startIcon={<AssignmentIcon />}
+          onClick={onAssignEvents}
         >
-          イベントを割り当て
+          割り当て
         </Button>
       </Box>
 
       {relatedEvents.length === 0 ? (
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ textAlign: "center", py: 4 }}>
           <Typography variant="body2" color="text.secondary">
-            関連するイベントがありません。「イベントを割り当て」ボタンから、この章に関連するイベントを選択してください。
+            関連イベントが設定されていません
           </Typography>
+          <Button
+            variant="text"
+            size="small"
+            onClick={onAssignEvents}
+            sx={{ mt: 1 }}
+          >
+            イベントを割り当てる
+          </Button>
         </Box>
       ) : (
-        <List dense>
+        <List sx={{ maxHeight: "300px", overflow: "auto" }}>
           {relatedEvents.map((event) => (
             <ListItem key={event.id} disablePadding>
-              <ListItemButton onClick={() => onViewEvent(event.id)}>
-                <ListItemIcon>
-                  <EventIcon color="primary" />
-                </ListItemIcon>
+              <ListItemButton
+                onClick={() => onViewEvent(event.id)}
+                sx={{
+                  borderRadius: 1,
+                  mb: 0.5,
+                  border: 1,
+                  borderColor: "divider",
+                }}
+              >
                 <ListItemText
-                  primary={event.title}
-                  secondary={
-                    <Tooltip title={event.description}>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          maxWidth: {
-                            xs: "200px",
-                            sm: "300px",
-                            md: "400px",
-                          },
-                        }}
-                      >
-                        {event.date}: {event.description.substring(0, 60)}
-                        {event.description.length > 60 ? "..." : ""}
+                  primary={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="subtitle2" noWrap>
+                        {event.title}
                       </Typography>
-                    </Tooltip>
+                    </Box>
+                  }
+                  secondary={
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {event.description}
+                    </Typography>
                   }
                 />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewEvent(event.id);
+                  }}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
               </ListItemButton>
             </ListItem>
           ))}

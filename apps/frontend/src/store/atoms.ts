@@ -113,10 +113,59 @@ export const aiLoadingState = atom<boolean>({
 });
 
 // AIチャットパネルのアクティブなタブ
-export type AIChatTabType = "chat" | "settings";
+export type AIChatTabType = "chat" | "assist" | "settings";
 export const aiChatTabState = atom<AIChatTabType>({
   key: "aiChatTab",
   default: "chat",
+});
+
+// AI統合機能用の新しい型定義
+export type AIChatMode = "chat" | "assist";
+
+export type PageContext =
+  | "characters"
+  | "plot"
+  | "timeline"
+  | "worldbuilding"
+  | "writing"
+  | "synopsis"
+  | "plot-item";
+
+export interface ResponseData {
+  content: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AssistConfig {
+  title: string;
+  description: string;
+  defaultMessage: string;
+  supportsBatchGeneration?: boolean;
+  customControls?: {
+    targetLength?: "short" | "medium" | "long" | "";
+    userInstructions?: string;
+    plotSelection?: boolean;
+  };
+  onComplete?: (result: ResponseData) => void;
+  onGenerate?: (params: Record<string, unknown>) => Promise<void>;
+}
+
+export interface AIChatContext {
+  mode: AIChatMode;
+  pageContext: PageContext;
+  projectData: NovelProject | null;
+  selectedElements: SelectedElement[];
+  assistConfig?: AssistConfig;
+}
+
+export const aiChatContextState = atom<AIChatContext>({
+  key: "aiChatContextState",
+  default: {
+    mode: "chat",
+    pageContext: "characters",
+    projectData: null,
+    selectedElements: [],
+  },
 });
 
 // 世界観構築画面のタブ更新状態を管理するアトム

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "./button";
 import { Wand } from "lucide-react";
 import { Spinner } from "./spinner";
+import { HelpTooltip } from "./HelpTooltip";
 
 export interface AIAssistButtonProps {
   /**
@@ -50,6 +51,17 @@ export interface AIAssistButtonProps {
    * @default false
    */
   isLoading?: boolean;
+
+  /**
+   * ヒントテキスト（ツールチップに表示）
+   */
+  helpText?: string;
+
+  /**
+   * ヒントを表示するかどうか
+   * @default false
+   */
+  showHelp?: boolean;
 }
 
 /**
@@ -64,8 +76,11 @@ export const AIAssistButton: React.FC<AIAssistButtonProps> = ({
   disabled = false,
   className = "",
   isLoading: externalIsLoading,
+  helpText,
+  showHelp = false,
 }) => {
   const [internalIsLoading, setInternalIsLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const effectiveIsLoading =
     externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
 
@@ -82,21 +97,52 @@ export const AIAssistButton: React.FC<AIAssistButtonProps> = ({
     }
   };
 
-  return (
+  const buttonContent = (
     <Button
       variant={variant}
       onClick={handleClick}
       disabled={disabled || effectiveIsLoading}
-      className={`flex items-center gap-2 ${
-        width === "full" ? "w-full" : ""
-      } ${className}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`
+        flex items-center gap-2 
+        transition-all duration-200 ease-in-out
+        ${effectiveIsLoading ? "animate-pulse" : ""}
+        ${
+          isHovered && !effectiveIsLoading
+            ? "transform scale-105 shadow-lg"
+            : ""
+        }
+        ${width === "full" ? "w-full" : ""} 
+        ${className}
+      `}
+      style={{
+        transform:
+          isHovered && !effectiveIsLoading ? "scale(1.05)" : "scale(1)",
+        transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+      }}
     >
-      {effectiveIsLoading ? (
-        <Spinner className="h-4 w-4" />
-      ) : (
-        <Wand className="h-4 w-4" />
+      <span
+        className={`
+          transition-transform duration-200 ease-in-out
+          ${effectiveIsLoading ? "animate-spin" : ""}
+          ${isHovered && !effectiveIsLoading ? "transform rotate-12" : ""}
+        `}
+      >
+        {effectiveIsLoading ? (
+          <Spinner className="h-4 w-4" />
+        ) : (
+          <Wand className="h-4 w-4" />
+        )}
+      </span>
+      <span className="transition-all duration-200 ease-in-out">
+        {effectiveIsLoading ? "AI生成中..." : text}
+      </span>
+      {showHelp && helpText && (
+        <HelpTooltip title={helpText} placement="top" inline size="small" />
       )}
-      {text}
     </Button>
   );
+
+  return buttonContent;
 };

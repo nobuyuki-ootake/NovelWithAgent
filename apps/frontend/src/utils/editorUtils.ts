@@ -1,10 +1,5 @@
-import {
-  Descendant,
-  Node as SlateNode,
-  Text as SlateText,
-  Element as SlateElement,
-} from "slate";
-import type { CustomElement, CustomText } from "../types/slate";
+import { Descendant, Node } from "slate";
+import type { CustomElement } from "../types/slate";
 
 // エディタの初期値を設定する関数
 export const createEmptyEditor = (): CustomElement[] => {
@@ -28,13 +23,13 @@ export const createReadOnlyValue = (content: string): CustomElement[] => {
 
 // エディタの値からプレーンテキストを抽出
 export const serializeToText = (nodes: Descendant[]): string => {
-  return nodes.map((n) => SlateNode.string(n)).join("\n");
+  return nodes.map((n) => Node.string(n)).join("\n");
 };
 
 // 文字数を計算する関数
 export const countCharacters = (nodes: Descendant[]): number => {
   return nodes.reduce((count, node) => {
-    return count + SlateNode.string(node).length;
+    return count + Node.string(node).length;
   }, 0);
 };
 

@@ -24,7 +24,7 @@ import TimelineEventDialog from "../components/timeline/TimelineEventDialog";
 import TimelineSettingsDialog from "../components/timeline/TimelineSettingsDialog";
 import TimelineEventList from "../components/timeline/TimelineEventList";
 import TimelineChart from "../components/timeline/TimelineChart";
-import { AIAssistModal } from "../components/modals/AIAssistModal";
+import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
 import { useTimelineAI } from "../hooks/useTimelineAI";
 import EventSeedReviewDialog from "../components/timeline/EventSeedReviewDialog";
 import {
@@ -109,14 +109,10 @@ const TimelinePage: React.FC = () => {
     handleUpdateEventLocationAndDate,
   } = useTimeline();
 
-  const {
-    eventSeeds,
-    isLoading: isAILoading,
-    error: aiError,
-    generateEventSeeds,
-  } = useTimelineAI();
+  const { eventSeeds, error: aiError, generateEventSeeds } = useTimelineAI();
 
-  const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
+  const { openAIAssist } = useAIChatIntegration();
+
   const [aiErrorSnackbarOpen, setAiErrorSnackbarOpen] = useState(false);
   const [aiErrorMessage, setAiErrorMessage] = useState("");
   const [reviewableEventSeeds, setReviewableEventSeeds] = useState<
@@ -124,7 +120,6 @@ const TimelinePage: React.FC = () => {
   >([]);
   const [eventSeedReviewDialogOpen, setEventSeedReviewDialogOpen] =
     useState(false);
-  const [dynamicDefaultPrompt, setDynamicDefaultPrompt] = useState("");
 
   const [activeDragItem, setActiveDragItem] = useState<TimelineEvent | null>(
     null
@@ -415,32 +410,36 @@ const TimelinePage: React.FC = () => {
     }
   };
 
-  const handleOpenAIAssistModal = () => {
-    setDynamicDefaultPrompt(generateDynamicDefaultPrompt());
-    setAiAssistModalOpen(true);
-  };
+  // AIアシスト機能の統合
+  const handleOpenAIAssistModal = (): void => {
+    const dynamicPrompt = generateDynamicDefaultPrompt();
 
-  const handleTimelineAIAssist = async (params: {
-    message: string;
-    plotId?: string | null;
-  }) => {
-    setAiAssistModalOpen(false);
-    await generateEventSeeds({
-      prompt: params.message,
-      plotId: params.plotId,
-      allPlots: allPlots,
-      characters: characters,
-      places: places,
-    });
+    openAIAssist(
+      "timeline",
+      {
+        title: "AIイベント生成アシスト",
+        description:
+          "プロットを参照して、タイムラインに必要なイベントを生成します。",
+        defaultMessage: dynamicPrompt,
+        customControls: {
+          plotSelection: true,
+        },
+        onComplete: async (result) => {
+          // イベント生成完了時の処理
+          console.log("イベント生成完了:", result);
+          // 実際のAI生成処理を実行
+          await generateEventSeeds({
+            prompt: result.content,
+            plotId: null, // プロット選択機能は後で実装
+            allPlots: allPlots,
+            characters: characters,
+            places: places,
+          });
+        },
+      },
+      null // currentProjectは不要
+    );
   };
-
-  // AIAssistModal のプロット選択変更時に呼び出されるコールバック
-  const handlePlotChangeForModalPrompt = useCallback(
-    (plotId: string | null): string => {
-      return generateDynamicDefaultPrompt(plotId);
-    },
-    [allPlots, characters, generateDynamicDefaultPrompt] // generateDynamicDefaultPrompt も依存配列に含める
-  );
 
   useEffect(() => {
     if (eventSeeds && eventSeeds.length > 0) {
@@ -552,17 +551,6 @@ const TimelinePage: React.FC = () => {
               onRelatedPlotsChange={handleRelatedPlotsChange}
             />
           )}
-
-          <AIAssistModal
-            open={aiAssistModalOpen}
-            onClose={() => setAiAssistModalOpen(false)}
-            requestAssist={handleTimelineAIAssist}
-            isLoading={isAILoading}
-            title="AIイベント生成アシスト"
-            plots={allPlots}
-            defaultMessage={dynamicDefaultPrompt}
-            onPlotChangeForSystemPrompt={handlePlotChangeForModalPrompt}
-          />
 
           {reviewableEventSeeds.length > 0 && (
             <EventSeedReviewDialog

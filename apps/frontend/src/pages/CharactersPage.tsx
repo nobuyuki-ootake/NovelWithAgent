@@ -17,25 +17,21 @@ import {
   useCharactersContext,
 } from "../contexts/CharactersContext";
 import { AIAssistButton } from "../components/ui/AIAssistButton";
-import {
-  AIAssistModal,
-  ResponseData,
-} from "../components/modals/AIAssistModal";
+import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
 
 // CharacterPageの実装コンポーネント
 const CharactersPageContent: React.FC = () => {
   const {
     characters,
+    openDialog,
     formData,
     formErrors,
-    selectedEmoji,
     tempImageUrl,
+    selectedEmoji,
     newTrait,
-    openDialog: isDialogOpen,
+    currentProject,
     handleOpenDialog,
     handleCloseDialog,
-    handleDeleteCharacter,
-    handleSaveCharacter,
     handleImageUpload,
     handleEmojiSelect,
     handleInputChange,
@@ -43,24 +39,49 @@ const CharactersPageContent: React.FC = () => {
     handleAddTrait,
     handleRemoveTrait,
     handleNewTraitChange,
+    handleDeleteCharacter,
+    handleSaveCharacter,
     handleSaveStatus,
     handleDeleteStatus,
-    // AI関連の機能を追加
-    aiAssistModalOpen,
-    setAiAssistModalOpen,
-    isLoadingAI,
-    handleOpenAIAssist,
-    handleAIAssist,
-    handleAIAssistComplete,
-    aiProgress,
-    currentProject,
+    addCharacter,
+    parseAIResponseToCharacters,
   } = useCharactersContext();
+
+  const { openAIAssist } = useAIChatIntegration();
 
   // 削除確認ダイアログの状態
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = React.useState(false);
   const [characterToDelete, setCharacterToDelete] = React.useState<
     string | null
   >(null);
+
+  // AIアシスト機能の統合
+  const handleOpenAIAssist = async (): Promise<void> => {
+    openAIAssist(
+      "characters",
+      {
+        title: "AIにキャラクターを考えてもらう",
+        description:
+          "あらすじとプロットを参照して、物語に必要なキャラクターのリストを生成します。",
+        defaultMessage:
+          "あらすじとプロットに基づいて、この物語にふさわしいキャラクターを考えてください。",
+        supportsBatchGeneration: true,
+        customControls: {
+          plotSelection: true,
+        },
+        onComplete: (result) => {
+          // AI応答の処理
+          if (result.content) {
+            const characters = parseAIResponseToCharacters(result.content);
+            characters.forEach((character) => {
+              addCharacter(character);
+            });
+          }
+        },
+      },
+      currentProject
+    );
+  };
 
   // 削除確認ダイアログを開く
   const handleOpenConfirmDelete = (characterId: string) => {
@@ -106,7 +127,9 @@ const CharactersPageContent: React.FC = () => {
             onAssist={handleOpenAIAssist}
             text="AIにキャラクターを考えてもらう"
             variant="default"
-            disabled={isLoadingAI}
+            disabled={false}
+            showHelp={true}
+            helpText="プロジェクトのあらすじとプロットを参考に、物語に適したキャラクターを自動生成します。複数のキャラクターを一度に作成できます。"
           />
           <Button
             variant="contained"
@@ -117,33 +140,6 @@ const CharactersPageContent: React.FC = () => {
           </Button>
         </Box>
       </Box>
-
-      {/* 進捗状態表示 */}
-      {aiProgress !== null && (
-        <Box sx={{ width: "100%", mb: 2 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            キャラクター生成中: {aiProgress}%
-          </Typography>
-          <div
-            style={{
-              width: "100%",
-              height: "4px",
-              backgroundColor: "#e0e0e0",
-              borderRadius: "2px",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${aiProgress}%`,
-                height: "100%",
-                backgroundColor: "#1976d2",
-                transition: "width 0.3s ease",
-              }}
-            ></div>
-          </div>
-        </Box>
-      )}
 
       {/* キャラクターリスト */}
       <Box
@@ -165,7 +161,7 @@ const CharactersPageContent: React.FC = () => {
 
       {/* キャラクター編集ダイアログ */}
       <Dialog
-        open={isDialogOpen}
+        open={openDialog}
         onClose={handleCloseDialog}
         fullWidth
         maxWidth="md"
@@ -201,20 +197,6 @@ const CharactersPageContent: React.FC = () => {
           />
         </DialogContent>
       </Dialog>
-
-      {/* AI支援モーダル */}
-      <AIAssistModal
-        open={aiAssistModalOpen}
-        onClose={() => setAiAssistModalOpen(false)}
-        title="AIにキャラクターを考えてもらう"
-        description="あらすじとプロットを参照して、物語に必要なキャラクターのリストを生成します。物語の要件やリクエストがあれば入力してください。"
-        defaultMessage="あらすじとプロットに基づいて、この物語にふさわしいキャラクターを考えてください。"
-        requestAssist={(params: { message: string; plotId?: string | null }) =>
-          handleAIAssist(params) as Promise<ResponseData>
-        }
-        onAssistComplete={(result) => handleAIAssistComplete(result)}
-        supportsBatchGeneration={true}
-      />
 
       {/* 削除確認ダイアログ */}
       <Dialog

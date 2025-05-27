@@ -14,8 +14,8 @@ interface NewChapterDialogProps {
   title: string;
   synopsis: string;
   onClose: () => void;
-  onTitleChange: (value: string) => void;
-  onSynopsisChange: (value: string) => void;
+  onTitleChange: (title: string) => void;
+  onSynopsisChange: (synopsis: string) => void;
   onCreateChapter: () => void;
 }
 
@@ -28,43 +28,53 @@ const NewChapterDialog: React.FC<NewChapterDialogProps> = ({
   onSynopsisChange,
   onCreateChapter,
 }) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onCreateChapter();
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>新規章の作成</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        component: "form",
+        onSubmit: handleSubmit,
+      }}
+    >
+      <DialogTitle>新規章作成</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
           <TextField
             autoFocus
-            margin="dense"
+            required
             label="章のタイトル"
             fullWidth
+            variant="outlined"
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
-            variant="outlined"
             sx={{ mb: 2 }}
+            placeholder="例: 第一章 出会い"
           />
           <TextField
-            margin="dense"
-            label="章の概要"
+            label="章のあらすじ（任意）"
             fullWidth
             multiline
             rows={4}
+            variant="outlined"
             value={synopsis}
             onChange={(e) => onSynopsisChange(e.target.value)}
-            variant="outlined"
+            placeholder="この章で起こる出来事の概要を入力してください..."
           />
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="inherit">
-          キャンセル
-        </Button>
-        <Button
-          onClick={onCreateChapter}
-          color="primary"
-          variant="contained"
-          disabled={!title.trim()}
-        >
+        <Button onClick={onClose}>キャンセル</Button>
+        <Button type="submit" variant="contained" disabled={!title.trim()}>
           作成
         </Button>
       </DialogActions>

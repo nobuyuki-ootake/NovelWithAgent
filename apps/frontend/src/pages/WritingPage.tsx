@@ -1,71 +1,81 @@
-import React, { JSX, useEffect } from "react";
+import React from "react";
 import {
-  Typography,
   Box,
+  Typography,
   Paper,
-  Tabs,
-  Tab,
-  Stack,
   Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  CircularProgress,
-  // IconButton, // 未使用のため削除
-  // Tooltip, // 未使用のため削除
+  Alert,
+  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+  CircularProgress,
+  Stack,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
-import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import { VerticalContentEditorWrapper } from "../components/editor";
-import VerticalContentEditor from "../components/editor/VerticalContentEditor";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { useWritingContext, WritingProvider } from "../contexts/WritingContext";
+import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
+import { AIAssistButton } from "../components/ui/AIAssistButton";
+import { NovelProject, TimelineEvent } from "@novel-ai-assistant/types";
+import VerticalContentEditorWrapper from "../components/editor/VerticalContentEditorWrapper";
 import ChapterList from "../components/writing/ChapterList";
-import WritingPreview from "../components/writing/WritingPreview";
+import RelatedEventsList from "../components/writing/RelatedEventsList";
 import NewChapterDialog from "../components/writing/NewChapterDialog";
 import AssignEventsDialog from "../components/writing/AssignEventsDialog";
 import EventDetailDialog from "../components/writing/EventDetailDialog";
-import RelatedEventsList from "../components/writing/RelatedEventsList";
-import { WritingProvider, useWritingContext } from "../contexts/WritingContext";
-import {
-  NovelProject,
-  TimelineEvent,
-  PlaceElement,
-} from "@novel-ai-assistant/types";
-import { AIChapterGenerationParams } from "../contexts/WritingContext";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
-import { serializeToText, extractTextFromHtml } from "../utils/editorUtils";
-import { DeleteIcon } from "lucide-react";
 
 // WritingPageの実装コンポーネント
-const WritingPageContent: () => JSX.Element | null = () => {
+const WritingPageContent: React.FC = () => {
   const {
     editorValue,
     currentChapter,
     currentProject,
     currentChapterId,
     timelineEvents,
+    isAiProcessing,
+    aiUserInstructions,
+    aiTargetLength,
+    setAiUserInstructions,
+    setAiTargetLength,
+    aiOverwriteConfirmOpen,
+    handleCloseAiOverwriteConfirm,
+    handleConfirmAiOverwrite,
+    handleOpenAiOverwriteConfirm,
+    generateChapterByAI,
+    handleEditorChange,
+    handleChapterSelect,
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    editorRef,
+    updateCurrentPageFromSelection,
+    currentPageInEditor,
+    totalPagesInEditor,
+    editorKey,
+    handleAddPageBreak,
+    handlePreviousPageInEditor,
+    handleNextPageInEditor,
     newChapterDialogOpen,
     newChapterTitle,
     newChapterSynopsis,
-    assignEventsDialogOpen,
-    selectedEvents,
-    eventDetailDialogOpen,
-    selectedEvent,
-    handleEditorChange,
-    handleChapterSelect,
     handleOpenNewChapterDialog,
     handleCloseNewChapterDialog,
     setNewChapterTitle,
     setNewChapterSynopsis,
     handleCreateChapter,
+    assignEventsDialogOpen,
+    selectedEvents,
+    eventDetailDialogOpen,
+    selectedEvent,
     handleOpenAssignEventsDialog,
     handleCloseAssignEventsDialog,
     handleToggleEvent,
@@ -75,104 +85,10 @@ const WritingPageContent: () => JSX.Element | null = () => {
     handleAddEventToChapter,
     handleAddNewEvent,
     handleSaveContent,
-    isAiProcessing,
-    aiUserInstructions,
-    aiTargetLength,
-    setAiUserInstructions,
-    setAiTargetLength,
-    generateChapterByAI,
-    startAiGeneration,
-    aiOverwriteConfirmOpen,
-    handleCloseAiOverwriteConfirm,
-    handleConfirmAiOverwrite,
-    snackbarOpen,
-    snackbarMessage,
-    snackbarSeverity,
     closeSnackbar,
-    currentPageInEditor,
-    totalPagesInEditor,
-    editorRef,
-    editorKey,
-    handleAddPageBreak,
-    handlePreviousPageInEditor,
-    handleNextPageInEditor,
-    updateCurrentPageFromSelection,
   } = useWritingContext();
 
-  const localHandleGenerateChapterByAI = async () => {
-    if (!currentChapter || !currentProject || !timelineEvents) return;
-
-    const relatedEventDetails: AIChapterGenerationParams["relatedEvents"] =
-      currentChapter.relatedEvents
-        ?.map((eventId) => timelineEvents.find((event) => event.id === eventId))
-        .filter((event): event is TimelineEvent => !!event)
-        .map((event) => ({
-          id: event.id,
-          title: event.title,
-          description: event.description,
-        })) || [];
-
-    const characterIdsInEvents = relatedEventDetails.reduce(
-      (
-        acc: Set<string>,
-        eventDetail: { id: string; title: string; description: string }
-      ) => {
-        const event = timelineEvents.find((e) => e.id === eventDetail.id);
-        event?.relatedCharacters?.forEach((charId) => acc.add(charId));
-        return acc;
-      },
-      new Set<string>()
-    );
-
-    const charactersInChapter: AIChapterGenerationParams["charactersInChapter"] =
-      Array.from(characterIdsInEvents).map((charId) => {
-        const char = (currentProject.characters || []).find(
-          (c: { id: string }) => c.id === charId
-        );
-        return {
-          id: charId,
-          name: char?.name || "不明なキャラクター",
-          description: char?.description || "",
-          role: char?.role || "supporting",
-        };
-      });
-
-    const locationIdsInEvents = relatedEventDetails.reduce(
-      (
-        acc: Set<string>,
-        eventDetail: { id: string; title: string; description: string }
-      ) => {
-        const event = timelineEvents.find((e) => e.id === eventDetail.id);
-        event?.relatedPlaces?.forEach((placeId) => acc.add(placeId));
-        if (event?.placeId) acc.add(event.placeId);
-        return acc;
-      },
-      new Set<string>()
-    );
-
-    const selectedLocations: AIChapterGenerationParams["selectedLocations"] =
-      Array.from(locationIdsInEvents).map((placeId) => {
-        const place = (currentProject.worldBuilding?.places || []).find(
-          (p) => p.id === placeId
-        ) as PlaceElement | undefined;
-        return {
-          id: placeId,
-          name: place?.name || "不明な場所",
-          description: place?.description || "",
-        };
-      });
-
-    const params: AIChapterGenerationParams = {
-      chapterTitle: currentChapter.title,
-      relatedEvents: relatedEventDetails,
-      charactersInChapter: charactersInChapter,
-      selectedLocations: selectedLocations,
-      userInstructions: aiUserInstructions,
-      targetChapterLength: aiTargetLength || undefined,
-    };
-
-    startAiGeneration(params);
-  };
+  const { openAIAssist } = useAIChatIntegration();
 
   // キャラクター名を取得する関数
   const getCharacterName = (characterId: string) => {
@@ -191,6 +107,229 @@ const WritingPageContent: () => JSX.Element | null = () => {
     return place ? place.name : placeId;
   };
 
+  // イベントが既に章に割り当てられているかチェックする関数
+  const isEventAlreadyInChapter = (eventId: string) => {
+    return currentChapter?.relatedEvents?.includes(eventId) ?? false;
+  };
+
+  // AI章生成機能（ローカル実装）
+  const localHandleGenerateChapterByAI = async (): Promise<void> => {
+    if (!currentChapter || !currentProject) {
+      console.warn("章またはプロジェクトが選択されていません");
+      return;
+    }
+
+    // 関連イベントの詳細を取得
+    const relatedEventDetails =
+      currentChapter.relatedEvents
+        ?.map((eventId) =>
+          timelineEvents?.find((event) => event.id === eventId)
+        )
+        .filter((event): event is TimelineEvent => !!event) || [];
+
+    // 関連キャラクターの詳細を取得
+    const characterIdsInEvents = new Set<string>();
+    relatedEventDetails.forEach((event) => {
+      event.relatedCharacters?.forEach((charId) =>
+        characterIdsInEvents.add(charId)
+      );
+    });
+
+    const charactersInChapter = Array.from(characterIdsInEvents)
+      .map((charId) => {
+        const char = currentProject.characters?.find((c) => c.id === charId);
+        return char
+          ? {
+              id: char.id,
+              name: char.name,
+              description: char.description,
+              role: char.role || ("supporting" as const),
+            }
+          : null;
+      })
+      .filter((char): char is NonNullable<typeof char> => char !== null);
+
+    // 関連場所の詳細を取得
+    const locationIdsInEvents = new Set<string>();
+    relatedEventDetails.forEach((event) => {
+      event.relatedPlaces?.forEach((placeId) =>
+        locationIdsInEvents.add(placeId)
+      );
+      if (event.placeId) locationIdsInEvents.add(event.placeId);
+    });
+
+    const selectedLocations = Array.from(locationIdsInEvents)
+      .map((placeId) => {
+        const place = currentProject.worldBuilding?.places?.find(
+          (p) => p.id === placeId
+        );
+        return place
+          ? {
+              id: place.id,
+              name: place.name,
+              description: place.description,
+            }
+          : null;
+      })
+      .filter(
+        (location): location is NonNullable<typeof location> =>
+          location !== null
+      );
+
+    // AI生成パラメータを構築
+    const aiParams = {
+      chapterTitle: currentChapter.title,
+      relatedEvents: relatedEventDetails.map((event) => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+      })),
+      charactersInChapter,
+      selectedLocations,
+      userInstructions: aiUserInstructions,
+      targetChapterLength: aiTargetLength || "medium",
+      model: "gpt-4", // デフォルトモデル
+    };
+
+    // 既存の内容がある場合は上書き確認
+    const hasContent =
+      editorValue &&
+      Array.isArray(editorValue) &&
+      editorValue.length > 0 &&
+      editorValue.some((node) => {
+        if ("children" in node && Array.isArray(node.children)) {
+          return node.children.some((child) => {
+            return "text" in child && child.text && child.text.trim() !== "";
+          });
+        }
+        return false;
+      });
+
+    if (hasContent) {
+      // 上書き確認ダイアログを表示
+      handleOpenAiOverwriteConfirm(aiParams);
+    } else {
+      // 直接生成開始
+      await generateChapterByAI(aiParams);
+    }
+  };
+
+  // AIChatPanelからAI章生成機能を利用（既存の関数を改良）
+  const handleOpenAIAssist = async (): Promise<void> => {
+    if (!currentChapter || !currentProject) return;
+
+    // 関連イベントの詳細を取得
+    const relatedEventDetails =
+      currentChapter.relatedEvents
+        ?.map((eventId) =>
+          timelineEvents?.find((event) => event.id === eventId)
+        )
+        .filter((event): event is TimelineEvent => !!event)
+        .map((event) => `- ${event.title}: ${event.description}`)
+        .join("\n") || "関連イベントなし";
+
+    // 関連キャラクターの詳細を取得
+    const characterIdsInEvents = new Set<string>();
+    currentChapter.relatedEvents?.forEach((eventId) => {
+      const event = timelineEvents?.find((e) => e.id === eventId);
+      event?.relatedCharacters?.forEach((charId) =>
+        characterIdsInEvents.add(charId)
+      );
+    });
+
+    const charactersInfo =
+      Array.from(characterIdsInEvents)
+        .map((charId) => {
+          const char = currentProject.characters?.find((c) => c.id === charId);
+          return char ? `- ${char.name}: ${char.description}` : null;
+        })
+        .filter(Boolean)
+        .join("\n") || "関連キャラクターなし";
+
+    // 関連場所の詳細を取得
+    const locationIdsInEvents = new Set<string>();
+    currentChapter.relatedEvents?.forEach((eventId) => {
+      const event = timelineEvents?.find((e) => e.id === eventId);
+      event?.relatedPlaces?.forEach((placeId) =>
+        locationIdsInEvents.add(placeId)
+      );
+      if (event?.placeId) locationIdsInEvents.add(event.placeId);
+    });
+
+    const locationsInfo =
+      Array.from(locationIdsInEvents)
+        .map((placeId) => {
+          const place = currentProject.worldBuilding?.places?.find(
+            (p) => p.id === placeId
+          );
+          return place ? `- ${place.name}: ${place.description}` : null;
+        })
+        .filter(Boolean)
+        .join("\n") || "関連場所なし";
+
+    const defaultMessage = `「${currentChapter.title}」の章を執筆してください。
+
+【章の情報】
+タイトル: ${currentChapter.title}
+あらすじ: ${currentChapter.synopsis || "未設定"}
+
+【関連イベント】
+${relatedEventDetails}
+
+【登場キャラクター】
+${charactersInfo}
+
+【舞台となる場所】
+${locationsInfo}
+
+【追加指示】
+${aiUserInstructions || "特になし"}
+
+【希望する長さ】
+${
+  aiTargetLength === "short"
+    ? "短め"
+    : aiTargetLength === "medium"
+    ? "普通"
+    : aiTargetLength === "long"
+    ? "長め"
+    : "指定なし"
+}
+
+上記の情報を参考に、物語の流れに沿った章を執筆してください。`;
+
+    openAIAssist(
+      "writing",
+      {
+        title: "AI章執筆アシスト",
+        description:
+          "章の情報、関連イベント、キャラクター、場所を参考に章を執筆します。",
+        defaultMessage,
+        onComplete: (result) => {
+          if (result && result.content) {
+            // 生成された内容をエディターに設定
+            // 既存の内容がある場合は上書き確認を表示
+            const hasContent =
+              editorValue &&
+              Array.isArray(editorValue) &&
+              editorValue.length > 0;
+            if (hasContent) {
+              // 上書き確認ダイアログを表示する処理
+              // WritingContextの機能を利用
+              console.log("Generated content:", result.content);
+              // 実際の実装では、生成された内容を一時保存して上書き確認後に適用
+            } else {
+              // エディターの値を更新（型に応じて適切に変換）
+              console.log("Setting generated content:", result.content);
+              // handleEditorChangeの実装に依存するため、ここではログのみ
+            }
+          }
+        },
+      },
+      currentProject
+    );
+  };
+
   if (!currentProject) {
     return (
       <Box sx={{ p: 3 }}>
@@ -198,10 +337,6 @@ const WritingPageContent: () => JSX.Element | null = () => {
       </Box>
     );
   }
-
-  const isEventAlreadyInChapter = (eventId: string) => {
-    return currentChapter?.relatedEvents?.includes(eventId) ?? false;
-  };
 
   return (
     <Box
@@ -280,7 +415,7 @@ const WritingPageContent: () => JSX.Element | null = () => {
                   isAiProcessing ? (
                     <CircularProgress size={20} color="inherit" />
                   ) : (
-                    <AutoFixHighIcon />
+                    <SmartToyIcon />
                   )
                 }
                 onClick={localHandleGenerateChapterByAI}
@@ -289,6 +424,12 @@ const WritingPageContent: () => JSX.Element | null = () => {
               >
                 AIに執筆してもらう
               </Button>
+              <AIAssistButton
+                onAssist={handleOpenAIAssist}
+                text="AIチャットで執筆"
+                variant="outline"
+                disabled={!currentChapter}
+              />
             </>
             <Button
               variant="contained"

@@ -2,8 +2,8 @@ import { useState } from "react";
 
 export function useWorldBuilding() {
   const [tabValue, setTabValue] = useState(0);
-  const [updatedTabs, setUpdatedTabs] = useState<boolean[]>(
-    Array(10).fill(false)
+  const [updatedTabs, setUpdatedTabs] = useState<{ [key: number]: boolean }>(
+    {}
   );
   // const [snackbarOpen, setSnackbarOpen] = useState(false);
   // const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -22,13 +22,20 @@ export function useWorldBuilding() {
       setTabValue(newValue);
     },
     markTabAsUpdated: (index: number) => {
-      const newTabs = [...updatedTabs];
-      newTabs[index] = true;
-      setUpdatedTabs(newTabs);
+      setUpdatedTabs((prev) => ({
+        ...prev,
+        [index]: true,
+      }));
     },
-    handleMapImageUpload: () => {},
-    handleSettingChange: () => {},
-    handleHistoryChange: () => {},
+    handleMapImageUpload: (url: string) => {
+      console.log("Map image uploaded:", url);
+    },
+    handleSettingChange: (value: string) => {
+      console.log("Setting changed:", value);
+    },
+    handleHistoryChange: (value: string) => {
+      console.log("History changed:", value);
+    },
     handleSaveWorldBuilding: () => {},
     hasUnsavedChanges: false,
     getCurrentProjectState: () => null,

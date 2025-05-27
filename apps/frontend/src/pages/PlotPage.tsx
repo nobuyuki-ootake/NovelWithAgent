@@ -20,7 +20,7 @@ import AddIcon from "@mui/icons-material/Add";
 // import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"; // 削除
 import PlotItem from "../components/plot/PlotItem";
 import { PlotProvider, usePlotContext } from "../contexts/PlotContext";
-import { AIAssistModal } from "../components/modals/AIAssistModal";
+import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
 import { NovelProject } from "@novel-ai-assistant/types";
 
 // PlotPageの実装コンポーネント
@@ -46,25 +46,40 @@ const PlotPageContent: React.FC = () => {
     // handleDragEnd, // PlotContextから受け取っているが、一旦削除
     handleStatusChange,
     handleSave,
-    aiAssistModalOpen,
-    setAiAssistModalOpen,
-    handleOpenAIAssist,
-    handleAIAssist,
   } = usePlotContext();
 
-  // ResponseDataの型定義
-  type ResponseData = {
-    response?: string;
-    batchResponse?: boolean;
-    [key: string]: unknown;
-  };
+  const { openAIAssist } = useAIChatIntegration();
 
-  // AIAssistモーダルに渡す関数を適切な型に変換
-  const handleAIAssistTyped = (
-    params: { message: string; plotId?: string | null } // シグネチャ変更
-  ): Promise<ResponseData> => {
-    // plotId は PlotPage のAIアシストでは現状使用しないため、message のみ渡す
-    return handleAIAssist(params.message) as Promise<ResponseData>;
+  // AIアシスト機能の統合
+  const handleOpenAIAssist = async (): Promise<void> => {
+    openAIAssist(
+      "plot",
+      {
+        title: "プロット作成アシスタント",
+        description:
+          "あらすじを参照して、物語に必要なプロットアイテムを生成します。",
+        defaultMessage: `あらすじを参照して、物語に必要なプロットアイテムを複数考えてください。
+それぞれ以下の形式でプロットアイテムを記述してください：
+
+プロットアイテム1
+タイトル: [プロットのタイトル]
+詳細: [具体的な説明]
+
+プロットアイテム2
+タイトル: [プロットのタイトル]
+詳細: [具体的な説明]
+
+※解説や分析は不要です。プロットアイテムのみをシンプルな形式で提示してください。
+
+現在のあらすじ:
+${(currentProject as NovelProject)?.synopsis || "（あらすじがありません）"}`,
+        onComplete: (result) => {
+          // プロット生成完了時の処理
+          console.log("プロット生成完了:", result);
+        },
+      },
+      currentProject
+    );
   };
 
   if (!currentProject) {
@@ -242,32 +257,6 @@ const PlotPageContent: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* AIアシストモーダル */}
-      <AIAssistModal
-        open={aiAssistModalOpen}
-        onClose={() => setAiAssistModalOpen(false)}
-        onAssistComplete={() => {
-          // モーダルは自動的に閉じる
-        }}
-        requestAssist={handleAIAssistTyped}
-        title="プロット作成アシスタント"
-        description="プロットのアイデアが欲しい場合、指示を入力してください。"
-        defaultMessage={`あらすじを参照して、物語に必要なプロットアイテムを複数考えてください。
-それぞれ以下の形式でプロットアイテムを記述してください：
-
-プロットアイテム1
-タイトル: [プロットのタイトル]
-詳細: [具体的な説明]
-
-プロットアイテム2
-タイトル: [プロットのタイトル]
-詳細: [具体的な説明]
-
-※解説や分析は不要です。プロットアイテムのみをシンプルな形式で提示してください。
-
-現在のあらすじ:
-${(currentProject as NovelProject)?.synopsis || "（あらすじがありません）"}`}
-      />
     </Container>
   );
 };

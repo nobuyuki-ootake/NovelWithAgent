@@ -1,8 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
+import { Box } from "@mui/material";
 import { Descendant, Editor } from "slate";
 import VerticalContentEditor from "./VerticalContentEditor";
-import { ReactEditor } from "slate-react";
-import Box from "@mui/material/Box";
 
 interface VerticalContentEditorWrapperProps {
   value: Descendant[];

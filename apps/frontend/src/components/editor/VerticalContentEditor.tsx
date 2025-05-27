@@ -1,21 +1,11 @@
-import React, { useCallback, useMemo } from "react";
-import {
-  createEditor,
-  Descendant,
-  Editor,
-  Transforms,
-  Element as SlateElement,
-  Text,
-} from "slate";
+import React, { useCallback } from "react";
+import { Descendant, Editor } from "slate";
 import {
   Slate,
   Editable,
-  withReact,
   RenderElementProps,
   RenderLeafProps,
-  ReactEditor,
 } from "slate-react";
-import { withHistory } from "slate-history";
 import { styled } from "@mui/material/styles";
 import { Box, Paper } from "@mui/material";
 import type { CustomElement, CustomText } from "../../types/slate";

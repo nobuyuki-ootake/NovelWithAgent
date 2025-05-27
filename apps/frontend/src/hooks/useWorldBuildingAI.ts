@@ -1,6 +1,4 @@
 import { useState, useCallback } from "react";
-import { useAIAssist } from "./useAIAssist";
-import { toast } from "sonner";
 import { useElementAccumulator } from "./useElementAccumulator";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -21,21 +19,13 @@ import {
  * 世界観構築のAI支援機能を管理するカスタムフック
  */
 export const useWorldBuildingAI = () => {
-  // AI生成モーダル表示の制御
-  const [aiModalOpen, setAIModalOpen] = useState(false);
-
   // 生成進捗の表示
-  const [isGenerating, setIsGenerating] = useState(false);
   const [aiGenerationProgress, setAiGenerationProgress] = useState(0);
   const [currentElement, setCurrentElement] = useState("");
   const [totalElements, setTotalElements] = useState(0);
 
   // 通知関連
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState("");
-
-  // 再レンダリング制御
-  const [triggerRerender, setTriggerRerender] = useState(0);
 
   // 要素累積機能を使用
   const {
@@ -48,36 +38,10 @@ export const useWorldBuildingAI = () => {
     addPendingGeography,
     addPendingTechnology,
     addPendingFreeField,
-    saveAllPendingElements,
-    forceMarkTabAsUpdated,
   } = useElementAccumulator();
 
-  // initiateWorldBuildingAIGeneration のダミー実装
-  const initiateWorldBuildingAIGeneration = useCallback(
-    async (
-      elementsToGenerate: Array<{
-        elementType: string;
-        count: number;
-        customPrompt?: string;
-      }>,
-      apiKey: string,
-      model: string
-    ) => {
-      console.warn(
-        "initiateWorldBuildingAIGeneration is not implemented in useWorldBuildingAI",
-        { elementsToGenerate, apiKey, model }
-      );
-      // 実際のAI生成ロジックがないため、Promiseを解決するだけ
-      return Promise.resolve();
-    },
-    []
-  );
-
-  // cancelAIGeneration のダミー実装
-  const cancelAIGeneration = useCallback(() => {
-    console.warn("cancelAIGeneration is not implemented in useWorldBuildingAI");
-    // 実際のキャンセルロジックがない
-  }, []);
+  // 再レンダリング制御
+  const [triggerRerender] = useState(0);
 
   // 世界観要素の処理
   const handleProcessWorldBuildingElement = useCallback(
@@ -293,121 +257,61 @@ export const useWorldBuildingAI = () => {
     ]
   );
 
-  // AIアシスト機能を使用
-  const { generateWorldBuildingBatch } = useAIAssist({
-    onWorldBuildingElementGenerated: (result) => {
-      console.log(
-        "[DEBUG] AIアシスト onWorldBuildingElementGenerated - result:",
-        result
+  // AIアシスト機能を使用（削除済み）
+  // const { generateWorldBuildingBatch } = useAIAssist({
+  //   onWorldBuildingElementGenerated: (result) => {
+  //     // 削除済み
+  //   },
+  //   onWorldBuildingBatchSuccess: (result) => {
+  //     // 削除済み
+  //   },
+  //   onError: (error) => {
+  //     // 削除済み
+  //   },
+  // });
+
+  // generateWorldBuildingBatchのダミー実装
+  const generateWorldBuildingBatch = useCallback(
+    async (
+      message: string,
+      plotElements: unknown[],
+      existingElements: unknown[]
+    ) => {
+      console.warn(
+        "generateWorldBuildingBatch is not implemented in useWorldBuildingAI",
+        { message, plotElements, existingElements }
       );
-      if (result && (result.elementName || result.name)) {
-        try {
-          console.log(
-            "AIアシスト onWorldBuildingElementGenerated - result (valid name):",
-            result
-          );
-
-          let elementDataToProcess: WorldBuildingElement | undefined =
-            undefined;
-          if (result.elementData && typeof result.elementData === "object") {
-            elementDataToProcess = result.elementData as WorldBuildingElement;
-            if ((result.elementData as any).rawData) {
-              elementDataToProcess = (result.elementData as any)
-                .rawData as WorldBuildingElement;
-            }
-          } else if (
-            typeof result.response === "string" &&
-            result.response.trim() !== ""
-          ) {
-            console.warn(
-              "[WARN] AI response string parsing not implemented in this example. Element may not be processed."
-            );
-          }
-
-          if (elementDataToProcess) {
-            console.log(
-              "[DEBUG] AIアシスト onWorldBuildingElementGenerated - Processing elementData:",
-              elementDataToProcess
-            );
-            handleProcessWorldBuildingElement(elementDataToProcess);
-          } else {
-            console.warn(
-              "[WARN] AIアシスト onWorldBuildingElementGenerated - No valid elementData to process from result:",
-              result
-            );
-          }
-        } catch (err) {
-          console.error(
-            "[Error] AIアシスト onWorldBuildingElementGenerated - 要素処理中のエラー:",
-            err
-          );
-        }
-      } else {
-        console.warn(
-          "[WARN] AIアシスト onWorldBuildingElementGenerated - Invalid result or missing element name:",
-          result
-        );
-      }
+      return Promise.resolve();
     },
+    []
+  );
 
-    // AIアシスト機能が完了した時のコールバック
-    onWorldBuildingBatchSuccess: (result) => {
-      console.log(
-        "[DEBUG] AIアシスト onWorldBuildingBatchSuccess - result:",
-        result
+  // initiateWorldBuildingAIGeneration のダミー実装
+  const initiateWorldBuildingAIGeneration = useCallback(
+    async (
+      elementsToGenerate: Array<{
+        elementType: string;
+        count: number;
+        customPrompt?: string;
+      }>,
+      apiKey: string,
+      model: string
+    ) => {
+      console.warn(
+        "initiateWorldBuildingAIGeneration is not implemented in useWorldBuildingAI",
+        { elementsToGenerate, apiKey, model }
       );
-      if (result && result.elements && result.elements.length > 0) {
-        setIsGenerating(false);
-
-        console.log(
-          "[DEBUG] AIアシスト onWorldBuildingBatchSuccess - Calling saveAllPendingElements"
-        );
-        saveAllPendingElements();
-
-        setNotificationMessage(
-          `全ての世界観要素(${result.elements.length}件)を処理完了しました！`
-        );
-        setNotificationOpen(true);
-
-        setTimeout(() => {
-          const updatedIndexes = new Set<number>();
-          result.elements?.forEach((element) => {
-            if (element.elementType) {
-              const pseudoIndex = element.elementType.charCodeAt(0) % 10;
-              updatedIndexes.add(pseudoIndex);
-            }
-          });
-          updatedIndexes.forEach((index) => forceMarkTabAsUpdated(index));
-          if (updatedIndexes.size === 0) {
-            forceMarkTabAsUpdated(0);
-            forceMarkTabAsUpdated(1);
-            forceMarkTabAsUpdated(2);
-            forceMarkTabAsUpdated(3);
-          }
-
-          setTriggerRerender((prev) => prev + 1);
-          toast.success("AIによる世界観要素の追加が完了しました！");
-        }, 100);
-      } else {
-        setIsGenerating(false);
-        toast.info("AIによって追加される新しい世界観要素はありませんでした。");
-        console.log(
-          "[DEBUG] AIアシスト onWorldBuildingBatchSuccess - No elements to process or save."
-        );
-      }
+      return Promise.resolve();
     },
+    []
+  );
 
-    // エラー発生時のコールバック
-    onError: (error) => {
-      setIsGenerating(false);
-      setNotificationMessage(`エラーが発生しました: ${error.message}`);
-      setNotificationOpen(true);
-      toast.error(`世界観生成中にエラーが発生しました: ${error.message}`);
-      console.error("[Error] AIアシスト onError:", error);
-    },
-  });
+  // cancelAIGeneration のダミー実装
+  const cancelAIGeneration = useCallback(() => {
+    console.warn("cancelAIGeneration is not implemented in useWorldBuildingAI");
+  }, []);
 
-  // 進捗状況を更新するコールバック (useAIAssist に渡す想定)
+  // 進捗状況を更新するコールバック
   const handleProgressUpdate = useCallback(
     (progress: number, current: string, total: number) => {
       setAiGenerationProgress(progress);
@@ -418,13 +322,9 @@ export const useWorldBuildingAI = () => {
   );
 
   return {
-    aiModalOpen,
-    setAIModalOpen,
     aiGenerationProgress,
-    isGenerating,
     generateWorldBuildingBatch,
     notificationOpen,
-    notificationMessage,
     setNotificationOpen,
     currentElement,
     totalElements,
@@ -432,5 +332,6 @@ export const useWorldBuildingAI = () => {
     handleProgressUpdate,
     initiateWorldBuildingAIGeneration,
     cancelAIGeneration,
+    handleProcessWorldBuildingElement,
   };
 };

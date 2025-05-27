@@ -9,7 +9,7 @@ import {
 } from "slate-react";
 import { Box, Paper } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { CustomElement, CustomText } from "../../types/editor";
+import { CustomElement, CustomText } from "../../types/slate";
 
 // スタイル付きコンポーネント
 const VerticalEditorContainer = styled(Paper)(({ theme }) => ({

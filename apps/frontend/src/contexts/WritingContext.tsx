@@ -6,7 +6,7 @@ import React, {
   MutableRefObject,
 } from "react";
 import { useWriting } from "../hooks/useWriting";
-import { Descendant, Editor, Transforms } from "slate";
+import { Descendant, Editor } from "slate";
 import { AlertColor } from "@mui/material";
 import {
   Chapter,

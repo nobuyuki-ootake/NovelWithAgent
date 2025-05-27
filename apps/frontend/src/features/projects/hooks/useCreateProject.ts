@@ -5,6 +5,7 @@ import {
   NovelProject as Project,
   ProjectStatus,
 } from "@novel-ai-assistant/types";
+import { Descendant } from "slate";
 
 interface CreateProjectOptions {
   name: string;
@@ -59,7 +60,7 @@ export const useCreateProject = () => {
             id: uuidv4(),
             title: "第一章",
             synopsis: "",
-            content: "",
+            content: [] as Descendant[],
             order: 1,
             scenes: [],
             status: "draft",

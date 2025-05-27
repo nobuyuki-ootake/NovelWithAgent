@@ -1,39 +1,38 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { currentChapterSelector } from "../store/selectors";
-import { currentProjectState, currentChapterIdState } from "../store/atoms";
-import { serializeToText, createEmptyEditor } from "../utils/editorUtils";
-import { v4 as uuidv4 } from "uuid";
+import { createEmptyEditor } from "../utils/editorUtils";
+import { currentProjectState } from "../store/atoms";
 import {
   Descendant,
+  createEditor,
   Editor,
   Transforms,
-  Element,
   Node,
-  Range,
   Point,
-  createEditor as slateCreateEditor,
+  Element as SlateElement,
 } from "slate";
-import { useSlate, ReactEditor, withReact } from "slate-react";
-import { withHistory } from "slate-history";
+import { withReact } from "slate-react";
 import {
   Chapter,
-  TimelineEvent,
   NovelProject,
-  WorldBuildingElement,
+  TimelineEvent,
 } from "@novel-ai-assistant/types";
-import { useParams } from "react-router-dom";
+import { currentChapterSelector } from "../store/selectors";
+import { currentChapterIdState } from "../store/atoms";
+import { v4 as uuidv4 } from "uuid";
+import { withHistory } from "slate-history";
+import { ReactEditor } from "slate-react";
 import type { CustomElement, CustomText } from "../types/slate";
 
-export function useWriting() {
-  const { novelId: _novelId, chapterId } = useParams() as {
+export const useWriting = () => {
+  const { novelId: _novelId } = useParams() as {
     novelId: string;
-    chapterId?: string;
   };
 
   const [editorKey, setEditorKey] = useState(0); // エディタの強制再レンダリング用
   const editor = useMemo(
-    () => withHistory(withReact(slateCreateEditor())),
+    () => withHistory(withReact(createEditor())),
     [editorKey]
   );
   const editorRef = useRef<Editor>(editor);
@@ -93,7 +92,7 @@ export function useWriting() {
       let pageBreakCount = 0;
       for (const [node] of Node.nodes(editor)) {
         if (
-          Element.isElement(node) &&
+          SlateElement.isElement(node) &&
           (node as CustomElement).type === "page-break"
         ) {
           pageBreakCount++;
@@ -151,7 +150,7 @@ export function useWriting() {
       let breaksBeforeCursor = 0;
       for (const [node, path] of Node.nodes(editor)) {
         if (
-          Element.isElement(node) &&
+          SlateElement.isElement(node) &&
           (node as CustomElement).type === "page-break"
         ) {
           const pageBreakStartPoint = Editor.start(editor, path);
@@ -423,11 +422,13 @@ export function useWriting() {
           for (const [node, path] of Node.nodes(editor)) {
             console.log(
               `  Iterating nodes: path=${JSON.stringify(path)}, node type=${
-                Element.isElement(node) ? (node as CustomElement).type : "text"
+                SlateElement.isElement(node)
+                  ? (node as CustomElement).type
+                  : "text"
               }`
             );
             if (
-              Element.isElement(node) &&
+              SlateElement.isElement(node) &&
               (node as CustomElement).type === "page-break"
             ) {
               count++;
@@ -519,4 +520,4 @@ export function useWriting() {
     editorRef,
     editorKey,
   };
-}
+};

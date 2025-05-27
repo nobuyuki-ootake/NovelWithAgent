@@ -23,7 +23,7 @@ import RulesTab from "../components/worldbuilding/RulesTab";
 import PlacesTab from "../components/worldbuilding/PlacesTab";
 import FreeFieldsTab from "../components/worldbuilding/FreeFieldsTab";
 import CharacterStatusList from "../components/characters/CharacterStatusList";
-import { AIAssistModal } from "../components/modals/AIAssistModal";
+import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../store/atoms";
 import { useWorldBuildingContext } from "../contexts/WorldBuildingContext";
@@ -35,6 +35,7 @@ import { toast } from "sonner";
 const WorldBuildingPage: React.FC = () => {
   const currentProject = useRecoilValue(currentProjectState);
   const { resetWorldBuildingElements } = useElementAccumulator();
+  const { openAIAssist } = useAIChatIntegration();
 
   // コンテキストから状態とハンドラ関数を取得
   const {
@@ -48,8 +49,6 @@ const WorldBuildingPage: React.FC = () => {
     handleSaveWorldBuilding,
     handleCloseSnackbar,
     updatedTabs,
-    aiModalOpen,
-    setAIModalOpen,
     notificationOpen,
     notificationMessage,
     setNotificationOpen,
@@ -78,27 +77,48 @@ const WorldBuildingPage: React.FC = () => {
     };
   }, [hasUnsavedChanges, isAIProcessing]);
 
-  // AIに世界観要素を考えてもらう
-  const handleAIAssist = async (params: {
-    message: string;
-    plotId?: string | null;
-  }) => {
-    const { message } = params; // message を取り出す
+  // AIアシスト機能の統合
+  const handleOpenAIAssist = (): void => {
     if (!currentProject) {
       toast.error("プロジェクトがロードされていません。");
       return;
     }
-    console.log("AIアシスト要求:", message);
-    setIsAIProcessing(true); // AI処理開始
-    try {
-      await generateWorldBuildingBatch(message);
-      setHasUnsavedChanges(true); // Contextのセッターを使用
-    } catch (error) {
-      console.error("AIアシスト処理中にエラーが発生しました:", error);
-    } finally {
-      setIsAIProcessing(false);
-      setAIModalOpen(false);
-    }
+
+    openAIAssist(
+      "worldbuilding",
+      {
+        title: "AIに世界観を考えてもらう",
+        description:
+          "どのような世界観にしたいか、指示を入力してください。物語の雰囲気や時代背景、主要な場所などを具体的に伝えるとよいでしょう。",
+        defaultMessage: `「${
+          currentProject.title
+        }」の世界観について、以下の要素を考えてください。
+- 物語の舞台となる主要な場所（少なくとも3つ）
+- この世界のルール（魔法や技術の制約など）
+- 特徴的な文化や風習
+
+物語のあらすじ:
+${currentProject.synopsis || "（あらすじが設定されていません）"}`,
+        supportsBatchGeneration: true,
+        onComplete: async (result) => {
+          console.log("世界観生成完了:", result);
+          setIsAIProcessing(true);
+          try {
+            await generateWorldBuildingBatch(
+              result.content,
+              currentProject?.plot || [],
+              []
+            );
+            setHasUnsavedChanges(true);
+          } catch (error) {
+            console.error("AIアシスト処理中にエラーが発生しました:", error);
+          } finally {
+            setIsAIProcessing(false);
+          }
+        },
+      },
+      currentProject
+    );
   };
 
   const handleResetWorldBuilding = () => {
@@ -155,9 +175,7 @@ const WorldBuildingPage: React.FC = () => {
               variant="contained"
               color="primary"
               startIcon={<SmartToyIcon />}
-              onClick={() => {
-                setAIModalOpen(true);
-              }}
+              onClick={handleOpenAIAssist}
               disabled={isAIProcessing}
             >
               AIに世界観を考えてもらう
@@ -174,25 +192,6 @@ const WorldBuildingPage: React.FC = () => {
           </Box>
         </Box>
       </Paper>
-
-      {/* AI支援モーダル */}
-      <AIAssistModal
-        open={aiModalOpen}
-        onClose={() => setAIModalOpen(false)}
-        title="AIに世界観を考えてもらう"
-        description="どのような世界観にしたいか、指示を入力してください。物語の雰囲気や時代背景、主要な場所などを具体的に伝えるとよいでしょう。"
-        defaultMessage={`「${
-          currentProject.title
-        }」の世界観について、以下の要素を考えてください。
-- 物語の舞台となる主要な場所（少なくとも3つ）
-- この世界のルール（魔法や技術の制約など）
-- 特徴的な文化や風習
-
-物語のあらすじ:
-${currentProject.synopsis || "（あらすじが設定されていません）"}`}
-        requestAssist={handleAIAssist}
-        supportsBatchGeneration={true}
-      />
 
       <Paper
         sx={{

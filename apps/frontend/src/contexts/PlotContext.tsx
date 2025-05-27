@@ -1,39 +1,12 @@
-import React, { createContext, useContext, ReactNode, useState } from "react";
+import React, { createContext, useContext, ReactNode } from "react";
 import { usePlot } from "../hooks/usePlot";
-import { useAIAssist } from "../hooks/useAIAssist";
 import { v4 as uuidv4 } from "uuid";
 import { PlotElement, NovelProject } from "@novel-ai-assistant/types";
 import { toast } from "sonner";
-import { useRecoilValue } from "recoil";
-import { currentProjectState } from "../store/atoms";
 import { SelectChangeEvent } from "@mui/material";
 import { DropResult } from "react-beautiful-dnd";
+import { parseAIResponseToPlotItems } from "../utils/aiResponseParser";
 
-// Helper function to parse AI response to PlotElement[]
-const parseAIResponseToPlotItems = (
-  aiResponse: string
-): Partial<PlotElement>[] => {
-  const plotBlocks = aiResponse.split(/\n-----\n|\n---\n/); // Assuming plot items are separated by --- or -----
-  return plotBlocks
-    .map((block) => {
-      const item: Partial<PlotElement> = {};
-      const titleMatch = block.match(/タイトル[：:]\s*(.+?)($|\n)/);
-      if (titleMatch && titleMatch[1]) item.title = titleMatch[1].trim();
-
-      const descriptionMatch = block.match(
-        /説明[：:]\s*(.+?)($|\n|プロット[：:]|登場人物[：:])/s
-      );
-      if (descriptionMatch && descriptionMatch[1])
-        item.description = descriptionMatch[1].trim();
-
-      // Add other PlotElement fields if AI provides them (e.g., status, order)
-      // For now, these will be set défaut in applyAIPlotResponse
-      return item;
-    })
-    .filter((item) => item.title); // Ensure at least a title exists
-};
-
-// Contextで提供する値の型定義
 interface PlotContextType {
   // usePlotから取得した状態
   plotItems: PlotElement[];
@@ -68,11 +41,7 @@ interface PlotContextType {
   handleSave: () => void;
   handleCloseSnackbar: () => void;
 
-  // AIアシスト機能
-  aiAssistModalOpen: boolean;
-  setAiAssistModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  handleOpenAIAssist: () => Promise<void>;
-  handleAIAssist: (message: string) => Promise<unknown>;
+  // AIアシスト機能（削除予定）
   applyAIPlotResponse: (aiResponse: string) => void;
 }
 
@@ -83,9 +52,6 @@ const PlotContext = createContext<PlotContextType | undefined>(undefined);
 export const PlotProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
-  const projectData = useRecoilValue(currentProjectState);
-
   // usePlotフックからプロット関連のロジックを取得
   const {
     currentProject,
@@ -116,16 +82,7 @@ export const PlotProvider: React.FC<{ children: ReactNode }> = ({
     setHasUnsavedChanges,
   } = usePlot();
 
-  // AIアシスト機能
-  const { assistPlot } = useAIAssist({
-    onPlotSuccess: (result) => {
-      if (result && result.response) {
-        applyAIPlotResponse(result.response);
-      }
-    },
-  });
-
-  // AIの応答をプロットフォームに適用する関数
+  // AIの応答をプロットフォームに適用する関数（後方互換性のため残す）
   const applyAIPlotResponse = (aiResponse: string) => {
     try {
       // AIからの応答を解析してプロット配列として取得
@@ -165,29 +122,6 @@ export const PlotProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // AIアシスタントを開く
-  const handleOpenAIAssist = async () => {
-    setAiAssistModalOpen(true);
-    return Promise.resolve();
-  };
-
-  // AIアシストリクエスト実行
-  const handleAIAssist = async (message: string) => {
-    // あらすじを参照してプロットアイテム生成をリクエスト
-    const synopsis = (projectData as NovelProject)?.synopsis || "";
-    const existingPlotElements = (projectData as NovelProject)?.plot || [];
-    return await assistPlot(message, [
-      { type: "synopsis", content: synopsis } as any,
-      ...existingPlotElements.map(
-        (item) =>
-          ({
-            type: "plotItem",
-            content: item,
-          } as any)
-      ),
-    ]);
-  };
-
   // コンテキストで提供する値
   const value: PlotContextType = {
     // usePlotからの状態と関数
@@ -218,11 +152,7 @@ export const PlotProvider: React.FC<{ children: ReactNode }> = ({
     handleSave,
     handleCloseSnackbar,
 
-    // AIアシスト関連
-    aiAssistModalOpen,
-    setAiAssistModalOpen,
-    handleOpenAIAssist,
-    handleAIAssist,
+    // AIアシスト関連（後方互換性のため残す）
     applyAIPlotResponse,
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Dialog,
   DialogTitle,
@@ -12,9 +12,8 @@ import {
   Select,
   SelectChangeEvent,
 } from "@mui/material";
-import { useAIAssist } from "../../hooks/useAIAssist";
 import { AIAssistButton } from "../ui/AIAssistButton";
-import { AIAssistModal, ResponseData } from "../modals/AIAssistModal";
+import { useAIChatIntegration } from "../../hooks/useAIChatIntegration";
 import { useRecoilValue } from "recoil";
 import { currentProjectState } from "../../store/atoms";
 
@@ -41,17 +40,8 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
   onDescriptionChange,
   onStatusChange,
 }) => {
-  const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
   const currentProject = useRecoilValue(currentProjectState);
-
-  // AIアシスト機能
-  const { assistPlot, isLoading } = useAIAssist({
-    onPlotSuccess: (result) => {
-      if (result && result.response) {
-        applyAIResponse(result.response);
-      }
-    },
-  });
+  const { openAIAssist } = useAIChatIntegration();
 
   // AIの応答をプロットフォームに適用する関数
   const applyAIResponse = (aiResponse: string) => {
@@ -87,49 +77,27 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
     }
   };
 
-  // AIアシストモーダルを開く
-  const handleOpenAIAssist = async () => {
-    setAiAssistModalOpen(true);
-    return Promise.resolve();
-  };
+  // AIアシスト機能の統合
+  const handleOpenAIAssist = async (): Promise<void> => {
+    const defaultMessage = `あらすじを参照して、物語に必要なプロットアイテムを考えてください。\nタイトルと詳細を含めてください。\n\n現在のあらすじ:\n${
+      currentProject?.synopsis || "（あらすじがありません）"
+    }`;
 
-  // AIアシストリクエスト実行
-  const handleAIAssist = async (params: {
-    message: string;
-    plotId?: string | null;
-  }): Promise<ResponseData> => {
-    // AIが処理中の場合は実行しない
-    if (isLoading) {
-      return {
-        response: "AI処理中です。しばらくお待ちください。",
-        error: true,
-      };
-    }
-
-    // プロット要素と一緒にリクエスト
-    try {
-      const plotItemsForRequest = currentProject?.plot || [];
-      // TODO: synopsis を message に含めるか、API側の対応が必要か確認
-      const result = await assistPlot(params.message, plotItemsForRequest);
-      // AgentResponse を ResponseData に変換
-      const responseForModal: ResponseData = {
-        response: result.response, // result が { response: string } を持つと仮定
-      };
-      // applyAIResponse は assistPlot の onPlotSuccess で呼ばれるのでここでは不要かもしれない
-      // if (result.response) {
-      //   applyAIResponse(result.response);
-      // }
-      setAiAssistModalOpen(false); // 成功時モーダルを閉じる
-      return responseForModal;
-    } catch (error) {
-      console.error("プロット支援エラー:", error);
-      return {
-        response: `プロット支援中にエラーが発生しました: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error: true,
-      };
-    }
+    openAIAssist(
+      "plot",
+      {
+        title: "AIにプロットアイテムを作成してもらう",
+        description:
+          "あらすじを参照して、物語のプロットアイテム（イベント、転換点など）を作成します。",
+        defaultMessage,
+        onComplete: (result) => {
+          if (result && result.content) {
+            applyAIResponse(result.content);
+          }
+        },
+      },
+      currentProject
+    );
   };
 
   return (
@@ -192,21 +160,6 @@ const PlotItemEditDialog: React.FC<PlotItemEditDialogProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* AIアシストモーダル */}
-      <AIAssistModal
-        open={aiAssistModalOpen}
-        onClose={() => setAiAssistModalOpen(false)}
-        title="AIにプロットアイテムを作成してもらう"
-        description="あらすじを参照して、物語のプロットアイテム（イベント、転換点など）を作成します。"
-        defaultMessage={`あらすじを参照して、物語に必要なプロットアイテムを考えてください。\nタイトルと詳細を含めてください。\n\n現在のあらすじ:\n${
-          currentProject?.synopsis || "（あらすじがありません）"
-        }`}
-        onAssistComplete={() => {
-          // モーダルは自動的に閉じる
-        }}
-        requestAssist={handleAIAssist}
-      />
     </>
   );
 };

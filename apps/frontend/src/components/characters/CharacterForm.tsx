@@ -10,7 +10,6 @@ import {
   Button,
   Chip,
   Avatar,
-  FormHelperText,
   Tooltip,
   // DialogContentText, // Unused
 } from "@mui/material";
@@ -27,12 +26,11 @@ import {
 } from "@novel-ai-assistant/types";
 import CharacterStatusList from "./CharacterStatusList";
 import CharacterStatusEditorDialog from "./CharacterStatusEditorDialog";
-import { AIAssistModal, ResponseData } from "../modals/AIAssistModal";
-import { AgentResponse } from "../../types/apiResponse";
-import { useAIAssist } from "../../hooks/useAIAssist";
-import { AIAssistButton } from "../ui/AIAssistButton";
+import { useAIChatIntegration } from "../../hooks/useAIChatIntegration";
+import { SelectChangeEvent } from "@mui/material/Select";
 import { useRecoilValue } from "recoil";
-import { currentProjectState } from "../../store/atoms";
+import { currentProjectState, ResponseData } from "../../store/atoms";
+import { AIAssistButton } from "../ui/AIAssistButton";
 // import { useCurrentProject } from "../../contexts/CurrentProjectContext"; // Unused
 // import { useCharactersContext } from "../../contexts/CharactersContext"; // Unused
 
@@ -141,74 +139,69 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
   const [editingStatus, setEditingStatus] = useState<
     CharacterStatus | undefined
   >(undefined);
-  const [aiAssistModalOpen, setAiAssistModalOpen] = useState(false);
-  const [aiAssistTarget, setAiAssistTarget] = useState<
-    "basic" | "background" | "personality"
-  >("basic");
+  const { openAIAssist } = useAIChatIntegration();
 
-  // useAIAssistフックを使用
-  const { assistCharacter, isLoading: aiLoading } = useAIAssist({
-    onCharacterSuccess: (data) => {
-      console.log("AI Character assist success:", data);
-    },
-    onError: (error) => {
-      console.error("AI Character assist error:", error);
-    },
-  });
-
-  // AIアシストモーダルを開く
+  // AIアシストを開く
   const handleOpenAIAssist =
     (target: "basic" | "background" | "personality") => async () => {
-      setAiAssistTarget(target);
-      setAiAssistModalOpen(true);
-      return Promise.resolve();
-    };
+      const title =
+        target === "basic"
+          ? "AIにキャラクターの基本情報を提案してもらう"
+          : target === "background"
+          ? "AIにキャラクターの背景・動機を提案してもらう"
+          : "AIにキャラクターの性格・特性を提案してもらう";
 
-  // AIアシストリクエスト実行
-  const handleAIAssist = async (params: {
-    message: string;
-    plotId?: string | null;
-  }): Promise<ResponseData> => {
-    if (aiLoading) {
-      console.warn("AI is already processing a request.");
-      return {
-        response: "AI処理中です。しばらくお待ちください。",
-        error: true,
-      };
-    }
-    try {
-      const existingCharacters =
-        currentProject?.characters?.filter(
-          (c: Character) => c.id !== formData.id
-        ) || [];
-      const aiResult: AgentResponse = await assistCharacter(
-        params.message,
-        existingCharacters
+      const description =
+        target === "basic"
+          ? "あらすじとプロットを参照して、キャラクターの基本情報（名前、役割、性別、年齢など）を生成します。"
+          : target === "background"
+          ? "あらすじとプロットを参照して、キャラクターの背景や動機を生成します。"
+          : "あらすじとプロットを参照して、キャラクターの性格や特性を生成します。";
+
+      const defaultMessage =
+        `あらすじとプロットを参照して、${
+          target === "basic"
+            ? "キャラクターの基本情報（名前、役割、性別、年齢など）"
+            : target === "background"
+            ? "キャラクターの背景や動機"
+            : "キャラクターの性格や特性（長所、短所、特徴的な性格）"
+        }を考えてください。\n\n` +
+        `現在のあらすじ：\n${
+          currentProject?.synopsis || "（あらすじがありません）"
+        }\n\n` +
+        `キャラクター名： ${formData.name || "（名前未設定）"}\n` +
+        `役割： ${
+          formData.role === "protagonist"
+            ? "主人公"
+            : formData.role === "antagonist"
+            ? "敵役"
+            : "脇役"
+        }` +
+        `${
+          currentProject?.plot && currentProject.plot.length > 0
+            ? "\n\nプロット：\n" +
+              currentProject.plot
+                .map((p: PlotElement) => `- ${p.title}: ${p.description}`)
+                .join("\n")
+            : ""
+        }`;
+
+      await openAIAssist(
+        "characters",
+        {
+          title,
+          description,
+          defaultMessage,
+          onComplete: (result: ResponseData) => {
+            if (result.content) {
+              applyAIResponse(result.content, target);
+            }
+          },
+        },
+        currentProject,
+        []
       );
-
-      const responseForModal: ResponseData = {
-        response: aiResult.response,
-      };
-
-      if (aiResult.response) {
-        applyAIResponse(
-          aiResult.response,
-          aiAssistTarget as "basic" | "background" | "personality"
-        );
-      }
-
-      setAiAssistModalOpen(false);
-      return responseForModal;
-    } catch (error) {
-      console.error("AI Character支援エラー (handleAIAssist catch):", error);
-      return {
-        response: `キャラクター支援中にエラーが発生しました: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        error: true,
-      };
-    }
-  };
+    };
 
   // AIの応答を適用する関数
   const applyAIResponse = (
@@ -280,7 +273,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
 
         // すでに存在する特性を除去して追加
         const existingTraitValues = new Set(
-          formData.traits.map((t) => t.value)
+          (formData.traits || []).map((t: CharacterTrait) => t.value || t.name)
         );
         for (const traitValue of traits) {
           if (!existingTraitValues.has(traitValue)) {
@@ -296,6 +289,26 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
       if (descriptionMatch && descriptionMatch[1]) {
         onInputChange({
           target: { name: "description", value: descriptionMatch[1].trim() },
+        } as React.ChangeEvent<HTMLTextAreaElement>);
+      }
+
+      // 性格の抽出
+      const personalityMatch = aiResponse.match(
+        /性格[：:]\s*(.+?)(\n\n|\n[^:]|$)/s
+      );
+      if (personalityMatch && personalityMatch[1]) {
+        onInputChange({
+          target: { name: "personality", value: personalityMatch[1].trim() },
+        } as React.ChangeEvent<HTMLTextAreaElement>);
+      }
+
+      // 外見の抽出
+      const appearanceMatch = aiResponse.match(
+        /外見[：:]\s*(.+?)(\n\n|\n[^:]|$)/s
+      );
+      if (appearanceMatch && appearanceMatch[1]) {
+        onInputChange({
+          target: { name: "appearance", value: appearanceMatch[1].trim() },
         } as React.ChangeEvent<HTMLTextAreaElement>);
       }
     }
@@ -333,9 +346,9 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
       return (
         <Avatar
           sx={{
-            width: 120,
-            height: 120,
-            fontSize: "4rem",
+            width: 80,
+            height: 80,
+            fontSize: "3rem",
             bgcolor:
               characterIcons[formData.role]?.color ||
               characterIcons.default.color,
@@ -345,149 +358,155 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
         </Avatar>
       );
     } else {
-      const iconConfig =
-        characterIcons[formData.role] || characterIcons.default;
       return (
-        <Avatar
-          sx={{
-            width: 120,
-            height: 120,
-            fontSize: "4rem",
-            bgcolor: iconConfig.color,
-          }}
-        >
-          {iconConfig.emoji}
-        </Avatar>
+        <Typography variant="body2" color="text.secondary">
+          画像または絵文字を選択してください
+        </Typography>
       );
     }
   };
 
   return (
-    <Box sx={{ p: 1 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          基本情報
-        </Typography>
-        <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="h6">基本情報</Typography>
           <AIAssistButton
             onAssist={handleOpenAIAssist("basic")}
-            text="AIに基本情報を提案してもらう"
+            text="AI提案"
             variant="outline"
-            isLoading={aiLoading}
           />
         </Box>
-        <TextField
-          fullWidth
-          label="名前"
-          name="name"
-          value={formData.name}
-          onChange={onInputChange}
-          margin="normal"
-          error={!!formErrors.name}
-          helperText={formErrors.name}
-          required
-        />
-        <FormControl fullWidth margin="normal" error={!!formErrors.role}>
-          <InputLabel id="role-label">役割</InputLabel>
-          <Select
-            labelId="role-label"
-            name="role"
-            value={formData.role}
-            onChange={(e) =>
-              onSelectChange({
-                target: {
-                  name: "role",
-                  value: e.target.value as Character["role"],
-                },
-              })
-            }
-            label="役割"
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <TextField
+            name="name"
+            label="名前"
+            value={formData.name || ""}
+            onChange={onInputChange}
+            error={!!formErrors.name}
+            helperText={formErrors.name}
             required
-          >
-            <MenuItem value="protagonist">主人公</MenuItem>
-            <MenuItem value="antagonist">敵役</MenuItem>
-            <MenuItem value="supporting">脇役</MenuItem>
-          </Select>
-          {formErrors.role && (
-            <FormHelperText>{formErrors.role}</FormHelperText>
-          )}
-        </FormControl>
-        <TextField
-          fullWidth
-          label="性別"
-          name="gender"
-          value={formData.gender || ""}
-          onChange={onInputChange}
-          margin="normal"
-        />
-        <TextField
-          fullWidth
-          label="生年月日"
-          name="birthDate"
-          value={formData.birthDate || ""}
-          onChange={onInputChange}
-          margin="normal"
-          placeholder="YYYY-MM-DD または自由形式"
-        />
+          />
+          <FormControl error={!!formErrors.role}>
+            <InputLabel>役割</InputLabel>
+            <Select
+              name="role"
+              value={formData.role || "supporting"}
+              label="役割"
+              onChange={(e: SelectChangeEvent) =>
+                onSelectChange({
+                  target: {
+                    name: "role",
+                    value: e.target.value as Character["role"],
+                  },
+                })
+              }
+            >
+              <MenuItem value="protagonist">主人公</MenuItem>
+              <MenuItem value="antagonist">敵役</MenuItem>
+              <MenuItem value="supporting">脇役</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            name="gender"
+            label="性別"
+            value={formData.gender || ""}
+            onChange={onInputChange}
+          />
+          <TextField
+            name="age"
+            label="年齢"
+            value={formData.age || ""}
+            onChange={onInputChange}
+          />
+        </Box>
       </Box>
 
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          背景・動機
-        </Typography>
-        <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
+      <Box sx={{ mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="h6">背景・動機</Typography>
           <AIAssistButton
             onAssist={handleOpenAIAssist("background")}
-            text="AIに背景・動機を提案してもらう"
+            text="AI提案"
             variant="outline"
-            isLoading={aiLoading}
           />
         </Box>
         <TextField
-          fullWidth
-          label="背景"
           name="background"
+          label="背景"
           value={formData.background || ""}
           onChange={onInputChange}
-          margin="normal"
           multiline
           rows={3}
+          fullWidth
+          sx={{ mb: 2 }}
         />
         <TextField
-          fullWidth
-          label="動機"
           name="motivation"
+          label="動機"
           value={formData.motivation || ""}
           onChange={onInputChange}
-          margin="normal"
           multiline
           rows={2}
+          fullWidth
         />
       </Box>
 
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          性格・特性
-        </Typography>
-        <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
+      <Box sx={{ mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="h6">性格・特性</Typography>
           <AIAssistButton
             onAssist={handleOpenAIAssist("personality")}
-            text="AIに性格・特性を提案してもらう"
+            text="AI提案"
             variant="outline"
-            isLoading={aiLoading}
           />
         </Box>
-        <Box sx={{ display: "flex", mb: 1 }}>
+        <TextField
+          name="personality"
+          label="性格"
+          value={formData.personality || ""}
+          onChange={onInputChange}
+          multiline
+          rows={3}
+          fullWidth
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          name="description"
+          label="説明"
+          value={formData.description || ""}
+          onChange={onInputChange}
+          multiline
+          rows={3}
+          fullWidth
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          name="appearance"
+          label="外見"
+          value={formData.appearance || ""}
+          onChange={onInputChange}
+          multiline
+          rows={2}
+          fullWidth
+        />
+      </Box>
+
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          特性
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
           <TextField
-            fullWidth
-            size="small"
             label="新しい特性"
             value={newTrait}
             onChange={onNewTraitChange}
+            size="small"
+            sx={{ flexGrow: 1 }}
           />
           <Button
-            variant="contained"
-            onClick={() => onAddTrait({ value: newTrait, source: "manual" })}
+            onClick={() => onAddTrait({ value: newTrait, source: "手動入力" })}
+            variant="outlined"
             disabled={!newTrait.trim()}
             sx={{ ml: 1 }}
           >
@@ -624,58 +643,6 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
           保存
         </Button>
       </Box>
-
-      <AIAssistModal
-        open={aiAssistModalOpen}
-        onClose={() => setAiAssistModalOpen(false)}
-        title={
-          aiAssistTarget === "basic"
-            ? "AIにキャラクターの基本情報を提案してもらう"
-            : aiAssistTarget === "background"
-            ? "AIにキャラクターの背景・動機を提案してもらう"
-            : "AIにキャラクターの性格・特性を提案してもらう"
-        }
-        description={
-          aiAssistTarget === "basic"
-            ? "あらすじとプロットを参照して、キャラクターの基本情報（名前、役割、性別、年齢など）を生成します。"
-            : aiAssistTarget === "background"
-            ? "あらすじとプロットを参照して、キャラクターの背景や動機を生成します。"
-            : "あらすじとプロットを参照して、キャラクターの性格や特性を生成します。"
-        }
-        defaultMessage={
-          `あらすじとプロットを参照して、${
-            aiAssistTarget === "basic"
-              ? "キャラクターの基本情報（名前、役割、性別、年齢など）"
-              : aiAssistTarget === "background"
-              ? "キャラクターの背景や動機"
-              : "キャラクターの性格や特性（長所、短所、特徴的な性格）"
-          }を考えてください。\n\n` +
-          `現在のあらすじ：\n${
-            currentProject?.synopsis || "（あらすじがありません）"
-          }\n\n` +
-          `キャラクター名： ${formData.name || "（名前未設定）"}\n` +
-          `役割： ${
-            formData.role === "protagonist"
-              ? "主人公"
-              : formData.role === "antagonist"
-              ? "敵役"
-              : "脇役"
-          }` +
-          `${
-            currentProject?.plot && currentProject.plot.length > 0
-              ? "\n\nプロット：\n" +
-                currentProject.plot
-                  .map((p: PlotElement) => `- ${p.title}: ${p.description}`)
-                  .join("\n")
-              : ""
-          }`
-        }
-        onAssistComplete={(data) => {
-          console.log("AIAssistModal onAssistComplete:", data);
-        }}
-        requestAssist={handleAIAssist}
-        isLoading={aiLoading}
-      />
 
       <CharacterStatusEditorDialog
         open={statusEditorOpen}
