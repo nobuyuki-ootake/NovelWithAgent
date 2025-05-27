@@ -417,7 +417,8 @@ const AIChatPanel: React.FC = () => {
     <Drawer
       anchor="right"
       open={isOpen}
-      variant="persistent"
+      variant="temporary"
+      onClose={handleClose}
       sx={{
         width: 350,
         flexShrink: 0,

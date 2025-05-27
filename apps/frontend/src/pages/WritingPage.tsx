@@ -25,6 +25,9 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { useWritingContext, WritingProvider } from "../contexts/WritingContext";
 import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
 import { AIAssistButton } from "../components/ui/AIAssistButton";
+import LoadingOverlay from "../components/ui/LoadingOverlay";
+import ErrorDisplay from "../components/ui/ErrorDisplay";
+import { ProgressSnackbar } from "../components/ui/ProgressSnackbar";
 import { NovelProject, TimelineEvent } from "@novel-ai-assistant/types";
 import VerticalContentEditorWrapper from "../components/editor/VerticalContentEditorWrapper";
 import ChapterList from "../components/writing/ChapterList";
@@ -90,6 +93,43 @@ const WritingPageContent: React.FC = () => {
 
   const { openAIAssist } = useAIChatIntegration();
 
+  // エラー状態の管理
+  const [error, setError] = React.useState<Error | string | null>(null);
+
+  // AI処理の進行状況管理
+  const [aiProgress, setAiProgress] = React.useState<number | undefined>(
+    undefined
+  );
+  const [showProgressSnackbar, setShowProgressSnackbar] = React.useState(false);
+
+  // AI処理開始時の処理
+  React.useEffect(() => {
+    if (isAiProcessing) {
+      setShowProgressSnackbar(true);
+      setAiProgress(undefined); // 無限プログレスバーから開始
+
+      // 模擬的な進行状況更新（実際のAI APIから進行状況を取得する場合は置き換え）
+      const progressInterval = setInterval(() => {
+        setAiProgress((prev) => {
+          if (prev === undefined) return 10;
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 20;
+        });
+      }, 1000);
+
+      return () => clearInterval(progressInterval);
+    } else {
+      setShowProgressSnackbar(false);
+      setAiProgress(undefined);
+    }
+  }, [isAiProcessing]);
+
+  const handleCloseProgressSnackbar = () => {
+    if (!isAiProcessing) {
+      setShowProgressSnackbar(false);
+    }
+  };
+
   // キャラクター名を取得する関数
   const getCharacterName = (characterId: string) => {
     const characters = (currentProject as NovelProject)?.characters || [];
@@ -115,102 +155,109 @@ const WritingPageContent: React.FC = () => {
   // AI章生成機能（ローカル実装）
   const localHandleGenerateChapterByAI = async (): Promise<void> => {
     if (!currentChapter || !currentProject) {
-      console.warn("章またはプロジェクトが選択されていません");
+      setError("章またはプロジェクトが選択されていません");
       return;
     }
 
-    // 関連イベントの詳細を取得
-    const relatedEventDetails =
-      currentChapter.relatedEvents
-        ?.map((eventId) =>
-          timelineEvents?.find((event) => event.id === eventId)
-        )
-        .filter((event): event is TimelineEvent => !!event) || [];
+    try {
+      setError(null); // エラーをクリア
 
-    // 関連キャラクターの詳細を取得
-    const characterIdsInEvents = new Set<string>();
-    relatedEventDetails.forEach((event) => {
-      event.relatedCharacters?.forEach((charId) =>
-        characterIdsInEvents.add(charId)
-      );
-    });
+      // 関連イベントの詳細を取得
+      const relatedEventDetails =
+        currentChapter.relatedEvents
+          ?.map((eventId) =>
+            timelineEvents?.find((event) => event.id === eventId)
+          )
+          .filter((event): event is TimelineEvent => !!event) || [];
 
-    const charactersInChapter = Array.from(characterIdsInEvents)
-      .map((charId) => {
-        const char = currentProject.characters?.find((c) => c.id === charId);
-        return char
-          ? {
-              id: char.id,
-              name: char.name,
-              description: char.description,
-              role: char.role || ("supporting" as const),
-            }
-          : null;
-      })
-      .filter((char): char is NonNullable<typeof char> => char !== null);
-
-    // 関連場所の詳細を取得
-    const locationIdsInEvents = new Set<string>();
-    relatedEventDetails.forEach((event) => {
-      event.relatedPlaces?.forEach((placeId) =>
-        locationIdsInEvents.add(placeId)
-      );
-      if (event.placeId) locationIdsInEvents.add(event.placeId);
-    });
-
-    const selectedLocations = Array.from(locationIdsInEvents)
-      .map((placeId) => {
-        const place = currentProject.worldBuilding?.places?.find(
-          (p) => p.id === placeId
+      // 関連キャラクターの詳細を取得
+      const characterIdsInEvents = new Set<string>();
+      relatedEventDetails.forEach((event) => {
+        event.relatedCharacters?.forEach((charId) =>
+          characterIdsInEvents.add(charId)
         );
-        return place
-          ? {
-              id: place.id,
-              name: place.name,
-              description: place.description,
-            }
-          : null;
-      })
-      .filter(
-        (location): location is NonNullable<typeof location> =>
-          location !== null
-      );
-
-    // AI生成パラメータを構築
-    const aiParams = {
-      chapterTitle: currentChapter.title,
-      relatedEvents: relatedEventDetails.map((event) => ({
-        id: event.id,
-        title: event.title,
-        description: event.description,
-      })),
-      charactersInChapter,
-      selectedLocations,
-      userInstructions: aiUserInstructions,
-      targetChapterLength: aiTargetLength || "medium",
-      model: "gpt-4", // デフォルトモデル
-    };
-
-    // 既存の内容がある場合は上書き確認
-    const hasContent =
-      editorValue &&
-      Array.isArray(editorValue) &&
-      editorValue.length > 0 &&
-      editorValue.some((node) => {
-        if ("children" in node && Array.isArray(node.children)) {
-          return node.children.some((child) => {
-            return "text" in child && child.text && child.text.trim() !== "";
-          });
-        }
-        return false;
       });
 
-    if (hasContent) {
-      // 上書き確認ダイアログを表示
-      handleOpenAiOverwriteConfirm(aiParams);
-    } else {
-      // 直接生成開始
-      await generateChapterByAI(aiParams);
+      const charactersInChapter = Array.from(characterIdsInEvents)
+        .map((charId) => {
+          const char = currentProject.characters?.find((c) => c.id === charId);
+          return char
+            ? {
+                id: char.id,
+                name: char.name,
+                description: char.description,
+                role: char.role || ("supporting" as const),
+              }
+            : null;
+        })
+        .filter((char): char is NonNullable<typeof char> => char !== null);
+
+      // 関連場所の詳細を取得
+      const locationIdsInEvents = new Set<string>();
+      relatedEventDetails.forEach((event) => {
+        event.relatedPlaces?.forEach((placeId) =>
+          locationIdsInEvents.add(placeId)
+        );
+        if (event.placeId) locationIdsInEvents.add(event.placeId);
+      });
+
+      const selectedLocations = Array.from(locationIdsInEvents)
+        .map((placeId) => {
+          const place = currentProject.worldBuilding?.places?.find(
+            (p) => p.id === placeId
+          );
+          return place
+            ? {
+                id: place.id,
+                name: place.name,
+                description: place.description,
+              }
+            : null;
+        })
+        .filter(
+          (location): location is NonNullable<typeof location> =>
+            location !== null
+        );
+
+      // AI生成パラメータを構築
+      const aiParams = {
+        chapterTitle: currentChapter.title,
+        relatedEvents: relatedEventDetails.map((event) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+        })),
+        charactersInChapter,
+        selectedLocations,
+        userInstructions: aiUserInstructions,
+        targetChapterLength: aiTargetLength || "medium",
+        model: "gpt-4", // デフォルトモデル
+      };
+
+      // 既存の内容がある場合は上書き確認
+      const hasContent =
+        editorValue &&
+        Array.isArray(editorValue) &&
+        editorValue.length > 0 &&
+        editorValue.some((node) => {
+          if ("children" in node && Array.isArray(node.children)) {
+            return node.children.some((child) => {
+              return "text" in child && child.text && child.text.trim() !== "";
+            });
+          }
+          return false;
+        });
+
+      if (hasContent) {
+        // 上書き確認ダイアログを表示
+        handleOpenAiOverwriteConfirm(aiParams);
+      } else {
+        // 直接生成開始
+        await generateChapterByAI(aiParams);
+      }
+    } catch (err) {
+      console.error("AI章生成エラー:", err);
+      setError(err instanceof Error ? err : "AI章生成中にエラーが発生しました");
     }
   };
 
@@ -345,8 +392,22 @@ ${
         display: "flex",
         flexDirection: "column",
         height: "calc(100vh - 112px)",
+        position: "relative",
       }}
     >
+      {/* エラー表示 */}
+      {error && (
+        <Box sx={{ mb: 2 }}>
+          <ErrorDisplay
+            error={error}
+            variant="alert"
+            showRetry={true}
+            onRetry={() => setError(null)}
+            onDismiss={() => setError(null)}
+          />
+        </Box>
+      )}
+
       <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
         <Box
           sx={{
@@ -629,6 +690,23 @@ ${
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* AI処理中のローディングオーバーレイ */}
+      <LoadingOverlay
+        open={isAiProcessing}
+        message="AIが章を執筆しています..."
+        variant="overlay"
+      />
+
+      <ProgressSnackbar
+        open={showProgressSnackbar}
+        message="AIが章を執筆しています..."
+        severity="info"
+        progress={aiProgress}
+        loading={isAiProcessing}
+        onClose={handleCloseProgressSnackbar}
+        position="bottom-right"
+      />
     </Box>
   );
 };

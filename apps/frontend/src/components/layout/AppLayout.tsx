@@ -1,11 +1,7 @@
 import React from "react";
 import { Box, Container, Fab, Tooltip } from "@mui/material";
 import { useRecoilState, useRecoilValue } from "recoil";
-import {
-  currentProjectState,
-  sidebarOpenState,
-  aiChatPanelOpenState,
-} from "../../store/atoms";
+import { currentProjectState, sidebarOpenState } from "../../store/atoms";
 import Sidebar from "./Sidebar";
 import AIChatPanel from "../ai/AIChatPanel";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -17,7 +13,6 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const currentProject = useRecoilValue(currentProjectState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
-  const [aiChatPanelOpen] = useRecoilState(aiChatPanelOpenState);
 
   // プロジェクトが選択されていない場合はシンプルなレイアウトを表示
   if (!currentProject) {
@@ -47,15 +42,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* サイドバー - ドロワーをoverlayモードに変更 */}
       <Sidebar open={sidebarOpen} onClose={toggleSidebar} />
 
-      {/* メインコンテンツ - サイドバーが表示されてもスペースを取らないように修正 */}
+      {/* メインコンテンツエリア */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          transition: "all 0.2s ease-in-out",
-          ml: 0,
-          mr: aiChatPanelOpen ? "320px" : 0,
           height: "100vh",
           overflow: "auto",
           position: "relative",
@@ -63,6 +55,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         }}
       >
         {children}
+
         {/* フロート操作メニューボタン */}
         <Tooltip title="創作メニュー" placement="left">
           <Fab

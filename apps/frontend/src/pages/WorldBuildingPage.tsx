@@ -9,9 +9,11 @@ import {
   Snackbar,
   Badge,
 } from "@mui/material";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
-import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
-import SaveIcon from "@mui/icons-material/Save";
+import {
+  SmartToy as SmartToyIcon,
+  DeleteSweep as DeleteSweepIcon,
+  Save as SaveIcon,
+} from "@mui/icons-material";
 import WorldMapTab from "../components/worldbuilding/WorldMapTab";
 import SettingTab from "../components/worldbuilding/SettingTab";
 import TabPanel from "../components/worldbuilding/TabPanel";
@@ -60,6 +62,38 @@ const WorldBuildingPage: React.FC = () => {
   const { generateWorldBuildingBatch } = useWorldBuildingAI();
 
   const [isAIProcessing, setIsAIProcessing] = useState(false);
+
+  // AI処理の進行状況管理
+  const [aiProgress, setAiProgress] = useState<number | undefined>(undefined);
+  const [showProgressSnackbar, setShowProgressSnackbar] = useState(false);
+
+  // AI処理開始時の処理
+  useEffect(() => {
+    if (isAIProcessing) {
+      setShowProgressSnackbar(true);
+      setAiProgress(undefined); // 無限プログレスバーから開始
+
+      // 模擬的な進行状況更新（実際のAI APIから進行状況を取得する場合は置き換え）
+      const progressInterval = setInterval(() => {
+        setAiProgress((prev) => {
+          if (prev === undefined) return 20;
+          if (prev >= 80) return prev;
+          return prev + Math.random() * 15;
+        });
+      }, 2000);
+
+      return () => clearInterval(progressInterval);
+    } else {
+      setShowProgressSnackbar(false);
+      setAiProgress(undefined);
+    }
+  }, [isAIProcessing]);
+
+  const handleCloseProgressSnackbar = () => {
+    if (!isAIProcessing) {
+      setShowProgressSnackbar(false);
+    }
+  };
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -447,10 +481,14 @@ ${currentProject.synopsis || "（あらすじが設定されていません）"}
       />
 
       <ProgressSnackbar
-        open={isAIProcessing}
-        message="AIが思考中です..."
+        open={showProgressSnackbar}
+        message={`AIが世界観を生成中です... ${
+          aiProgress ? `${Math.round(aiProgress)}%` : ""
+        }`}
         severity="info"
-        onClose={() => setIsAIProcessing(false)}
+        progress={aiProgress}
+        loading={isAIProcessing}
+        onClose={handleCloseProgressSnackbar}
         position="top-center"
       />
     </Box>

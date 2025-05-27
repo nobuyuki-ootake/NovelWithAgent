@@ -18,6 +18,7 @@ import {
 } from "../contexts/CharactersContext";
 import { AIAssistButton } from "../components/ui/AIAssistButton";
 import { useAIChatIntegration } from "../hooks/useAIChatIntegration";
+import { Character } from "@novel-ai-assistant/types";
 
 // CharacterPageの実装コンポーネント
 const CharactersPageContent: React.FC = () => {
@@ -57,30 +58,34 @@ const CharactersPageContent: React.FC = () => {
 
   // AIアシスト機能の統合
   const handleOpenAIAssist = async (): Promise<void> => {
-    openAIAssist(
-      "characters",
-      {
-        title: "AIにキャラクターを考えてもらう",
-        description:
-          "あらすじとプロットを参照して、物語に必要なキャラクターのリストを生成します。",
-        defaultMessage:
-          "あらすじとプロットに基づいて、この物語にふさわしいキャラクターを考えてください。",
-        supportsBatchGeneration: true,
-        customControls: {
-          plotSelection: true,
+    try {
+      await openAIAssist(
+        "characters",
+        {
+          title: "AIにキャラクターを考えてもらう",
+          description:
+            "あらすじとプロットを参照して、物語に必要なキャラクターのリストを生成します。",
+          defaultMessage:
+            "あらすじとプロットに基づいて、この物語にふさわしいキャラクターを考えてください。",
+          supportsBatchGeneration: true,
+          customControls: {
+            plotSelection: true,
+          },
+          onComplete: (result) => {
+            // AI応答の処理
+            if (result.content) {
+              const characters = parseAIResponseToCharacters(result.content);
+              characters.forEach((character: Character) => {
+                addCharacter(character);
+              });
+            }
+          },
         },
-        onComplete: (result) => {
-          // AI応答の処理
-          if (result.content) {
-            const characters = parseAIResponseToCharacters(result.content);
-            characters.forEach((character) => {
-              addCharacter(character);
-            });
-          }
-        },
-      },
-      currentProject
-    );
+        currentProject
+      );
+    } catch (error) {
+      console.error("AIアシスト処理中にエラーが発生しました:", error);
+    }
   };
 
   // 削除確認ダイアログを開く
@@ -149,7 +154,7 @@ const CharactersPageContent: React.FC = () => {
           gap: 3,
         }}
       >
-        {characters.map((character) => (
+        {characters.map((character: Character) => (
           <CharacterCard
             key={character.id}
             character={character}
