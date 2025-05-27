@@ -46,6 +46,7 @@ const PlotPageContent: React.FC = () => {
     // handleDragEnd, // PlotContextから受け取っているが、一旦削除
     handleStatusChange,
     handleSave,
+    applyAIPlotResponse,
   } = usePlotContext();
 
   const { openAIAssist } = useAIChatIntegration();
@@ -76,6 +77,9 @@ ${(currentProject as NovelProject)?.synopsis || "（あらすじがありませ�
         onComplete: (result) => {
           // プロット生成完了時の処理
           console.log("プロット生成完了:", result);
+          if (result.content) {
+            applyAIPlotResponse(result.content);
+          }
         },
       },
       currentProject
