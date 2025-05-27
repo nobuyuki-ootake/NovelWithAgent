@@ -10,7 +10,9 @@ import {
 } from "@novel-ai-assistant/types";
 
 // APIのベースURL
-const API_BASE_URL = "/api/ai-agent"; // 常に相対パス /api/ai-agent を使用する
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/ai-agent`
+  : "/api/ai-agent"; // 開発環境では相対パス /api/ai-agent を使用する
 
 // APIエラーハンドリング共通関数
 const handleApiError = (error: AxiosError | Error, operationName: string) => {
