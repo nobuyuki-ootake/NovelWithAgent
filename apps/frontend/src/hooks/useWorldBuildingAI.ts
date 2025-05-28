@@ -294,14 +294,37 @@ export const useWorldBuildingAI = () => {
         // AI APIを動的インポート
         const { aiAgentApi } = await import("../api/aiAgent");
 
+        // プロジェクト情報を含めたコンテキストメッセージを構築
+        const plotElementsTyped = plotElements as PlotElement[];
+        const charactersElementsTyped = existingElements as Character[];
+
+        // プロジェクトの文脈を含めたメッセージを作成
+        const contextualMessage = `${message}
+
+重要な要求事項：
+- 場所（place）要素を最低3件生成してください
+- プロット要素との整合性を保ってください
+- キャラクター設定との矛盾がないようにしてください
+- 物語の雰囲気に合った世界観要素を生成してください
+
+プロット情報:
+${plotElementsTyped
+  .map((plot) => `- ${plot.title}: ${plot.description}`)
+  .join("\n")}
+
+キャラクター情報:
+${charactersElementsTyped
+  .map((char) => `- ${char.name}: ${char.description}`)
+  .join("\n")}`;
+
         // 1. 世界観要素リストを生成
         setAiGenerationProgress(10);
         setCurrentElement("世界観要素リストを生成中...");
 
         const listResponse = await aiAgentApi.generateWorldBuildingList(
-          message,
-          plotElements as PlotElement[],
-          existingElements as Character[],
+          contextualMessage,
+          plotElementsTyped,
+          charactersElementsTyped,
           "gemini-1.5-pro",
           "json",
           "world-building-list-generic"
@@ -332,12 +355,29 @@ export const useWorldBuildingAI = () => {
           throw new Error("生成された要素リストが空でした");
         }
 
-        console.log(`${elementsList.length}個の世界観要素を生成します`);
+        // 場所要素の数をチェック
+        const placeElements = elementsList.filter(
+          (element) => element.type === "place" || element.type === "places"
+        );
+
+        console.log(
+          `生成された要素: ${elementsList.length}件 (場所: ${placeElements.length}件)`
+        );
+
+        if (placeElements.length < 3) {
+          console.warn(
+            `場所要素が${placeElements.length}件しかありません。最低3件必要です。`
+          );
+        }
+
         setTotalElements(elementsList.length);
         setAiGenerationProgress(20);
 
         // 2. 各要素の詳細を生成
-        const detailPromises = elementsList.map(async (element, index) => {
+        const detailResults: (WorldBuildingApiResponse | null)[] = [];
+
+        for (let index = 0; index < elementsList.length; index++) {
+          const element = elementsList[index];
           const progressPercent = 20 + ((index + 1) / elementsList.length) * 70;
           setAiGenerationProgress(progressPercent);
           setCurrentElement(`${element.name} (${element.type}) を生成中...`);
@@ -349,12 +389,20 @@ export const useWorldBuildingAI = () => {
           );
 
           try {
+            // プロジェクトの文脈を含めた詳細生成メッセージ
+            const detailMessage = `「${element.name}」という${element.type}の詳細情報を生成してください。
+
+プロジェクトの文脈:
+${contextualMessage}
+
+この要素は物語の世界観の一部として、プロットやキャラクターと整合性を保つ必要があります。`;
+
             const detailResponse = await aiAgentApi.generateWorldBuildingDetail(
               element.name,
               element.type,
-              `「${element.name}」という${element.type}の詳細情報を生成してください。`,
-              plotElements as PlotElement[],
-              existingElements as Character[],
+              detailMessage,
+              plotElementsTyped,
+              charactersElementsTyped,
               "json"
             );
 
@@ -362,23 +410,17 @@ export const useWorldBuildingAI = () => {
               // 生成された要素を処理
               handleProcessWorldBuildingElement(detailResponse.data);
               console.log(`要素 ${element.name} 生成完了`);
-              return detailResponse;
+              detailResults.push(detailResponse);
             } else {
               console.error(`要素 ${element.name} 生成失敗:`, detailResponse);
-              return null;
+              detailResults.push(null);
             }
           } catch (error) {
             console.error(`要素 ${element.name} 生成エラー:`, error);
-            return null;
+            detailResults.push(null);
           }
-        });
 
-        // 全ての詳細生成を順次実行（並列だとAPI制限に引っかかる可能性があるため）
-        const detailResults: (WorldBuildingApiResponse | null)[] = [];
-        for (const promise of detailPromises) {
-          const result = await promise;
-          detailResults.push(result);
-          // 少し待機してAPI制限を回避
+          // API制限を回避するため少し待機
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
 

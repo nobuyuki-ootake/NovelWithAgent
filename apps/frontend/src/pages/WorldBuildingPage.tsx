@@ -117,34 +117,100 @@ const WorldBuildingPage: React.FC = () => {
       return;
     }
 
+    // 既にAI処理中の場合は新しい処理を開始しない
+    if (isAIProcessing) {
+      toast.warning("AI生成が既に実行中です。完了をお待ちください。");
+      return;
+    }
+
+    // プロジェクトの設定を分析してジャンルを判定
+    const synopsis = currentProject.synopsis || "";
+    const isModernOrFuture =
+      synopsis.includes("近未来") ||
+      synopsis.includes("現代") ||
+      synopsis.includes("AI") ||
+      synopsis.includes("テクノロジー") ||
+      synopsis.includes("科学");
+    const isFantasy =
+      synopsis.includes("魔法") ||
+      synopsis.includes("ファンタジー") ||
+      synopsis.includes("剣") ||
+      synopsis.includes("魔王");
+
+    // プロジェクトの文脈に合ったデフォルトメッセージを構築
+    let contextualMessage = `「${currentProject.title}」の世界観について、以下の要素を考えてください。
+
+**必須要件:**
+- 物語の舞台となる主要な場所を最低3つ生成してください
+- プロットやキャラクターとの整合性を保ってください`;
+
+    if (isModernOrFuture) {
+      contextualMessage += `
+- 現代・近未来設定に適した技術やシステム
+- 社会制度や組織の構造
+- 地理的な環境や都市の特徴`;
+    } else if (isFantasy) {
+      contextualMessage += `
+- ファンタジー世界に適した魔法システムや伝説
+- 特徴的な文化や風習
+- 地理的環境や自然の特徴`;
+    } else {
+      contextualMessage += `
+- この世界のルールや制約
+- 特徴的な文化や風習
+- 地理的環境や社会制度`;
+    }
+
+    contextualMessage += `
+
+**物語のあらすじ:**
+${currentProject.synopsis || "（あらすじが設定されていません）"}
+
+**既存のプロット要素:**
+${
+  currentProject.plot
+    ?.map((p) => `- ${p.title}: ${p.description}`)
+    .join("\n") || "（プロット要素が設定されていません）"
+}
+
+**既存のキャラクター:**
+${
+  currentProject.characters
+    ?.map((c) => `- ${c.name}: ${c.description}`)
+    .join("\n") || "（キャラクターが設定されていません）"
+}`;
+
     openAIAssist(
       "worldbuilding",
       {
         title: "AIに世界観を考えてもらう",
         description:
           "どのような世界観にしたいか、指示を入力してください。物語の雰囲気や時代背景、主要な場所などを具体的に伝えるとよいでしょう。",
-        defaultMessage: `「${
-          currentProject.title
-        }」の世界観について、以下の要素を考えてください。
-- 物語の舞台となる主要な場所（少なくとも3つ）
-- この世界のルール（魔法や技術の制約など）
-- 特徴的な文化や風習
-
-物語のあらすじ:
-${currentProject.synopsis || "（あらすじが設定されていません）"}`,
+        defaultMessage: contextualMessage,
         supportsBatchGeneration: true,
         onComplete: async (result) => {
           console.log("世界観生成完了:", result);
+
+          // 重複実行チェック
+          if (isAIProcessing) {
+            console.warn(
+              "AI処理が既に実行中のため、新しい処理をスキップします"
+            );
+            return;
+          }
+
           setIsAIProcessing(true);
           try {
             await generateWorldBuildingBatch(
               result.content,
               currentProject?.plot || [],
-              []
+              currentProject?.characters || []
             );
             setHasUnsavedChanges(true);
+            toast.success("世界観の生成が完了しました！");
           } catch (error) {
             console.error("AIアシスト処理中にエラーが発生しました:", error);
+            toast.error("世界観生成中にエラーが発生しました。");
           } finally {
             setIsAIProcessing(false);
           }

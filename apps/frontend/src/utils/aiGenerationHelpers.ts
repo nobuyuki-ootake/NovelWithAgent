@@ -279,99 +279,32 @@ export const generateWorldBuildingContent = async (
     console.log("世界観生成開始:", { message, projectData, batchGeneration });
 
     if (batchGeneration) {
-      // バッチ生成の場合：世界観要素リストを生成してから詳細を生成
-      const { aiAgentApi } = await import("../api/aiAgent");
-
-      // プロジェクトデータから必要な情報を抽出
-      const plotElements = (projectData.plot as PlotElement[]) || [];
-      const charactersElements = (projectData.characters as Character[]) || [];
-
-      // 1. 世界観要素リストを生成
-      console.log("世界観要素リスト生成中...");
-      const listResponse = await aiAgentApi.generateWorldBuildingList(
-        message,
-        plotElements,
-        charactersElements,
-        "gemini-1.5-pro",
-        "json",
-        "world-building-list-generic"
-      );
-
-      if (listResponse.status === "success" && listResponse.data) {
-        console.log("世界観要素リスト生成完了:", listResponse.data);
-
-        // 生成された要素リストを解析
-        let elementsList: Array<{ name: string; type: string }> = [];
-
-        try {
-          if (typeof listResponse.data === "string") {
-            elementsList = JSON.parse(listResponse.data);
-          } else if (Array.isArray(listResponse.data)) {
-            elementsList = listResponse.data;
-          } else {
-            console.warn("予期しないデータ形式:", listResponse.data);
-            elementsList = [];
-          }
-        } catch (parseError) {
-          console.error("要素リスト解析エラー:", parseError);
-          elementsList = [];
-        }
-
-        if (elementsList.length > 0) {
-          console.log(`${elementsList.length}個の世界観要素を生成します`);
-
-          // 2. 各要素の詳細を生成
-          const detailPromises = elementsList.map(async (element, index) => {
-            console.log(
-              `要素 ${index + 1}/${elementsList.length} 生成中: ${
-                element.name
-              } (${element.type})`
-            );
-
-            try {
-              const detailResponse =
-                await aiAgentApi.generateWorldBuildingDetail(
-                  element.name,
-                  element.type,
-                  `「${element.name}」という${element.type}の詳細情報を生成してください。`,
-                  plotElements,
-                  charactersElements,
-                  "json"
-                );
-
-              console.log(`要素 ${element.name} 生成完了`);
-              return detailResponse;
-            } catch (error) {
-              console.error(`要素 ${element.name} 生成エラー:`, error);
-              return null;
-            }
-          });
-
-          // 全ての詳細生成を並列実行
-          const detailResults = await Promise.all(detailPromises);
-          const successfulResults = detailResults.filter(
-            (result) => result !== null
-          );
-
-          console.log(
-            `${successfulResults.length}個の世界観要素の詳細生成が完了しました`
-          );
-
-          return `世界観の生成が完了しました。${successfulResults.length}個の要素が生成されました。`;
-        } else {
-          console.warn("生成された要素リストが空です");
-          return "世界観要素の生成に失敗しました。要素リストが空でした。";
-        }
-      } else {
-        console.error("世界観要素リスト生成に失敗:", listResponse);
-        return "世界観要素リストの生成に失敗しました。";
-      }
+      // バッチ生成の場合：useWorldBuildingAIのgenerateWorldBuildingBatchに処理を委譲
+      // 重複実行を防ぐため、ここでは処理を行わずメッセージのみ返す
+      console.log("バッチ生成はuseWorldBuildingAIで処理されます");
+      return "世界観の生成を開始しました。進捗は画面上部で確認できます。";
     } else {
       // 単発生成の場合：AIアシスタントAPIを使用
       const { aiAgentApi } = await import("../api/aiAgent");
 
+      // プロジェクト情報を含めたメッセージを構築
+      const projectTitle =
+        (projectData.title as string) || "未設定のプロジェクト";
+      const projectSynopsis =
+        (projectData.synopsis as string) || "あらすじが設定されていません";
+
+      const contextualMessage = `プロジェクト「${projectTitle}」の世界観について、以下の要素を考えてください。
+
+**プロジェクトのあらすじ:**
+${projectSynopsis}
+
+**ユーザーの指示:**
+${message}
+
+プロジェクトの文脈に合った世界観要素を生成してください。`;
+
       const response = await aiAgentApi.getWorldBuildingAdvice(
-        message,
+        contextualMessage,
         [] // 既存の世界観要素
       );
 
