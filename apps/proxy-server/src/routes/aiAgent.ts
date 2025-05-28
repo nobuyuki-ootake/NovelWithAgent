@@ -1,8 +1,8 @@
 import express from 'express';
-import { processAIRequest } from '../services/aiIntegration.js';
+import { processAIRequest } from '../services/aiIntegration';
 import { StandardAIRequest } from '@novel-ai-assistant/types';
-import templateManager from '../utils/aiTemplateManager.js';
-import { PLOT_DEVELOPER, WORLD_BUILDER } from '../utils/systemPrompts.js';
+import templateManager from '../utils/aiTemplateManager';
+import { PLOT_DEVELOPER, WORLD_BUILDER } from '../utils/systemPrompts';
 import * as yaml from 'js-yaml';
 import {
   WorldBuildingElementType,
@@ -11,7 +11,7 @@ import {
   TimelineEvent,
   Character,
 } from '@novel-ai-assistant/types';
-import { generateElementPrompt } from '../utils/worldBuildingSchemas.js';
+import { generateElementPrompt } from '../utils/worldBuildingSchemas';
 
 const router = express.Router();
 
