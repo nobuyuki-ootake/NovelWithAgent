@@ -43,7 +43,6 @@ export const useCreateProject = () => {
             history: "",
           },
           worldmaps: [],
-          settings: [],
           rules: [],
           places: [],
           cultures: [],

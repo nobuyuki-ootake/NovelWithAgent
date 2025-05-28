@@ -77,7 +77,6 @@ const dummyProject: NovelProject = {
       history: "",
     },
     worldmaps: [],
-    settings: [],
     rules: [
       {
         id: uuidv4(),

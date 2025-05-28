@@ -47,7 +47,6 @@ export interface ElementAccumulatorHook {
     stateDefinition?: StateDefinitionElement[];
     cultures?: CultureElement[];
     worldmaps?: WorldmapElement[];
-    settings?: SettingElement[];
     historyLegend?: HistoryLegendElement[];
     magicTechnology?: MagicTechnologyElement[];
     geographyEnvironment?: GeographyEnvironmentElement[];
@@ -61,7 +60,6 @@ export interface ElementAccumulatorHook {
   pendingStateDefinitions: StateDefinitionElement[];
   pendingCultures: CultureElement[];
   pendingWorldmaps: WorldmapElement[];
-  pendingSettings: SettingElement[];
   pendingHistoryLegends: HistoryLegendElement[];
   pendingMagicTechnologies: MagicTechnologyElement[];
   pendingGeographyEnvironments: GeographyEnvironmentElement[];
@@ -80,7 +78,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
   const [pendingWorldmaps, setPendingWorldmaps] = useState<WorldmapElement[]>(
     []
   );
-  const [pendingSettings, setPendingSettings] = useState<SettingElement[]>([]);
   const [pendingHistoryLegends, setPendingHistoryLegends] = useState<
     HistoryLegendElement[]
   >([]);
@@ -236,19 +233,33 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
   const addPendingSetting = useCallback(
     (setting: SettingElement) => {
       if (!currentProject) return;
-      const newSetting = { ...setting, id: setting.id || uuidv4() };
+      // SettingElementをFreeFieldElementに変換
+      const freeFieldElement: FreeFieldElement = {
+        id: setting.id || uuidv4(),
+        name: setting.name,
+        type: "free_field",
+        originalType: "setting", // 元のタイプを保持
+        description: setting.description,
+        features: setting.features,
+        importance: setting.importance,
+        relations: setting.relations,
+      };
+
       setCurrentProject((prevProject: NovelProject | null) => {
         if (!prevProject) return prevProject;
         const updatedWorldBuilding = {
           ...prevProject.worldBuilding,
-          settings: [
-            ...(prevProject.worldBuilding?.settings || []),
-            newSetting,
+          freeFields: [
+            ...(prevProject.worldBuilding?.freeFields || []),
+            freeFieldElement,
           ],
         };
         return { ...prevProject, worldBuilding: updatedWorldBuilding };
       });
-      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.SETTING));
+      // 自由記述欄タブを更新済みとしてマーク
+      markTabAsUpdated(
+        getCategoryTabIndex(WorldBuildingElementType.FREE_FIELD)
+      );
     },
     [currentProject, setCurrentProject, markTabAsUpdated]
   );
@@ -363,7 +374,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
           newWorldBuilding.rules = [];
           newWorldBuilding.cultures = [];
           newWorldBuilding.worldmaps = [];
-          newWorldBuilding.settings = [];
           newWorldBuilding.historyLegend = [];
           newWorldBuilding.magicTechnology = [];
           newWorldBuilding.geographyEnvironment = [];
@@ -383,7 +393,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
         setPendingStateDefinitions([]);
         setPendingCultures([]);
         setPendingWorldmaps([]);
-        setPendingSettings([]);
         setPendingHistoryLegends([]);
         setPendingMagicTechnologies([]);
         setPendingGeographyEnvironments([]);
@@ -400,7 +409,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
         stateDefinition?: StateDefinitionElement[];
         cultures?: CultureElement[];
         worldmaps?: WorldmapElement[];
-        settings?: SettingElement[];
         historyLegend?: HistoryLegendElement[];
         magicTechnology?: MagicTechnologyElement[];
         geographyEnvironment?: GeographyEnvironmentElement[];
@@ -419,7 +427,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
             stateDefinition: elements?.stateDefinition || [],
             cultures: elements?.cultures || [],
             worldmaps: elements?.worldmaps || [],
-            settings: elements?.settings || [],
             historyLegend: elements?.historyLegend || [],
             magicTechnology: elements?.magicTechnology || [],
             geographyEnvironment: elements?.geographyEnvironment || [],
@@ -437,7 +444,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
           setPendingStateDefinitions(elements?.stateDefinition || []);
           setPendingCultures(elements?.cultures || []);
           setPendingWorldmaps(elements?.worldmaps || []);
-          setPendingSettings(elements?.settings || []);
           setPendingHistoryLegends(elements?.historyLegend || []);
           setPendingMagicTechnologies(elements?.magicTechnology || []);
           setPendingGeographyEnvironments(elements?.geographyEnvironment || []);
@@ -543,7 +549,6 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
     pendingStateDefinitions,
     pendingCultures,
     pendingWorldmaps,
-    pendingSettings,
     pendingHistoryLegends,
     pendingMagicTechnologies,
     pendingGeographyEnvironments,

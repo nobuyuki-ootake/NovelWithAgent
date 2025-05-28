@@ -66,7 +66,6 @@ export function useHome() {
         freeFields: [],
         stateDefinition: [],
         worldmaps: [],
-        settings: [],
       },
       timeline: [],
       chapters: [],

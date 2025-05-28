@@ -79,7 +79,6 @@ const mockProject: NovelProject = {
     cultures: [],
     historyLegend: [],
     worldmaps: [],
-    settings: [],
     geographyEnvironment: [],
     magicTechnology: [],
     stateDefinition: [],
