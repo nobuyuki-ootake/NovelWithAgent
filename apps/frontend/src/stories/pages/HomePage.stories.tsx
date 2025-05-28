@@ -17,7 +17,10 @@ const mockProjects: NovelProject[] = [
     characters: [],
     worldBuilding: {
       id: uuidv4(),
-      setting: "",
+      setting: {
+        description: "",
+        history: "",
+      },
       rules: [],
       places: [],
       cultures: [],
@@ -43,7 +46,10 @@ const mockProjects: NovelProject[] = [
     characters: [],
     worldBuilding: {
       id: uuidv4(),
-      setting: "",
+      setting: {
+        description: "",
+        history: "",
+      },
       rules: [],
       places: [],
       cultures: [],
@@ -69,7 +75,10 @@ const mockProjects: NovelProject[] = [
     characters: [],
     worldBuilding: {
       id: uuidv4(),
-      setting: "",
+      setting: {
+        description: "",
+        history: "",
+      },
       rules: [],
       places: [],
       cultures: [],

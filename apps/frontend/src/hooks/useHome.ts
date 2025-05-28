@@ -53,7 +53,10 @@ export function useHome() {
       characters: [],
       worldBuilding: {
         id: uuidv4(),
-        setting: "",
+        setting: {
+          description: "",
+          history: "",
+        },
         rules: [],
         places: [],
         cultures: [],
