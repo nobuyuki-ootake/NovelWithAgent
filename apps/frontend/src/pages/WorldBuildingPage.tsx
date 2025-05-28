@@ -458,9 +458,13 @@ ${
         {/* 世界観設定タブ */}
         <TabPanel value={tabValue} index={1}>
           <SettingTab
-            description={currentProject.worldBuilding?.description || ""}
+            description={
+              currentProject.worldBuilding?.setting?.description ||
+              currentProject.worldBuilding?.description ||
+              ""
+            }
             onDescriptionChange={handleSettingChange || (() => {})}
-            history={currentProject.worldBuilding?.historyLegend || ""}
+            history={currentProject.worldBuilding?.setting?.history || ""}
             onHistoryChange={handleHistoryChange || (() => {})}
           />
         </TabPanel>

@@ -96,7 +96,10 @@ export interface BatchProcessResult {
 // 世界観設定の型定義
 export interface WorldBuilding {
   id: string;
-  setting: string;
+  setting: {
+    description: string;
+    history: string;
+  };
   worldmaps: WorldmapElement[];
   settings: SettingElement[];
   rules: RuleElement[];
@@ -111,7 +114,7 @@ export interface WorldBuilding {
     startDate: string;
   };
   worldMapImageUrl?: string;
-  description?: string;
+  description?: string; // 後方互換性のため残すが、setting.descriptionを優先
 }
 
 // ルール、文化、場所の型定義は worldBuilding 内の型を使用
