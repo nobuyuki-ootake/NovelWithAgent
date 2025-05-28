@@ -13,7 +13,10 @@ import {
   WorldBuildingElementType,
   WorldBuildingElement,
   FreeFieldElement,
+  PlotElement,
+  Character,
 } from "@novel-ai-assistant/types";
+import { WorldBuildingApiResponse } from "../types/apiResponse";
 
 /**
  * 世界観構築のAI支援機能を管理するカスタムフック
@@ -270,20 +273,137 @@ export const useWorldBuildingAI = () => {
   //   },
   // });
 
-  // generateWorldBuildingBatchのダミー実装
+  // generateWorldBuildingBatchの実装
   const generateWorldBuildingBatch = useCallback(
     async (
       message: string,
       plotElements: unknown[],
       existingElements: unknown[]
     ) => {
-      console.warn(
-        "generateWorldBuildingBatch is not implemented in useWorldBuildingAI",
-        { message, plotElements, existingElements }
-      );
-      return Promise.resolve();
+      console.log("世界観バッチ生成開始:", {
+        message,
+        plotElements,
+        existingElements,
+      });
+
+      try {
+        setAiGenerationProgress(0);
+        setCurrentElement("世界観要素リストを生成中...");
+        setTotalElements(0);
+
+        // AI APIを動的インポート
+        const { aiAgentApi } = await import("../api/aiAgent");
+
+        // 1. 世界観要素リストを生成
+        setAiGenerationProgress(10);
+        setCurrentElement("世界観要素リストを生成中...");
+
+        const listResponse = await aiAgentApi.generateWorldBuildingList(
+          message,
+          plotElements as PlotElement[],
+          existingElements as Character[],
+          "gemini-1.5-pro",
+          "json",
+          "world-building-list-generic"
+        );
+
+        if (listResponse.status !== "success" || !listResponse.data) {
+          throw new Error("世界観要素リストの生成に失敗しました");
+        }
+
+        // 生成された要素リストを解析
+        let elementsList: Array<{ name: string; type: string }> = [];
+
+        try {
+          if (typeof listResponse.data === "string") {
+            elementsList = JSON.parse(listResponse.data);
+          } else if (Array.isArray(listResponse.data)) {
+            elementsList = listResponse.data;
+          } else {
+            console.warn("予期しないデータ形式:", listResponse.data);
+            elementsList = [];
+          }
+        } catch (parseError) {
+          console.error("要素リスト解析エラー:", parseError);
+          throw new Error("生成された要素リストの解析に失敗しました");
+        }
+
+        if (elementsList.length === 0) {
+          throw new Error("生成された要素リストが空でした");
+        }
+
+        console.log(`${elementsList.length}個の世界観要素を生成します`);
+        setTotalElements(elementsList.length);
+        setAiGenerationProgress(20);
+
+        // 2. 各要素の詳細を生成
+        const detailPromises = elementsList.map(async (element, index) => {
+          const progressPercent = 20 + ((index + 1) / elementsList.length) * 70;
+          setAiGenerationProgress(progressPercent);
+          setCurrentElement(`${element.name} (${element.type}) を生成中...`);
+
+          console.log(
+            `要素 ${index + 1}/${elementsList.length} 生成中: ${
+              element.name
+            } (${element.type})`
+          );
+
+          try {
+            const detailResponse = await aiAgentApi.generateWorldBuildingDetail(
+              element.name,
+              element.type,
+              `「${element.name}」という${element.type}の詳細情報を生成してください。`,
+              plotElements as PlotElement[],
+              existingElements as Character[],
+              "json"
+            );
+
+            if (detailResponse.status === "success" && detailResponse.data) {
+              // 生成された要素を処理
+              handleProcessWorldBuildingElement(detailResponse.data);
+              console.log(`要素 ${element.name} 生成完了`);
+              return detailResponse;
+            } else {
+              console.error(`要素 ${element.name} 生成失敗:`, detailResponse);
+              return null;
+            }
+          } catch (error) {
+            console.error(`要素 ${element.name} 生成エラー:`, error);
+            return null;
+          }
+        });
+
+        // 全ての詳細生成を順次実行（並列だとAPI制限に引っかかる可能性があるため）
+        const detailResults: (WorldBuildingApiResponse | null)[] = [];
+        for (const promise of detailPromises) {
+          const result = await promise;
+          detailResults.push(result);
+          // 少し待機してAPI制限を回避
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        const successfulResults = detailResults.filter(
+          (result) => result !== null
+        );
+
+        setAiGenerationProgress(100);
+        setCurrentElement("生成完了");
+
+        console.log(
+          `${successfulResults.length}個の世界観要素の詳細生成が完了しました`
+        );
+
+        // 通知を表示
+        setNotificationOpen(true);
+
+        return Promise.resolve();
+      } catch (error) {
+        console.error("世界観バッチ生成エラー:", error);
+        setCurrentElement("生成エラー");
+        throw error;
+      }
     },
-    []
+    [handleProcessWorldBuildingElement, setNotificationOpen]
   );
 
   // initiateWorldBuildingAIGeneration のダミー実装
