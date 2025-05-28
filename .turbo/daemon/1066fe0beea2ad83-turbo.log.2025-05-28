@@ -512,3 +512,56 @@
 2025-05-28T17:57:31.610986Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
 2025-05-28T17:57:31.714944Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
 2025-05-28T17:57:31.714956Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T17:57:33.311098Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T17:57:33.311112Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T17:57:56.008416Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\hooks\\useWorldBuilding.tsx")}
+2025-05-28T17:57:56.008435Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T17:58:06.118120Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T17:58:06.118136Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T17:58:07.521530Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T17:58:07.521543Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T17:58:14.715750Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T17:58:14.715765Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:02:31.720692Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:02:31.720716Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:02:32.916780Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:02:32.916798Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:07:31.721169Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:07:31.721181Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:07:32.714766Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:07:32.714777Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:12:31.721097Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:12:31.721122Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:12:32.913673Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:12:32.913684Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:15:54.912369Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\SocietyCultureTab.tsx")}
+2025-05-28T18:15:54.912388Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:15:56.209005Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:15:56.209019Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:16:50.512949Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\HistoryLegendTab.tsx")}
+2025-05-28T18:16:50.512967Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:16:51.814318Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:16:51.814334Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:17:31.722440Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:17:31.722453Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:17:33.908933Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:17:33.908948Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:17:43.220505Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\GeographyEnvironmentTab.tsx")}
+2025-05-28T18:17:43.220524Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:17:48.220938Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:17:48.220955Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:18:39.516719Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\MagicTechnologyTab.tsx")}
+2025-05-28T18:18:39.516743Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:18:39.614864Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\MagicTechnologyTab.tsx")}
+2025-05-28T18:18:39.614877Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:18:39.615057Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2025-05-28T18:18:40.811232Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:18:40.811248Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:19:30.916174Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\FreeFieldsTab.tsx")}
+2025-05-28T18:19:30.916193Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:19:32.211944Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:19:32.211959Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-05-28T18:19:53.811772Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\frontend\\src\\components\\worldbuilding\\SettingTab.tsx")}
+2025-05-28T18:19:53.811788Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("frontend"), path: AnchoredSystemPathBuf("apps\\frontend") }}))
+2025-05-28T18:19:55.014430Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo\\daemon\\1066fe0beea2ad83-turbo.log.2025-05-28")}
+2025-05-28T18:19:55.014444Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))

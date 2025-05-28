@@ -1,13 +1,13 @@
 import React from "react";
 import { Box, Typography, TextField } from "@mui/material";
-import { HistoryLegendElement } from "@novel-ai-assistant/types";
+// import { HistoryLegendElement } from "@novel-ai-assistant/types"; // 不要なインポートを削除
 // import { useState, useEffect, useCallback } from "react"; // Unused
 // import { useWorldBuildingContext } from "../../contexts/WorldBuildingContext"; // Unused
 
 interface SettingTabProps {
   description: string;
   onDescriptionChange: (value: string) => void;
-  history: HistoryLegendElement[];
+  history: string; // HistoryLegendElement[]からstringに変更
   onHistoryChange: (value: string) => void;
 }
 
