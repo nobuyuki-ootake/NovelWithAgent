@@ -237,21 +237,9 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
       setCurrentProject((prevProject: NovelProject | null) => {
         if (!prevProject) return prevProject;
 
-        const currentDescription =
-          prevProject.worldBuilding.setting.description;
-        const newDescription = setting.description || "";
-
-        // 既存の説明がある場合は改行で区切って追加、ない場合はそのまま設定
-        const updatedDescription = currentDescription
-          ? `${currentDescription}\n\n【${setting.name}】\n${newDescription}`
-          : newDescription;
-
         const updatedWorldBuilding = {
           ...prevProject.worldBuilding,
-          setting: {
-            ...prevProject.worldBuilding.setting,
-            description: updatedDescription,
-          },
+          setting: [...(prevProject.worldBuilding?.setting || []), setting],
         };
         return { ...prevProject, worldBuilding: updatedWorldBuilding };
       });

@@ -38,10 +38,7 @@ export const useCreateProject = () => {
         characters: [],
         worldBuilding: {
           id: uuidv4(),
-          setting: {
-            description: "",
-            history: "",
-          },
+          setting: [],
           worldmaps: [],
           rules: [],
           places: [],

@@ -73,17 +73,10 @@ export const useWorldBuildingAI = () => {
         }
 
         case WorldBuildingElementType.SETTING: {
-          const elementData = inputEelementData as SettingElement;
+          const elementData = inputEelementData as any; // AI生成データは BaseWorldBuildingElement 形式
           const settingElement: SettingElement = {
-            id: uuidv4(),
-            name: elementData.name || "",
             description: elementData.description || "",
-            importance: elementData.importance || "",
-            originalType: elementData.originalType || "setting",
-            type: "setting",
-            features: elementData.features || "",
-            relations: elementData.relations || "",
-            img: elementData.img || "",
+            history: elementData.features || elementData.history || "", // featuresを歴史として使用
           };
           addPendingSetting(settingElement);
           break;

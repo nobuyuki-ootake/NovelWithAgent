@@ -72,10 +72,7 @@ const dummyProject: NovelProject = {
   ],
   worldBuilding: {
     id: uuidv4(),
-    setting: {
-      description: "現代日本",
-      history: "",
-    },
+    setting: [],
     worldmaps: [],
     rules: [
       {

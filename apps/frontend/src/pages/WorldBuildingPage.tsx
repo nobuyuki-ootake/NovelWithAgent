@@ -46,8 +46,6 @@ const WorldBuildingPage: React.FC = () => {
     snackbarMessage,
     handleTabChange,
     handleMapImageUpload,
-    handleSettingChange,
-    handleHistoryChange,
     handleSaveWorldBuilding,
     handleCloseSnackbar,
     updatedTabs,
@@ -457,16 +455,7 @@ ${
 
         {/* 世界観設定タブ */}
         <TabPanel value={tabValue} index={1}>
-          <SettingTab
-            description={
-              currentProject.worldBuilding?.setting?.description ||
-              currentProject.worldBuilding?.description ||
-              ""
-            }
-            onDescriptionChange={handleSettingChange || (() => {})}
-            history={currentProject.worldBuilding?.setting?.history || ""}
-            onHistoryChange={handleHistoryChange || (() => {})}
-          />
+          <SettingTab settings={currentProject.worldBuilding?.setting || []} />
         </TabPanel>
 
         {/* ルールタブ */}
