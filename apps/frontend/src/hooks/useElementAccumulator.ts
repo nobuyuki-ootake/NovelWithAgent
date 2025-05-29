@@ -233,33 +233,31 @@ export const useElementAccumulator = (): ElementAccumulatorHook => {
   const addPendingSetting = useCallback(
     (setting: SettingElement) => {
       if (!currentProject) return;
-      // SettingElementをFreeFieldElementに変換
-      const freeFieldElement: FreeFieldElement = {
-        id: setting.id || uuidv4(),
-        name: setting.name,
-        type: "free_field",
-        originalType: "setting", // 元のタイプを保持
-        description: setting.description,
-        features: setting.features,
-        importance: setting.importance,
-        relations: setting.relations,
-      };
 
       setCurrentProject((prevProject: NovelProject | null) => {
         if (!prevProject) return prevProject;
+
+        const currentDescription =
+          prevProject.worldBuilding.setting.description;
+        const newDescription = setting.description || "";
+
+        // 既存の説明がある場合は改行で区切って追加、ない場合はそのまま設定
+        const updatedDescription = currentDescription
+          ? `${currentDescription}\n\n【${setting.name}】\n${newDescription}`
+          : newDescription;
+
         const updatedWorldBuilding = {
           ...prevProject.worldBuilding,
-          freeFields: [
-            ...(prevProject.worldBuilding?.freeFields || []),
-            freeFieldElement,
-          ],
+          setting: {
+            ...prevProject.worldBuilding.setting,
+            description: updatedDescription,
+          },
         };
         return { ...prevProject, worldBuilding: updatedWorldBuilding };
       });
-      // 自由記述欄タブを更新済みとしてマーク
-      markTabAsUpdated(
-        getCategoryTabIndex(WorldBuildingElementType.FREE_FIELD)
-      );
+
+      // 世界観設定タブ（インデックス1）を更新済みとしてマーク
+      markTabAsUpdated(getCategoryTabIndex(WorldBuildingElementType.SETTING));
     },
     [currentProject, setCurrentProject, markTabAsUpdated]
   );
