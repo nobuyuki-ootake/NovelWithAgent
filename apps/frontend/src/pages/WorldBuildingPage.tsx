@@ -56,7 +56,13 @@ const WorldBuildingPage: React.FC = () => {
     setHasUnsavedChanges,
   } = useWorldBuildingContext();
 
-  const { generateWorldBuildingBatch } = useWorldBuildingAI();
+  const {
+    generateWorldBuildingBatch,
+    notificationOpen: worldBuildingNotificationOpen,
+    setNotificationOpen: setWorldBuildingNotificationOpen,
+    aiGenerationProgress,
+    currentElement,
+  } = useWorldBuildingAI();
 
   const [isAIProcessing, setIsAIProcessing] = useState(false);
 
@@ -64,7 +70,14 @@ const WorldBuildingPage: React.FC = () => {
   const [aiProgress, setAiProgress] = useState<number | undefined>(undefined);
   const [showProgressSnackbar, setShowProgressSnackbar] = useState(false);
 
-  // AI処理開始時の処理
+  // useWorldBuildingAIの通知が表示された時にAI処理状態をリセット
+  useEffect(() => {
+    if (worldBuildingNotificationOpen && isAIProcessing) {
+      setIsAIProcessing(false);
+    }
+  }, [worldBuildingNotificationOpen, isAIProcessing]);
+
+  // AI処理の進行状況管理
   useEffect(() => {
     if (isAIProcessing) {
       setShowProgressSnackbar(true);
@@ -200,12 +213,12 @@ ${
           setIsAIProcessing(true);
           try {
             await generateWorldBuildingBatch(
-              result.content,
+              result.content as string,
               currentProject?.plot || [],
               currentProject?.characters || []
             );
             setHasUnsavedChanges(true);
-            toast.success("世界観の生成が完了しました！");
+            // 成功メッセージはuseWorldBuildingAIの通知で表示される
           } catch (error) {
             console.error("AIアシスト処理中にエラーが発生しました:", error);
             toast.error("世界観生成中にエラーが発生しました。");
@@ -538,13 +551,41 @@ ${
         message={notificationMessage || ""}
       />
 
+      <Snackbar
+        open={worldBuildingNotificationOpen || false}
+        autoHideDuration={6000}
+        onClose={() =>
+          setWorldBuildingNotificationOpen &&
+          setWorldBuildingNotificationOpen(false)
+        }
+        message="世界観の生成が完了しました！"
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            onClick={() =>
+              setWorldBuildingNotificationOpen &&
+              setWorldBuildingNotificationOpen(false)
+            }
+          >
+            閉じる
+          </Button>
+        }
+      />
+
       <ProgressSnackbar
-        open={showProgressSnackbar}
-        message={`AIが世界観を生成中です... ${
-          aiProgress ? `${Math.round(aiProgress)}%` : ""
-        }`}
+        open={showProgressSnackbar || isAIProcessing}
+        message={
+          isAIProcessing && currentElement
+            ? `${currentElement}`
+            : `AIが世界観を生成中です... ${
+                aiProgress ? `${Math.round(aiProgress)}%` : ""
+              }`
+        }
         severity="info"
-        progress={aiProgress}
+        progress={
+          aiGenerationProgress !== undefined ? aiGenerationProgress : aiProgress
+        }
         loading={isAIProcessing}
         onClose={handleCloseProgressSnackbar}
         position="top-center"

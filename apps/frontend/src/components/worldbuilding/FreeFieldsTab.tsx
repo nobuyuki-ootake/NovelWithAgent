@@ -131,6 +131,24 @@ const FreeFieldsTab: React.FC = () => {
     });
   };
 
+  // 値を安全に文字列として表示するヘルパー関数
+  const safeStringDisplay = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return "[オブジェクト]";
+      }
+    }
+    return String(value);
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -186,10 +204,11 @@ const FreeFieldsTab: React.FC = () => {
                 >
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h6" gutterBottom>
-                      {freeField.name || "名称未設定"}
+                      {safeStringDisplay(freeField.name) || "名称未設定"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      重要性: {freeField.importance || "未設定"}
+                      重要性:{" "}
+                      {safeStringDisplay(freeField.importance) || "未設定"}
                     </Typography>
                   </Box>
                   <Box>
@@ -216,7 +235,7 @@ const FreeFieldsTab: React.FC = () => {
                       説明
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {freeField.description}
+                      {safeStringDisplay(freeField.description)}
                     </Typography>
                   </Box>
                 )}
@@ -227,7 +246,7 @@ const FreeFieldsTab: React.FC = () => {
                       特徴
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {freeField.features}
+                      {safeStringDisplay(freeField.features)}
                     </Typography>
                   </Box>
                 )}
@@ -238,7 +257,7 @@ const FreeFieldsTab: React.FC = () => {
                       関連要素
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {freeField.relations}
+                      {safeStringDisplay(freeField.relations)}
                     </Typography>
                   </Box>
                 )}
@@ -264,7 +283,7 @@ const FreeFieldsTab: React.FC = () => {
             label="名前"
             name="name"
             placeholder="自由記述項目の名前"
-            value={currentFreeField?.name || ""}
+            value={safeStringDisplay(currentFreeField?.name) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -276,7 +295,7 @@ const FreeFieldsTab: React.FC = () => {
             label="説明"
             name="description"
             placeholder="この項目の詳細な説明"
-            value={currentFreeField?.description || ""}
+            value={safeStringDisplay(currentFreeField?.description) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -288,7 +307,7 @@ const FreeFieldsTab: React.FC = () => {
             label="特徴"
             name="features"
             placeholder="この項目の特徴的な要素"
-            value={currentFreeField?.features || ""}
+            value={safeStringDisplay(currentFreeField?.features) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -298,7 +317,7 @@ const FreeFieldsTab: React.FC = () => {
             label="重要性"
             name="importance"
             placeholder="物語における重要度（高・中・低など）"
-            value={currentFreeField?.importance || ""}
+            value={safeStringDisplay(currentFreeField?.importance) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -310,7 +329,7 @@ const FreeFieldsTab: React.FC = () => {
             label="関連要素"
             name="relations"
             placeholder="他の世界観要素、キャラクター、イベントとの関連性"
-            value={currentFreeField?.relations || ""}
+            value={safeStringDisplay(currentFreeField?.relations) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"

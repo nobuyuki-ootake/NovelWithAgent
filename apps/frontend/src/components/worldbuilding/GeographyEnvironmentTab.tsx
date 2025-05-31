@@ -136,6 +136,24 @@ const GeographyEnvironmentTab: React.FC = () => {
     });
   };
 
+  // 値を安全に文字列として表示するヘルパー関数
+  const safeStringDisplay = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return "[オブジェクト]";
+      }
+    }
+    return String(value);
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -192,10 +210,11 @@ const GeographyEnvironmentTab: React.FC = () => {
                   >
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="h6" gutterBottom>
-                        {geography.name || "名称未設定"}
+                        {safeStringDisplay(geography.name) || "名称未設定"}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        重要性: {geography.importance || "未設定"}
+                        重要性:{" "}
+                        {safeStringDisplay(geography.importance) || "未設定"}
                       </Typography>
                     </Box>
                     <Box>
@@ -225,7 +244,7 @@ const GeographyEnvironmentTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {geography.description}
+                        {safeStringDisplay(geography.description)}
                       </Typography>
                     </Box>
                   )}
@@ -239,7 +258,7 @@ const GeographyEnvironmentTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {geography.features}
+                        {safeStringDisplay(geography.features)}
                       </Typography>
                     </Box>
                   )}
@@ -253,7 +272,7 @@ const GeographyEnvironmentTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {geography.relations}
+                        {safeStringDisplay(geography.relations)}
                       </Typography>
                     </Box>
                   )}
@@ -280,7 +299,7 @@ const GeographyEnvironmentTab: React.FC = () => {
             label="名前"
             name="name"
             placeholder="地理的特徴や環境の名前"
-            value={currentGeography?.name || ""}
+            value={safeStringDisplay(currentGeography?.name) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -292,7 +311,7 @@ const GeographyEnvironmentTab: React.FC = () => {
             label="説明"
             name="description"
             placeholder="この地理的特徴や環境の基本的な説明"
-            value={currentGeography?.description || ""}
+            value={safeStringDisplay(currentGeography?.description) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -304,7 +323,7 @@ const GeographyEnvironmentTab: React.FC = () => {
             label="特徴"
             name="features"
             placeholder="地形、気候、自然現象、生態系などの特徴"
-            value={currentGeography?.features || ""}
+            value={safeStringDisplay(currentGeography?.features) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -314,7 +333,7 @@ const GeographyEnvironmentTab: React.FC = () => {
             label="重要性"
             name="importance"
             placeholder="物語における重要度（高・中・低など）"
-            value={currentGeography?.importance || ""}
+            value={safeStringDisplay(currentGeography?.importance) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -326,7 +345,7 @@ const GeographyEnvironmentTab: React.FC = () => {
             label="関連要素"
             name="relations"
             placeholder="他の地域、キャラクター、イベントとの関連性"
-            value={currentGeography?.relations || ""}
+            value={safeStringDisplay(currentGeography?.relations) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"

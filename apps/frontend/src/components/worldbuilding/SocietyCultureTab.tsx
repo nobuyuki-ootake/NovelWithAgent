@@ -146,6 +146,24 @@ const SocietyCultureTab: React.FC = () => {
     });
   };
 
+  // 値を安全に文字列として表示するヘルパー関数
+  const safeStringDisplay = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return "[オブジェクト]";
+      }
+    }
+    return String(value);
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -201,10 +219,11 @@ const SocietyCultureTab: React.FC = () => {
                 >
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h6" gutterBottom>
-                      {culture.name || "名称未設定"}
+                      {safeStringDisplay(culture.name) || "名称未設定"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      重要性: {culture.importance || "未設定"}
+                      重要性:{" "}
+                      {safeStringDisplay(culture.importance) || "未設定"}
                     </Typography>
                   </Box>
                   <Box>
@@ -231,7 +250,7 @@ const SocietyCultureTab: React.FC = () => {
                       説明
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {culture.description}
+                      {safeStringDisplay(culture.description)}
                     </Typography>
                   </Box>
                 )}
@@ -242,7 +261,7 @@ const SocietyCultureTab: React.FC = () => {
                       社会構造
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {culture.socialStructure}
+                      {safeStringDisplay(culture.socialStructure)}
                     </Typography>
                   </Box>
                 )}
@@ -253,7 +272,7 @@ const SocietyCultureTab: React.FC = () => {
                       宗教・信仰
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {culture.religion}
+                      {safeStringDisplay(culture.religion)}
                     </Typography>
                   </Box>
                 )}
@@ -264,7 +283,7 @@ const SocietyCultureTab: React.FC = () => {
                       関連要素
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {culture.relations}
+                      {safeStringDisplay(culture.relations)}
                     </Typography>
                   </Box>
                 )}
@@ -289,7 +308,7 @@ const SocietyCultureTab: React.FC = () => {
             fullWidth
             label="名前"
             name="name"
-            value={currentCulture?.name || ""}
+            value={safeStringDisplay(currentCulture?.name) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -300,7 +319,7 @@ const SocietyCultureTab: React.FC = () => {
             rows={3}
             label="説明"
             name="description"
-            value={currentCulture?.description || ""}
+            value={safeStringDisplay(currentCulture?.description) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -311,7 +330,7 @@ const SocietyCultureTab: React.FC = () => {
             rows={3}
             label="特徴"
             name="features"
-            value={currentCulture?.features || ""}
+            value={safeStringDisplay(currentCulture?.features) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -320,7 +339,7 @@ const SocietyCultureTab: React.FC = () => {
             fullWidth
             label="重要性"
             name="importance"
-            value={currentCulture?.importance || ""}
+            value={safeStringDisplay(currentCulture?.importance) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -332,7 +351,7 @@ const SocietyCultureTab: React.FC = () => {
             label="社会構造"
             name="socialStructure"
             placeholder="階級制度、家族構成、コミュニティの組織など"
-            value={currentCulture?.socialStructure || ""}
+            value={safeStringDisplay(currentCulture?.socialStructure) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -344,7 +363,7 @@ const SocietyCultureTab: React.FC = () => {
             label="政治と統治"
             name="government"
             placeholder="統治形態、権力構造、法律、政治組織について"
-            value={currentCulture?.government || ""}
+            value={safeStringDisplay(currentCulture?.government) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -356,7 +375,7 @@ const SocietyCultureTab: React.FC = () => {
             label="宗教と信仰"
             name="religion"
             placeholder="信仰体系、神話、儀式、宗教組織について"
-            value={currentCulture?.religion || ""}
+            value={safeStringDisplay(currentCulture?.religion) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -368,7 +387,7 @@ const SocietyCultureTab: React.FC = () => {
             label="言語"
             name="language"
             placeholder="話されている言語、方言、特殊な言語的特徴について"
-            value={currentCulture?.language || ""}
+            value={safeStringDisplay(currentCulture?.language) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -380,7 +399,7 @@ const SocietyCultureTab: React.FC = () => {
             label="芸術と娯楽"
             name="art"
             placeholder="芸術形式、音楽、文学、娯楽活動について"
-            value={currentCulture?.art || ""}
+            value={safeStringDisplay(currentCulture?.art) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -392,7 +411,7 @@ const SocietyCultureTab: React.FC = () => {
             label="技術"
             name="technology"
             placeholder="技術レベル、重要な発明、科学的理解について"
-            value={currentCulture?.technology || ""}
+            value={safeStringDisplay(currentCulture?.technology) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -403,7 +422,7 @@ const SocietyCultureTab: React.FC = () => {
             rows={3}
             label="関連要素"
             name="relations"
-            value={currentCulture?.relations || ""}
+            value={safeStringDisplay(currentCulture?.relations) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"

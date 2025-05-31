@@ -32,6 +32,8 @@ const SettingTab: React.FC<SettingTabProps> = ({ settings }) => {
     null
   );
   const [formData, setFormData] = useState<SettingElement>({
+    id: "",
+    name: "",
     description: "",
     history: "",
   });
@@ -43,6 +45,8 @@ const SettingTab: React.FC<SettingTabProps> = ({ settings }) => {
     } else {
       setEditingElement(null);
       setFormData({
+        id: "",
+        name: "",
         description: "",
         history: "",
       });
@@ -54,6 +58,8 @@ const SettingTab: React.FC<SettingTabProps> = ({ settings }) => {
     setDialogOpen(false);
     setEditingElement(null);
     setFormData({
+      id: "",
+      name: "",
       description: "",
       history: "",
     });
@@ -72,8 +78,17 @@ const SettingTab: React.FC<SettingTabProps> = ({ settings }) => {
           item === editingElement ? formData : item
         );
       } else {
-        // 新規追加の場合
-        updatedSettings = [...prevProject.worldBuilding.setting, formData];
+        // 新規追加の場合 - IDを生成
+        const newSetting: SettingElement = {
+          ...formData,
+          id: `setting-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`,
+          name:
+            formData.name ||
+            `世界観設定 ${prevProject.worldBuilding.setting.length + 1}`,
+        };
+        updatedSettings = [...prevProject.worldBuilding.setting, newSetting];
       }
 
       return {
@@ -151,7 +166,7 @@ const SettingTab: React.FC<SettingTabProps> = ({ settings }) => {
                 >
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h6" gutterBottom>
-                      世界観設定 {index + 1}
+                      {setting.name || `世界観設定 ${index + 1}`}
                     </Typography>
                     {setting.description && (
                       <Box sx={{ mb: 2 }}>
@@ -222,6 +237,17 @@ const SettingTab: React.FC<SettingTabProps> = ({ settings }) => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="設定名"
+              placeholder="この世界観設定の名前を入力してください"
+              value={formData.name || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              variant="outlined"
+              sx={{ mb: 3 }}
+            />
             <TextField
               fullWidth
               multiline

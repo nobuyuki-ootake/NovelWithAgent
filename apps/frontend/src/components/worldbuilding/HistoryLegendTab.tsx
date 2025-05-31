@@ -135,6 +135,24 @@ const HistoryLegendTab: React.FC = () => {
     });
   };
 
+  // 値を安全に文字列として表示するヘルパー関数
+  const safeStringDisplay = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return "[オブジェクト]";
+      }
+    }
+    return String(value);
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -191,11 +209,12 @@ const HistoryLegendTab: React.FC = () => {
                   >
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="h6" gutterBottom>
-                        {history.name || "名称未設定"}
+                        {safeStringDisplay(history.name) || "名称未設定"}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        時代: {history.period || "未設定"} | 重要性:{" "}
-                        {history.importance || "未設定"}
+                        時代: {safeStringDisplay(history.period) || "未設定"} |
+                        重要性:{" "}
+                        {safeStringDisplay(history.importance) || "未設定"}
                       </Typography>
                     </Box>
                     <Box>
@@ -225,7 +244,7 @@ const HistoryLegendTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {history.description}
+                        {safeStringDisplay(history.description)}
                       </Typography>
                     </Box>
                   )}
@@ -239,7 +258,7 @@ const HistoryLegendTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {history.significantEvents}
+                        {safeStringDisplay(history.significantEvents)}
                       </Typography>
                     </Box>
                   )}
@@ -253,7 +272,7 @@ const HistoryLegendTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {history.consequences}
+                        {safeStringDisplay(history.consequences)}
                       </Typography>
                     </Box>
                   )}
@@ -267,7 +286,7 @@ const HistoryLegendTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {history.relations}
+                        {safeStringDisplay(history.relations)}
                       </Typography>
                     </Box>
                   )}
@@ -294,7 +313,7 @@ const HistoryLegendTab: React.FC = () => {
             label="名前"
             name="name"
             placeholder="歴史的出来事や伝説の名前"
-            value={currentHistory?.name || ""}
+            value={safeStringDisplay(currentHistory?.name) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -306,7 +325,7 @@ const HistoryLegendTab: React.FC = () => {
             label="説明"
             name="description"
             placeholder="この歴史的出来事や伝説の基本的な説明"
-            value={currentHistory?.description || ""}
+            value={safeStringDisplay(currentHistory?.description) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -318,7 +337,7 @@ const HistoryLegendTab: React.FC = () => {
             label="特徴"
             name="features"
             placeholder="この出来事や伝説の特徴的な要素"
-            value={currentHistory?.features || ""}
+            value={safeStringDisplay(currentHistory?.features) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -328,7 +347,7 @@ const HistoryLegendTab: React.FC = () => {
             label="重要性"
             name="importance"
             placeholder="物語における重要度（高・中・低など）"
-            value={currentHistory?.importance || ""}
+            value={safeStringDisplay(currentHistory?.importance) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -338,7 +357,7 @@ const HistoryLegendTab: React.FC = () => {
             label="時代・期間"
             name="period"
             placeholder="いつ起こったか、どの時代の出来事か"
-            value={currentHistory?.period || ""}
+            value={safeStringDisplay(currentHistory?.period) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -350,7 +369,7 @@ const HistoryLegendTab: React.FC = () => {
             label="重要な出来事"
             name="significantEvents"
             placeholder="この歴史や伝説における重要な出来事の詳細"
-            value={currentHistory?.significantEvents || ""}
+            value={safeStringDisplay(currentHistory?.significantEvents) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -362,7 +381,7 @@ const HistoryLegendTab: React.FC = () => {
             label="結果・影響"
             name="consequences"
             placeholder="この出来事が世界や社会に与えた影響や結果"
-            value={currentHistory?.consequences || ""}
+            value={safeStringDisplay(currentHistory?.consequences) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -374,7 +393,7 @@ const HistoryLegendTab: React.FC = () => {
             label="関連要素"
             name="relations"
             placeholder="他の歴史的出来事、人物、場所との関連性"
-            value={currentHistory?.relations || ""}
+            value={safeStringDisplay(currentHistory?.relations) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"

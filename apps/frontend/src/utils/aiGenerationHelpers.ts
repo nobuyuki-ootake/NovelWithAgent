@@ -1,5 +1,12 @@
 import { aiAgentApi } from "../api/aiAgent";
-import { PlotElement, Character } from "@novel-ai-assistant/types";
+import {
+  PlotElement,
+  Character,
+  TimelineEventSeed,
+  StandardAIRequest,
+  StandardAIResponse,
+} from "@novel-ai-assistant/types";
+import axios from "axios";
 
 /**
  * あらすじ生成
@@ -326,13 +333,62 @@ ${message}
 export const generateTimelineContent = async (
   message: string,
   projectData: Record<string, unknown>
-): Promise<string> => {
+): Promise<TimelineEventSeed[]> => {
   try {
-    // TODO: タイムライン生成APIの実装
-    console.log("タイムライン生成:", { message, projectData });
-    return "タイムライン生成機能は実装中です。";
+    console.log("タイムライン生成開始:", { message, projectData });
+
+    const worldBuilding = projectData.worldBuilding as
+      | { places?: unknown[] }
+      | undefined;
+
+    const requestPayload: StandardAIRequest = {
+      requestType: "timeline-event-generation",
+      userPrompt: message,
+      context: {
+        allPlots: projectData.plot || [],
+        characters: projectData.characters || [],
+        places: worldBuilding?.places || [],
+      },
+      options: {
+        responseFormat: "json",
+      },
+    };
+
+    const response = await axios.post<StandardAIResponse>(
+      "/api/ai-agent/timeline-event-generation",
+      requestPayload
+    );
+
+    if (response.data.status === "success" && response.data.content) {
+      const eventSeeds = response.data.content as TimelineEventSeed[];
+      console.log("タイムライン生成完了:", eventSeeds);
+      return eventSeeds;
+    } else if (response.data.status === "error") {
+      console.error(
+        "タイムライン生成エラー (APIレスポンス):",
+        response.data.error
+      );
+      throw new Error(
+        response.data.error?.message ||
+          "タイムライン生成中にAPIからエラーが返されました。"
+      );
+    } else {
+      console.error(
+        "タイムライン生成の予期しないレスポンス形式:",
+        response.data
+      );
+      throw new Error("タイムライン生成のレスポンス形式が不正です。");
+    }
   } catch (error) {
     console.error("タイムライン生成エラー:", error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("Axiosエラー詳細:", error.response.data);
+      throw new Error(
+        `タイムライン生成に失敗しました: ${
+          error.response.data?.error?.message || "詳細不明"
+        }`
+      );
+    }
     throw error;
   }
 };

@@ -139,6 +139,24 @@ const MagicTechnologyTab: React.FC = () => {
     });
   };
 
+  // 値を安全に文字列として表示するヘルパー関数
+  const safeStringDisplay = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return "[オブジェクト]";
+      }
+    }
+    return String(value);
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -195,10 +213,11 @@ const MagicTechnologyTab: React.FC = () => {
                   >
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="h6" gutterBottom>
-                        {magicTech.name || "名称未設定"}
+                        {safeStringDisplay(magicTech.name) || "名称未設定"}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        重要性: {magicTech.importance || "未設定"}
+                        重要性:{" "}
+                        {safeStringDisplay(magicTech.importance) || "未設定"}
                       </Typography>
                     </Box>
                     <Box>
@@ -228,7 +247,7 @@ const MagicTechnologyTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {magicTech.description}
+                        {safeStringDisplay(magicTech.description)}
                       </Typography>
                     </Box>
                   )}
@@ -242,7 +261,7 @@ const MagicTechnologyTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {magicTech.functionality}
+                        {safeStringDisplay(magicTech.functionality)}
                       </Typography>
                     </Box>
                   )}
@@ -256,7 +275,7 @@ const MagicTechnologyTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {magicTech.impact}
+                        {safeStringDisplay(magicTech.impact)}
                       </Typography>
                     </Box>
                   )}
@@ -270,7 +289,7 @@ const MagicTechnologyTab: React.FC = () => {
                         variant="body2"
                         sx={{ whiteSpace: "pre-wrap" }}
                       >
-                        {magicTech.relations}
+                        {safeStringDisplay(magicTech.relations)}
                       </Typography>
                     </Box>
                   )}
@@ -297,7 +316,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="名前"
             name="name"
             placeholder="魔法システムや技術の名前"
-            value={currentMagicTech?.name || ""}
+            value={safeStringDisplay(currentMagicTech?.name) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -309,7 +328,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="説明"
             name="description"
             placeholder="この魔法システムや技術の基本的な説明"
-            value={currentMagicTech?.description || ""}
+            value={safeStringDisplay(currentMagicTech?.description) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -321,7 +340,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="特徴"
             name="features"
             placeholder="この魔法や技術の特徴的な要素"
-            value={currentMagicTech?.features || ""}
+            value={safeStringDisplay(currentMagicTech?.features) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -331,7 +350,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="重要性"
             name="importance"
             placeholder="物語における重要度（高・中・低など）"
-            value={currentMagicTech?.importance || ""}
+            value={safeStringDisplay(currentMagicTech?.importance) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -343,7 +362,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="機能・仕組み"
             name="functionality"
             placeholder="この魔法や技術がどのように機能するか、その仕組み"
-            value={currentMagicTech?.functionality || ""}
+            value={safeStringDisplay(currentMagicTech?.functionality) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -355,7 +374,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="発展・歴史"
             name="development"
             placeholder="この魔法や技術がどのように発展してきたか、その歴史"
-            value={currentMagicTech?.development || ""}
+            value={safeStringDisplay(currentMagicTech?.development) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -367,7 +386,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="影響・効果"
             name="impact"
             placeholder="この魔法や技術が社会や世界に与える影響"
-            value={currentMagicTech?.impact || ""}
+            value={safeStringDisplay(currentMagicTech?.impact) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
@@ -379,7 +398,7 @@ const MagicTechnologyTab: React.FC = () => {
             label="関連要素"
             name="relations"
             placeholder="他の魔法システム、技術、人物、組織との関連性"
-            value={currentMagicTech?.relations || ""}
+            value={safeStringDisplay(currentMagicTech?.relations) || ""}
             onChange={handleInputChange}
             variant="outlined"
             margin="normal"
