@@ -346,11 +346,13 @@ export function useCharacters() {
 
   // キャラクターの削除
   const handleDeleteCharacter = useCallback(
-    (id: string) => {
-      const confirm = window.confirm(
-        "このキャラクターを削除してもよろしいですか？"
-      );
-      if (!confirm) return;
+    (id: string, skipConfirm: boolean = false) => {
+      if (!skipConfirm) {
+        const confirm = window.confirm(
+          "このキャラクターを削除してもよろしいですか？"
+        );
+        if (!confirm) return;
+      }
 
       const updatedCharacters = characters.filter(
         (character) => character.id !== id

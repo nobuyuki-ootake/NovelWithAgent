@@ -53,7 +53,7 @@ interface CharactersContextType {
   ) => void;
   handleAddCustomField: () => void;
   handleRemoveCustomField: (id: string) => void;
-  handleDeleteCharacter: (id: string) => void;
+  handleDeleteCharacter: (id: string, skipConfirm?: boolean) => void;
   handleSaveCharacter: () => void;
   handleCloseSnackbar: () => void;
   handleSaveStatus: (status: CharacterStatus) => void;

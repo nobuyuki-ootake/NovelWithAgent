@@ -191,7 +191,7 @@ const CharactersPageContent: React.FC = () => {
   // キャラクター削除実行
   const handleConfirmDelete = () => {
     if (characterToDelete) {
-      handleDeleteCharacter(characterToDelete);
+      handleDeleteCharacter(characterToDelete, true); // skipConfirm = true
       handleCloseConfirmDelete();
     }
   };
