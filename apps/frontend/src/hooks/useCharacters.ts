@@ -152,8 +152,46 @@ export function useCharacters() {
     []
   );
 
-  // ダイアログを開く（新規作成）
-  const handleOpenDialog = useCallback(() => {
+  // ダイアログを開く（新規作成または編集）
+  const handleOpenDialog = useCallback((characterId?: string) => {
+    if (characterId) {
+      // 編集モード：指定されたキャラクターを検索
+      const character = characters.find(c => c.id === characterId);
+      if (character) {
+        // 編集モードの処理（handleEditCharacterと同じ処理）
+        const ensuredCharacter = {
+          ...initialCharacterState,
+          ...character,
+          description: character.description || "",
+          background: character.background || "",
+          motivation: character.motivation || "",
+          relationships: character.relationships || [],
+          traits: character.traits || [],
+          customFields: character.customFields || [],
+          statuses: character.statuses || [],
+        };
+
+        setFormData(ensuredCharacter);
+        setTempImageUrl(character.imageUrl || "");
+        // 画像URLが絵文字データURIの場合は選択絵文字を設定
+        if (
+          character.imageUrl &&
+          character.imageUrl.startsWith("data:text/plain;charset=utf-8,")
+        ) {
+          const emoji = dataUrlToEmoji(character.imageUrl);
+          if (emoji) setSelectedEmoji(emoji);
+        } else {
+          setSelectedEmoji("");
+        }
+        setFormErrors({});
+        setEditMode(true);
+        setOpenDialog(true);
+        setHasUnsavedChanges(false);
+        return;
+      }
+    }
+    
+    // 新規作成モード
     setFormData({
       ...(initialCharacterState as Character),
       id: uuidv4(),
@@ -165,7 +203,7 @@ export function useCharacters() {
     setEditMode(false);
     setOpenDialog(true);
     setHasUnsavedChanges(false);
-  }, [initialCharacterState]);
+  }, [initialCharacterState, characters]);
 
   // ダイアログを開く（編集）
   const handleEditCharacter = useCallback(
