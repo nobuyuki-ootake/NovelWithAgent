@@ -34,6 +34,9 @@ const API_BASE_URL = buildApiBaseUrl();
 console.log("環境変数 VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
 console.log("構築されたAPI_BASE_URL:", API_BASE_URL);
 
+// axios のデフォルト設定でクレデンシャルを含める
+axios.defaults.withCredentials = true;
+
 // APIエラーハンドリング共通関数
 const handleApiError = (error: AxiosError | Error, operationName: string) => {
   // ネットワークエラーの処理 (Error 型の場合)
