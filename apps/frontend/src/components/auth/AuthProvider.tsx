@@ -39,9 +39,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('AuthProvider: 認証状態を確認中...');
+      
+      // まずURLパラメータをチェック（リダイレクト直後の場合）
+      if (window.location.pathname !== '/auth/callback') {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const email = params.get('email');
+        const name = params.get('name');
+        const picture = params.get('picture');
+
+        if (token && email) {
+          console.log('AuthProvider: URLパラメータから認証情報を取得');
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('user', JSON.stringify({ 
+            email: decodeURIComponent(email), 
+            name: name ? decodeURIComponent(name) : '',
+            picture: picture ? decodeURIComponent(picture) : ''
+          }));
+          setUser(JSON.parse(localStorage.getItem('user')!));
+          // URLパラメータをクリア
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       // ローカルストレージから認証情報を取得
       const storedUser = localStorage.getItem('user');
       const authToken = localStorage.getItem('authToken');
+      
+      console.log('AuthProvider: ストレージ確認', { storedUser: !!storedUser, authToken: !!authToken });
       
       if (storedUser && authToken) {
         // ストレージにユーザー情報があればそれを使用
@@ -56,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
         
         if (!response.ok) {
+          console.log('AuthProvider: トークンが無効、クリアします');
           // トークンが無効な場合はクリア
           localStorage.removeItem('user');
           localStorage.removeItem('authToken');

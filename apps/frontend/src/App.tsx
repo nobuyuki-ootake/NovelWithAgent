@@ -59,27 +59,43 @@ function App() {
           <Toaster position="bottom-right" richColors />
           <WorldBuildingProvider>
             <Routes>
-              {/* 認証コールバックルート */}
+              {/* 認証コールバックルート（認証不要） */}
               <Route path="/auth/callback" element={<AuthCallback />} />
               
-              {/* 保護されたルート */}
+              {/* メインページ（認証が必要） */}
               <Route
-                path="/*"
+                path="/"
                 element={
                   <ProtectedRoute>
-                    <Routes>
-                      <Route
-                        path="/"
-                        element={
-                          <AppLayout>
-                            <MainContent />
-                          </AppLayout>
-                        }
-                      />
-                      <Route path="/projects" element={<ProjectsPage />} />
-                      <Route path="/new" element={<NewProjectPage />} />
-                      <Route path="/worldbuilding" element={<WorldBuildingPage />} />
-                    </Routes>
+                    <AppLayout>
+                      <MainContent />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* その他の保護されたルート */}
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute>
+                    <ProjectsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/new"
+                element={
+                  <ProtectedRoute>
+                    <NewProjectPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/worldbuilding"
+                element={
+                  <ProtectedRoute>
+                    <WorldBuildingPage />
                   </ProtectedRoute>
                 }
               />
