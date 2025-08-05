@@ -6,13 +6,14 @@ const router = Router();
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://novelwithagent-production.up.railway.app';
 const ALLOWED_EMAILS = process.env.ALLOWED_EMAILS?.split(',') || [];
 
 // Google OAuth開始
 router.get('/google', (req: Request, res: Response) => {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID!,
-    redirect_uri: `${CLIENT_URL}/auth/callback`,
+    redirect_uri: `${API_BASE_URL}/auth/callback`,
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline',
@@ -39,7 +40,7 @@ router.get('/callback', async (req: Request, res: Response) => {
         code: code as string,
         client_id: GOOGLE_CLIENT_ID!,
         client_secret: GOOGLE_CLIENT_SECRET!,
-        redirect_uri: `${CLIENT_URL}/auth/callback`,
+        redirect_uri: `${API_BASE_URL}/auth/callback`,
         grant_type: 'authorization_code',
       }),
     });
