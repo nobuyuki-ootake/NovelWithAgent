@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { registerToken } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -67,15 +68,21 @@ router.get('/callback', async (req: Request, res: Response) => {
       return res.status(403).send(`このメールアドレス「${user.email}」ではアクセスできません。許可されたメールアドレス: ${ALLOWED_EMAILS.join(', ')}`);
     }
 
-    // セッションに保存
-    req.session.user = {
+    // ユーザー情報
+    const userData = {
       email: user.email,
       name: user.name,
       picture: user.picture,
     };
 
+    // セッションに保存
+    req.session.user = userData;
+
     // トークンとしてセッションIDを使用
     const sessionToken = req.sessionID;
+    
+    // トークンマップに登録
+    registerToken(sessionToken, userData);
 
     // フロントエンドにリダイレクト（トークンをクエリパラメータとして渡す）
     const redirectUrl = process.env.NODE_ENV === 'production' 
@@ -97,7 +104,7 @@ router.post('/logout', (req: Request, res: Response) => {
 });
 
 // 認証状態確認
-router.get('/me', (req: Request, res: Response) => {
+router.get('/me', async (req: Request, res: Response) => {
   // セッション認証をチェック
   if (req.session.user) {
     return res.json(req.session.user);
@@ -108,21 +115,16 @@ router.get('/me', (req: Request, res: Response) => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7); // 'Bearer ' を除去
     
-    // セッションストアからトークンに対応するセッションを検索
-    if (token && req.sessionStore) {
-      req.sessionStore.get(token, (err, sessionData) => {
-        if (err) {
-          console.error('Session store error:', err);
-          return res.status(401).json({ error: 'Not authenticated' });
-        }
-        
-        if (sessionData && sessionData.user) {
-          return res.json(sessionData.user);
-        } else {
-          return res.status(401).json({ error: 'Invalid token' });
-        }
-      });
-      return;
+    // requireAuth関数と同じロジックを使用
+    const { tokenUserMap } = await import('../middleware/auth.js');
+    const userData = tokenUserMap.get(token);
+    if (userData) {
+      return res.json(userData);
+    }
+    
+    // セッションIDとトークンが一致する場合
+    if (token === req.sessionID && req.session.user) {
+      return res.json(req.session.user);
     }
   }
 

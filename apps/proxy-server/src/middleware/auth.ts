@@ -11,6 +11,9 @@ declare module 'express-session' {
   }
 }
 
+// 簡易的なトークン→ユーザー情報のマッピング（本番環境ではRedisやDBを使用推奨）
+export const tokenUserMap = new Map<string, any>();
+
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   console.log('Auth middleware called for:', req.path);
   console.log('Session user:', req.session.user);
@@ -28,33 +31,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     const token = authHeader.substring(7); // 'Bearer ' を除去
     console.log('Checking Bearer token:', token);
     
-    // Express-sessionのセッションストアを使用
-    const sessionStore = req.app.locals.sessionStore || req.sessionStore;
-    if (token && sessionStore) {
-      sessionStore.get(token, (err: any, sessionData: any) => {
-        if (err) {
-          console.error('Session store error:', err);
-          return res.status(401).json({ 
-            error: 'Authentication required',
-            loginUrl: '/auth/google'
-          });
-        }
-        
-        console.log('Session data found:', sessionData);
-        if (sessionData && sessionData.user) {
-          // セッションデータからユーザー情報を設定
-          req.session.user = sessionData.user;
-          console.log('Authenticated via Bearer token');
-          return next();
-        } else {
-          console.log('Invalid or expired token');
-          return res.status(401).json({ 
-            error: 'Invalid token',
-            loginUrl: '/auth/google'
-          });
-        }
-      });
-      return; // 非同期処理を待つ
+    // トークンマップからユーザー情報を取得
+    const userData = tokenUserMap.get(token);
+    if (userData) {
+      console.log('User found for token:', userData);
+      req.session.user = userData;
+      return next();
+    }
+    
+    // セッションIDとトークンが一致する場合（同じセッション）
+    if (token === req.sessionID) {
+      console.log('Token matches session ID');
+      return next();
     }
   }
 
@@ -64,6 +52,15 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     error: 'Authentication required',
     loginUrl: '/auth/google'
   });
+}
+
+// トークンとユーザー情報を登録する関数
+export function registerToken(token: string, userData: any) {
+  tokenUserMap.set(token, userData);
+  // 7日後に自動削除
+  setTimeout(() => {
+    tokenUserMap.delete(token);
+  }, 7 * 24 * 60 * 60 * 1000);
 }
 
 export function optionalAuth(req: Request, res: Response, next: NextFunction) {
