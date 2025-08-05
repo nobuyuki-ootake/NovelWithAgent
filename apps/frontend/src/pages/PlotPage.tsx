@@ -34,8 +34,6 @@ const PlotPageContent: React.FC = () => {
     isEditMode,
     hasUnsavedChanges,
     currentProject,
-    setNewItemTitle,
-    setNewItemDescription,
     setEditItemTitle,
     setEditItemDescription,
     setEditItemStatus,
