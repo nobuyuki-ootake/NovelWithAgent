@@ -13,6 +13,8 @@ import ProjectsPage from "./pages/ProjectsPage";
 import { appModeState, currentProjectState } from "./store/atoms";
 import { Toaster } from "sonner";
 import { WorldBuildingProvider } from "./contexts/WorldBuildingContext";
+import { AuthProvider } from "./components/auth/AuthProvider";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // メインコンテンツを表示するコンポーネント
 const MainContent = () => {
@@ -50,26 +52,30 @@ const MainContent = () => {
 // Appコンポーネント
 function App() {
   return (
-    <RecoilRoot>
-      <Router>
-        <Toaster position="bottom-right" richColors />
-        <WorldBuildingProvider>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <AppLayout>
-                  <MainContent />
-                </AppLayout>
-              }
-            />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/new" element={<NewProjectPage />} />
-            <Route path="/worldbuilding" element={<WorldBuildingPage />} />
-          </Routes>
-        </WorldBuildingProvider>
-      </Router>
-    </RecoilRoot>
+    <AuthProvider>
+      <ProtectedRoute>
+        <RecoilRoot>
+          <Router>
+            <Toaster position="bottom-right" richColors />
+            <WorldBuildingProvider>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <AppLayout>
+                      <MainContent />
+                    </AppLayout>
+                  }
+                />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/new" element={<NewProjectPage />} />
+                <Route path="/worldbuilding" element={<WorldBuildingPage />} />
+              </Routes>
+            </WorldBuildingProvider>
+          </Router>
+        </RecoilRoot>
+      </ProtectedRoute>
+    </AuthProvider>
   );
 }
 

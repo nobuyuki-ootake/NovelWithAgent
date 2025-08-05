@@ -1,10 +1,11 @@
 import React from "react";
-import { Box, Container, Fab, Tooltip } from "@mui/material";
+import { Box, Container, Fab, Tooltip, AppBar, Toolbar, Typography, Avatar, IconButton, Menu, MenuItem } from "@mui/material";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { currentProjectState, sidebarOpenState } from "../../store/atoms";
 import Sidebar from "./Sidebar";
 import AIChatPanel from "../ai/AIChatPanel";
 import MenuIcon from "@mui/icons-material/Menu";
+import { useAuth } from "../auth/AuthProvider";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -13,13 +14,63 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const currentProject = useRecoilValue(currentProjectState);
   const [sidebarOpen, setSidebarOpen] = useRecoilState(sidebarOpenState);
+  const { user, logout } = useAuth();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    handleUserMenuClose();
+  };
+
+  // ヘッダーコンポーネント
+  const Header = () => (
+    <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+      <Toolbar>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          小説作成AI アシスタント
+        </Typography>
+        {user && (
+          <>
+            <IconButton onClick={handleUserMenuClick} sx={{ p: 0, ml: 2 }}>
+              <Avatar src={user.picture} alt={user.name} sx={{ width: 32, height: 32 }} />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleUserMenuClose}
+              onClick={handleUserMenuClose}
+            >
+              <MenuItem disabled>
+                <Typography variant="body2">{user.name}</Typography>
+              </MenuItem>
+              <MenuItem disabled>
+                <Typography variant="caption" color="text.secondary">{user.email}</Typography>
+              </MenuItem>
+              <MenuItem onClick={handleLogout}>ログアウト</MenuItem>
+            </Menu>
+          </>
+        )}
+      </Toolbar>
+    </AppBar>
+  );
 
   // プロジェクトが選択されていない場合はシンプルなレイアウトを表示
   if (!currentProject) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {children}
-      </Container>
+      <>
+        <Header />
+        <Container maxWidth="lg" sx={{ mt: 12, pt: 2 }}>
+          {children}
+        </Container>
+      </>
     );
   }
 
@@ -30,31 +81,34 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   // プロジェクトが選択されている場合はサイドバー付きのレイアウトを表示
   return (
-    <Box
-      sx={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        backgroundColor: "background.default",
-        position: "relative",
-      }}
-    >
-      {/* サイドバー - ドロワーをoverlayモードに変更 */}
-      <Sidebar open={sidebarOpen} onClose={toggleSidebar} />
-
-      {/* メインコンテンツエリア */}
+    <>
+      <Header />
       <Box
-        component="main"
         sx={{
-          flexGrow: 1,
-          p: 3,
+          display: "flex",
           height: "100vh",
-          overflow: "auto",
-          position: "relative",
+          overflow: "hidden",
           backgroundColor: "background.default",
+          position: "relative",
+          pt: 8, // ヘッダー分の余白
         }}
       >
-        {children}
+        {/* サイドバー - ドロワーをoverlayモードに変更 */}
+        <Sidebar open={sidebarOpen} onClose={toggleSidebar} />
+
+        {/* メインコンテンツエリア */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            height: "calc(100vh - 64px)", // ヘッダー分を引く
+            overflow: "auto",
+            position: "relative",
+            backgroundColor: "background.default",
+          }}
+        >
+          {children}
 
         {/* フロート操作メニューボタン */}
         <Tooltip title="創作メニュー" placement="left">

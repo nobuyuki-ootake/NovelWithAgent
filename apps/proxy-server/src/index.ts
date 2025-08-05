@@ -1,4 +1,6 @@
 import express from 'express';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
 import { OpenAI } from 'openai';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -9,6 +11,8 @@ import dotenv from 'dotenv';
 import Redis from 'ioredis';
 import winston from 'winston';
 import aiAgentRoutes from './routes/aiAgent.js';
+import authRoutes from './routes/auth.js';
+import { requireAuth } from './middleware/auth.js';
 import { mastra } from './mastra/index.js';
 
 // 環境変数の読み込み
@@ -66,9 +70,22 @@ app.use(
   }),
 );
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+
+// セッション設定
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7日間
+  },
+}));
+
 app.use(
   cors({
-    origin: '*', // すべてのオリジンを許可
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
     credentials: true,
@@ -165,10 +182,11 @@ const setToCache = async (
 };
 
 // ルーターのマウント
-app.use('/api/ai-agent', aiAgentRoutes);
+app.use('/auth', authRoutes);
+app.use('/api/ai-agent', requireAuth, aiAgentRoutes);
 
 // OpenAI APIプロキシ
-app.post('/api/openai', authMiddleware, async (req, res) => {
+app.post('/api/openai', requireAuth, async (req, res) => {
   try {
     const requestBody = req.body;
     const cacheKey = `openai:${JSON.stringify(requestBody)}`;
@@ -196,7 +214,7 @@ app.post('/api/openai', authMiddleware, async (req, res) => {
 });
 
 // Claude APIプロキシ
-app.post('/api/claude', authMiddleware, async (req, res) => {
+app.post('/api/claude', requireAuth, async (req, res) => {
   try {
     const requestBody = req.body;
     const cacheKey = `claude:${JSON.stringify(requestBody)}`;
@@ -261,7 +279,7 @@ app.post('/api/claude', authMiddleware, async (req, res) => {
 });
 
 // Gemini APIプロキシ
-app.post('/api/gemini', authMiddleware, async (req, res) => {
+app.post('/api/gemini', requireAuth, async (req, res) => {
   try {
     const requestBody = req.body;
     const cacheKey = `gemini:${JSON.stringify(requestBody)}`;
