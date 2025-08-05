@@ -31,6 +31,7 @@ const PlotPageContent: React.FC = () => {
     editItemDescription,
     editItemStatus,
     isDialogOpen,
+    isEditMode,
     hasUnsavedChanges,
     currentProject,
     setNewItemTitle,
@@ -41,6 +42,7 @@ const PlotPageContent: React.FC = () => {
     handleAddItem,
     handleDeleteItem,
     handleOpenEditDialog,
+    handleOpenAddDialog,
     handleCloseEditDialog,
     handleUpdateItem,
     // handleDragEnd, // PlotContextから受け取っているが、一旦削除
@@ -139,17 +141,7 @@ ${(currentProject as NovelProject)?.synopsis || "（あらすじがありませ�
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => {
-                setNewItemTitle("");
-                setNewItemDescription("");
-                handleOpenEditDialog({
-                  id: "",
-                  title: "",
-                  description: "",
-                  order: plotItems.length,
-                  status: "検討中",
-                });
-              }}
+              onClick={handleOpenAddDialog}
             >
               新規追加
             </Button>
@@ -213,7 +205,7 @@ ${(currentProject as NovelProject)?.synopsis || "（あらすじがありませ�
         fullWidth
       >
         <DialogTitle>
-          {editItemTitle ? "プロット項目を編集" : "新規プロット項目"}
+          {isEditMode ? "プロット項目を編集" : "新規プロット項目"}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
@@ -251,11 +243,11 @@ ${(currentProject as NovelProject)?.synopsis || "（あらすじがありませ�
         <DialogActions>
           <Button onClick={handleCloseEditDialog}>キャンセル</Button>
           <Button
-            onClick={editItemTitle ? handleUpdateItem : handleAddItem}
+            onClick={isEditMode ? handleUpdateItem : handleAddItem}
             variant="contained"
             color="primary"
           >
-            {editItemTitle ? "更新" : "追加"}
+            {isEditMode ? "更新" : "追加"}
           </Button>
         </DialogActions>
       </Dialog>

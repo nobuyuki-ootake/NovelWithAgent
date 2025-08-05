@@ -19,6 +19,7 @@ export function usePlot() {
     "検討中"
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
@@ -32,19 +33,22 @@ export function usePlot() {
 
   // プロットアイテムを追加
   const handleAddItem = () => {
-    if (!newItemTitle.trim()) return;
+    if (!editItemTitle.trim()) return;
 
     const newItem: PlotElement = {
       id: uuidv4(),
-      title: newItemTitle.trim(),
-      description: newItemDescription.trim(),
+      title: editItemTitle.trim(),
+      description: editItemDescription.trim(),
       order: plotItems.length,
-      status: "検討中",
+      status: editItemStatus,
     };
 
     setPlotItems([...plotItems, newItem]);
-    setNewItemTitle("");
-    setNewItemDescription("");
+    setEditItemTitle("");
+    setEditItemDescription("");
+    setEditItemStatus("検討中");
+    setIsDialogOpen(false);
+    setIsEditMode(false);
     setHasUnsavedChanges(true);
   };
 
@@ -68,6 +72,17 @@ export function usePlot() {
     setEditItemTitle(item.title);
     setEditItemDescription(item.description);
     setEditItemStatus(item.status);
+    setIsEditMode(true);
+    setIsDialogOpen(true);
+  };
+
+  // 新規追加ダイアログを開く
+  const handleOpenAddDialog = () => {
+    setEditItemId(null);
+    setEditItemTitle("");
+    setEditItemDescription("");
+    setEditItemStatus("検討中");
+    setIsEditMode(false);
     setIsDialogOpen(true);
   };
 
@@ -75,6 +90,7 @@ export function usePlot() {
   const handleCloseEditDialog = () => {
     setIsDialogOpen(false);
     setEditItemId(null);
+    setIsEditMode(false);
   };
 
   // プロットアイテムを更新
@@ -96,6 +112,7 @@ export function usePlot() {
     setPlotItems(updatedItems);
     setIsDialogOpen(false);
     setEditItemId(null);
+    setIsEditMode(false);
     setHasUnsavedChanges(true);
   };
 
@@ -192,11 +209,13 @@ export function usePlot() {
     editItemDescription,
     editItemStatus,
     isDialogOpen,
+    isEditMode,
     hasUnsavedChanges,
     snackbarOpen,
     handleAddItem,
     handleDeleteItem,
     handleOpenEditDialog,
+    handleOpenAddDialog,
     handleCloseEditDialog,
     handleUpdateItem,
     handleDragEnd,

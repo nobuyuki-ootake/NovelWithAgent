@@ -16,6 +16,7 @@ interface PlotContextType {
   editItemDescription: string;
   editItemStatus: "検討中" | "決定";
   isDialogOpen: boolean;
+  isEditMode: boolean;
   hasUnsavedChanges: boolean;
   snackbarOpen: boolean;
   currentProject: NovelProject | null;
@@ -31,6 +32,7 @@ interface PlotContextType {
   handleAddItem: () => void;
   handleDeleteItem: (id: string) => void;
   handleOpenEditDialog: (item: PlotElement) => void;
+  handleOpenAddDialog: () => void;
   handleCloseEditDialog: () => void;
   handleUpdateItem: () => void;
   handleDragEnd: (result: DropResult) => void;
@@ -64,11 +66,13 @@ export const PlotProvider: React.FC<{ children: ReactNode }> = ({
     editItemDescription,
     editItemStatus,
     isDialogOpen,
+    isEditMode,
     hasUnsavedChanges,
     snackbarOpen,
     handleAddItem,
     handleDeleteItem,
     handleOpenEditDialog,
+    handleOpenAddDialog,
     handleCloseEditDialog,
     handleUpdateItem,
     handleDragEnd,
@@ -145,6 +149,7 @@ export const PlotProvider: React.FC<{ children: ReactNode }> = ({
     editItemDescription,
     editItemStatus,
     isDialogOpen,
+    isEditMode,
     hasUnsavedChanges,
     snackbarOpen,
     currentProject: currentProject as NovelProject | null,
@@ -158,6 +163,7 @@ export const PlotProvider: React.FC<{ children: ReactNode }> = ({
     handleAddItem,
     handleDeleteItem,
     handleOpenEditDialog,
+    handleOpenAddDialog,
     handleCloseEditDialog,
     handleUpdateItem,
     handleDragEnd,

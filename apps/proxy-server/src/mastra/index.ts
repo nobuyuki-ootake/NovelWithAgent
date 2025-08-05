@@ -1,7 +1,7 @@
 /**
  * Mastraモックライブラリによる対話型AIエージェントシステムの設定と初期化
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 
 // 環境変数の読み込み
@@ -16,7 +16,7 @@ const getGeminiClient = () => {
     );
     throw new Error('Gemini APIキーが設定されていません');
   }
-  return new GoogleGenerativeAI(apiKey);
+  return new GoogleGenAI({ apiKey });
 };
 
 // 簡易化したMastraのモッククラス
@@ -208,7 +208,7 @@ class MastraMock {
 
   // Gemini APIを使用してLLMを実行
   async runWithGemini(
-    geminiClient: GoogleGenerativeAI,
+    geminiClient: GoogleGenAI,
     agent: any,
     input: string,
     selectedElements: any[] = [],
@@ -267,19 +267,15 @@ ${
 
       // Gemini APIを使用
       try {
-        const model = geminiClient.getGenerativeModel({
-          model: 'gemini-1.5-pro',
-          generationConfig: {
+        const response = await geminiClient.models.generateContent({
+          model: 'gemini-2.5-pro',
+          contents: systemPrompt + '\n\n' + userPrompt,
+          config: {
             temperature: 0.7,
           },
         });
 
-        const result = await model.generateContent([
-          { text: systemPrompt + '\n\n' + userPrompt },
-        ]);
-
-        const response = result.response;
-        return response.text();
+        return response.text;
       } catch (apiError) {
         // 詳細なエラー情報を出力（デバッグ用）
         console.error('[GEMINI ERROR] API実行エラー:', apiError);
@@ -338,7 +334,7 @@ const providers = {
   gemini: {
     client: gemini,
     config: {
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.5-pro',
       temperature: 0.7,
     },
   },
