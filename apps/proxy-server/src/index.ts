@@ -123,7 +123,10 @@ app.use(session({
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: [
+      process.env.CLIENT_URL || 'http://localhost:3000',
+      'https://novel-with-agent-frontend.vercel.app',
+    ],
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
     credentials: true,
@@ -134,7 +137,10 @@ app.use(
 app.options(
   '*',
   cors({
-    origin: '*',
+    origin: [
+      process.env.CLIENT_URL || 'http://localhost:3000',
+      'https://novel-with-agent-frontend.vercel.app',
+    ],
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
     credentials: true,
