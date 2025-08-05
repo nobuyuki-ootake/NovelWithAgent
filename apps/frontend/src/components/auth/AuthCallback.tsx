@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
+import { setAuthToken } from '../../api/aiAgent';
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +27,9 @@ const AuthCallback: React.FC = () => {
         name: name ? decodeURIComponent(name) : '',
         picture: picture ? decodeURIComponent(picture) : ''
       }));
+      
+      // Axiosのデフォルトヘッダーも設定
+      setAuthToken(token);
       
       console.log('認証情報をlocalStorageに保存しました');
       console.log('保存されたトークン:', localStorage.getItem('authToken'));

@@ -37,13 +37,40 @@ console.log("構築されたAPI_BASE_URL:", API_BASE_URL);
 // axios のデフォルト設定でクレデンシャルを含める
 axios.defaults.withCredentials = true;
 
+// デフォルトヘッダーにトークンを設定する関数
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    console.log('Default Authorization header set:', axios.defaults.headers.common['Authorization']);
+  } else {
+    delete axios.defaults.headers.common['Authorization'];
+    console.log('Authorization header removed');
+  }
+};
+
+// 初回ロード時にトークンがあれば設定
+const initialToken = localStorage.getItem('authToken');
+if (initialToken) {
+  setAuthToken(initialToken);
+}
+
 // リクエストインターセプターでトークンを追加
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
+  console.log('Axios interceptor - Token:', token);
+  console.log('Axios interceptor - URL:', config.url);
+  
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    // AxiosHeadersを使用して確実にヘッダーを設定
+    config.headers = config.headers || {};
+    config.headers['Authorization'] = `Bearer ${token}`;
+    console.log('Axios interceptor - Authorization header set:', config.headers['Authorization']);
   }
+  
   return config;
+}, (error) => {
+  console.error('Axios interceptor error:', error);
+  return Promise.reject(error);
 });
 
 // APIエラーハンドリング共通関数

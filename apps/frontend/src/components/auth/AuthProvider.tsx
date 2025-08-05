@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { setAuthToken } from '../../api/aiAgent';
 
 interface User {
   email: string;
@@ -58,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             picture: picture ? decodeURIComponent(picture) : ''
           }));
           setUser(JSON.parse(localStorage.getItem('user')!));
+          setAuthToken(token); // Axiosのデフォルトヘッダーも設定
           // URLパラメータをクリア
           window.history.replaceState({}, document.title, window.location.pathname);
           setIsLoading(false);
@@ -74,6 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (storedUser && authToken) {
         // ストレージにユーザー情報があればそれを使用
         setUser(JSON.parse(storedUser));
+        setAuthToken(authToken); // Axiosのデフォルトヘッダーも設定
         
         // トークンの有効性を確認
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -89,6 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           localStorage.removeItem('user');
           localStorage.removeItem('authToken');
           setUser(null);
+          setAuthToken(null); // Axiosのデフォルトヘッダーもクリア
         }
       }
     } catch (error) {
@@ -115,6 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('user');
       localStorage.removeItem('authToken');
       setUser(null);
+      setAuthToken(null); // Axiosのデフォルトヘッダーもクリア
     } catch (error) {
       console.error('ログアウトに失敗:', error);
     }
