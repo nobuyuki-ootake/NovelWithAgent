@@ -136,6 +136,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* AIChatPanel */}
       <AIChatPanel />
     </Box>
+    </>
   );
 };
 
