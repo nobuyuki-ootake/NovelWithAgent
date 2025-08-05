@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import 'express-session';
 
 declare module 'express-session' {
   interface SessionData {
-    user: {
+    user?: {
       email: string;
       name: string;
       picture: string;
