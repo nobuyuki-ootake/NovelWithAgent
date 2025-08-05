@@ -54,8 +54,12 @@ router.get('/callback', async (req: Request, res: Response) => {
     const user = await userResponse.json();
 
     // メールアドレスをチェック
+    console.log('User email:', user.email);
+    console.log('Allowed emails:', ALLOWED_EMAILS);
+    console.log('Email check result:', ALLOWED_EMAILS.includes(user.email));
+    
     if (!ALLOWED_EMAILS.includes(user.email)) {
-      return res.status(403).send('このメールアドレスではアクセスできません');
+      return res.status(403).send(`このメールアドレス「${user.email}」ではアクセスできません。許可されたメールアドレス: ${ALLOWED_EMAILS.join(', ')}`);
     }
 
     // セッションに保存
