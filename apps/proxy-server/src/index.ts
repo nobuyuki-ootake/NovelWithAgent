@@ -111,7 +111,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // セッション設定
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
@@ -124,7 +124,12 @@ app.use(session({
   },
   name: 'connect.sid', // セッション名を明示的に指定
   proxy: process.env.NODE_ENV === 'production', // プロキシ経由での信頼設定
-}));
+});
+
+app.use(sessionMiddleware);
+
+// セッションストアをapp.localsに保存（認証ミドルウェアから参照できるように）
+app.locals.sessionStore = sessionMiddleware.store;
 
 app.use(
   cors({

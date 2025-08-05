@@ -98,11 +98,35 @@ router.post('/logout', (req: Request, res: Response) => {
 
 // 認証状態確認
 router.get('/me', (req: Request, res: Response) => {
+  // セッション認証をチェック
   if (req.session.user) {
-    res.json(req.session.user);
-  } else {
-    res.status(401).json({ error: 'Not authenticated' });
+    return res.json(req.session.user);
   }
+
+  // Bearerトークン認証をチェック
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7); // 'Bearer ' を除去
+    
+    // セッションストアからトークンに対応するセッションを検索
+    if (token && req.sessionStore) {
+      req.sessionStore.get(token, (err, sessionData) => {
+        if (err) {
+          console.error('Session store error:', err);
+          return res.status(401).json({ error: 'Not authenticated' });
+        }
+        
+        if (sessionData && sessionData.user) {
+          return res.json(sessionData.user);
+        } else {
+          return res.status(401).json({ error: 'Invalid token' });
+        }
+      });
+      return;
+    }
+  }
+
+  res.status(401).json({ error: 'Not authenticated' });
 });
 
 export default router;
