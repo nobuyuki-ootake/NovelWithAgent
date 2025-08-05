@@ -15,6 +15,7 @@ import { Toaster } from "sonner";
 import { WorldBuildingProvider } from "./contexts/WorldBuildingContext";
 import { AuthProvider } from "./components/auth/AuthProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AuthCallback from "./components/auth/AuthCallback";
 
 // メインコンテンツを表示するコンポーネント
 const MainContent = () => {
@@ -52,30 +53,41 @@ const MainContent = () => {
 // Appコンポーネント
 function App() {
   return (
-    <AuthProvider>
-      <ProtectedRoute>
+    <Router>
+      <AuthProvider>
         <RecoilRoot>
-          <Router>
-            <Toaster position="bottom-right" richColors />
-            <WorldBuildingProvider>
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <AppLayout>
-                      <MainContent />
-                    </AppLayout>
-                  }
-                />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/new" element={<NewProjectPage />} />
-                <Route path="/worldbuilding" element={<WorldBuildingPage />} />
-              </Routes>
-            </WorldBuildingProvider>
-          </Router>
+          <Toaster position="bottom-right" richColors />
+          <WorldBuildingProvider>
+            <Routes>
+              {/* 認証コールバックルート */}
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              {/* 保護されたルート */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <Routes>
+                      <Route
+                        path="/"
+                        element={
+                          <AppLayout>
+                            <MainContent />
+                          </AppLayout>
+                        }
+                      />
+                      <Route path="/projects" element={<ProjectsPage />} />
+                      <Route path="/new" element={<NewProjectPage />} />
+                      <Route path="/worldbuilding" element={<WorldBuildingPage />} />
+                    </Routes>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </WorldBuildingProvider>
         </RecoilRoot>
-      </ProtectedRoute>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

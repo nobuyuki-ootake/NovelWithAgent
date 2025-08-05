@@ -74,12 +74,15 @@ router.get('/callback', async (req: Request, res: Response) => {
       picture: user.picture,
     };
 
-    // フロントエンドにリダイレクト（環境に応じて適切なURLを使用）
+    // トークンとしてセッションIDを使用
+    const sessionToken = req.sessionID;
+
+    // フロントエンドにリダイレクト（トークンをクエリパラメータとして渡す）
     const redirectUrl = process.env.NODE_ENV === 'production' 
       ? CLIENT_URL 
       : 'http://localhost:3000';
     console.log('Redirecting to:', redirectUrl);
-    res.redirect(redirectUrl);
+    res.redirect(`${redirectUrl}?token=${sessionToken}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}&picture=${encodeURIComponent(user.picture)}`);
   } catch (error) {
     console.error('認証エラー:', error);
     res.status(500).send('認証エラーが発生しました');

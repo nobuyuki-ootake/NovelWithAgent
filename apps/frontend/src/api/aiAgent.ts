@@ -37,6 +37,15 @@ console.log("構築されたAPI_BASE_URL:", API_BASE_URL);
 // axios のデフォルト設定でクレデンシャルを含める
 axios.defaults.withCredentials = true;
 
+// リクエストインターセプターでトークンを追加
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // APIエラーハンドリング共通関数
 const handleApiError = (error: AxiosError | Error, operationName: string) => {
   // ネットワークエラーの処理 (Error 型の場合)

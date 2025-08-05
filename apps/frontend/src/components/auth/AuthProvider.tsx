@@ -39,13 +39,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        credentials: 'include',
-      });
+      // ローカルストレージから認証情報を取得
+      const storedUser = localStorage.getItem('user');
+      const authToken = localStorage.getItem('authToken');
       
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+      if (storedUser && authToken) {
+        // ストレージにユーザー情報があればそれを使用
+        setUser(JSON.parse(storedUser));
+        
+        // トークンの有効性を確認
+        const response = await fetch(`${API_BASE_URL}/auth/me`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          // トークンが無効な場合はクリア
+          localStorage.removeItem('user');
+          localStorage.removeItem('authToken');
+          setUser(null);
+        }
       }
     } catch (error) {
       console.error('認証状態の確認に失敗:', error);
@@ -60,10 +75,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      const authToken = localStorage.getItem('authToken');
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
         credentials: 'include',
       });
+      localStorage.removeItem('user');
+      localStorage.removeItem('authToken');
       setUser(null);
     } catch (error) {
       console.error('ログアウトに失敗:', error);
