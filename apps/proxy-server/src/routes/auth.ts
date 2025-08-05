@@ -11,6 +11,10 @@ const ALLOWED_EMAILS = process.env.ALLOWED_EMAILS?.split(',') || [];
 
 // Google OAuth開始
 router.get('/google', (req: Request, res: Response) => {
+  console.log('OAuth start - Environment variables:');
+  console.log('CLIENT_URL:', CLIENT_URL);
+  console.log('API_BASE_URL:', API_BASE_URL);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID!,
     redirect_uri: `${API_BASE_URL}/auth/callback`,
@@ -70,8 +74,12 @@ router.get('/callback', async (req: Request, res: Response) => {
       picture: user.picture,
     };
 
-    // フロントエンドにリダイレクト
-    res.redirect(CLIENT_URL);
+    // フロントエンドにリダイレクト（環境に応じて適切なURLを使用）
+    const redirectUrl = process.env.NODE_ENV === 'production' 
+      ? CLIENT_URL 
+      : 'http://localhost:3000';
+    console.log('Redirecting to:', redirectUrl);
+    res.redirect(redirectUrl);
   } catch (error) {
     console.error('認証エラー:', error);
     res.status(500).send('認証エラーが発生しました');
