@@ -111,22 +111,19 @@ app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // セッション設定
-const sessionConfig = {
+app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' as const, // Cross-origin用
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7日間
-    // domain指定なし（自動的に現在のドメインが使われる）
   },
-  name: 'connect.sid', // セッション名を明示的に指定
-  proxy: process.env.NODE_ENV === 'production', // プロキシ経由での信頼設定
-};
-
-app.use(session(sessionConfig));
+  name: 'connect.sid',
+  proxy: process.env.NODE_ENV === 'production',
+}));
 
 app.use(
   cors({
