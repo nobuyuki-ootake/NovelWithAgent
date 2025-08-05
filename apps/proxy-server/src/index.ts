@@ -67,6 +67,44 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'", // Viteの開発モードとReactに必要
+          "'unsafe-eval'", // 開発モードに必要
+          "https://accounts.google.com",
+          "https://www.googleapis.com",
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // Material-UIに必要
+          "https://fonts.googleapis.com",
+        ],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://lh3.googleusercontent.com", // Googleプロフィール画像
+          "https://*.googleusercontent.com",
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://accounts.google.com",
+          "https://www.googleapis.com",
+          "https://oauth2.googleapis.com",
+          process.env.CLIENT_URL || 'http://localhost:3000',
+          process.env.NODE_ENV === 'development' ? 'ws://localhost:*' : '', // Vite HMR用
+        ].filter(Boolean),
+        frameSrc: [
+          "https://accounts.google.com",
+        ],
+      },
+    },
   }),
 );
 app.use(express.json({ limit: '10mb' }));
