@@ -22,6 +22,7 @@ router.get('/google', (req: Request, res: Response) => {
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline',
+    prompt: 'select_account', // 毎回アカウント選択画面を表示
   });
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -97,10 +98,32 @@ router.get('/callback', async (req: Request, res: Response) => {
 });
 
 // ログアウト
-router.post('/logout', (req: Request, res: Response) => {
-  req.session.destroy(() => {
-    res.json({ success: true });
-  });
+router.post('/logout', async (req: Request, res: Response) => {
+  try {
+    // Bearerトークンを取得してtokenUserMapから削除
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { tokenUserMap } = await import('../middleware/auth.js');
+      tokenUserMap.delete(token);
+      console.log('Token removed from tokenUserMap:', token);
+    }
+
+    // セッションを破棄
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+        return res.status(500).json({ error: 'ログアウトに失敗しました' });
+      }
+      
+      // セッションクッキーもクリア
+      res.clearCookie('connect.sid');
+      res.json({ success: true, message: 'ログアウトしました' });
+    });
+  } catch (error) {
+    console.error('ログアウトエラー:', error);
+    res.status(500).json({ error: 'ログアウト処理中にエラーが発生しました' });
+  }
 });
 
 // 認証状態確認

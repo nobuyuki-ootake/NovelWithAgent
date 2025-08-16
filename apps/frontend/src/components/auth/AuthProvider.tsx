@@ -116,12 +116,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         credentials: 'include',
       });
+    } catch (error) {
+      console.error('ログアウトに失敗:', error);
+    } finally {
+      // エラーが発生してもクライアント側の認証情報はクリア
       localStorage.removeItem('user');
       localStorage.removeItem('authToken');
       setUser(null);
       setAuthToken(null); // Axiosのデフォルトヘッダーもクリア
-    } catch (error) {
-      console.error('ログアウトに失敗:', error);
+      
+      // 完全なページリロードで状態をリセット
+      window.location.href = '/';
     }
   };
 

@@ -399,17 +399,34 @@ export function useCharacters() {
 
       // Recoilの状態も更新
       if (currentProject) {
-        // NovelProjectの型に合わせてキャラクターを変換
-        const indexCharacters = updatedCharacters.map(convertToIndexCharacter);
-
-        // 明示的にunknownを介して型変換
+        // currentProjectを更新（他の保存処理と同じパターンを使用）
         const updatedProject = {
           ...currentProject,
-          characters: indexCharacters,
+          characters: updatedCharacters,
           updatedAt: new Date(),
-        } as unknown as NovelProject;
+        };
 
         setCurrentProject(updatedProject);
+
+        // ローカルストレージも更新
+        const projectsStr = localStorage.getItem("novelProjects");
+        if (projectsStr) {
+          try {
+            const projects = JSON.parse(projectsStr) as NovelProject[];
+            const projectIndex = projects.findIndex(
+              (p) => p.id === currentProject.id
+            );
+            if (projectIndex !== -1) {
+              projects[projectIndex] = updatedProject;
+              localStorage.setItem("novelProjects", JSON.stringify(projects));
+            }
+          } catch (e) {
+            console.error(
+              "Failed to parse or save novel projects to local storage",
+              e
+            );
+          }
+        }
 
         setSnackbarMessage("キャラクターを削除しました");
         setSnackbarSeverity("success");
