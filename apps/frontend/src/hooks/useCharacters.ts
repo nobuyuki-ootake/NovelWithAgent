@@ -24,19 +24,6 @@ const dataUrlToEmoji = (dataUrl: string): string | null => {
   return decodeURIComponent(dataUrl.split(",")[1]);
 };
 
-// キャラクター型を変換する関数
-const convertToIndexCharacter = (character: Character): Character => {
-  // traitsはそのまま
-  const traits = character.traits || [];
-  // relationshipsもそのまま
-  const relationships = character.relationships || [];
-  return {
-    ...character,
-    traits,
-    relationships,
-  };
-};
-
 export function useCharacters() {
   // Recoilの状態
   const [currentProject, setCurrentProject] =
