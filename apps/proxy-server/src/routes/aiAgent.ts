@@ -29,7 +29,7 @@ router.post('/worldbuilding-detail-generation', async (req, res) => {
       charactersElements,
     } = req.body;
     const format = req.body.format || 'json'; // デフォルトをJSONに変更
-    const model = req.body.model || 'gemini-1.5-pro';
+    const model = req.body.model || 'gemini-2.5-pro';
 
     console.log(
       `[API] 世界観要素詳細生成リクエスト: ${elementName} (${elementType}), フォーマット: ${format}`,
@@ -410,7 +410,7 @@ router.post('/character-detail-generation', async (req, res) => {
     // AIリクエストを作成
     const aiRequest: StandardAIRequest = {
       requestType: 'character-detail',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt: templateManager.buildCharacterSystemPrompt(
         characterName,
         characterRole || '主要キャラクター',
@@ -526,7 +526,7 @@ router.post('/plot-development', async (req, res) => {
     // AIリクエストを作成
     const aiRequest: StandardAIRequest = {
       requestType: 'plot-development',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt: plotGenerationSystemPrompt,
       userPrompt: contextualPrompt,
       options: {
@@ -739,11 +739,11 @@ router.post('/format-conversion', async (req, res) => {
  */
 function determineModelByElementType(elementType: string): string {
   if (elementType === 'places' || elementType === '場所') {
-    return 'gemini-1.5-pro'; // 場所には詳細な地理情報が必要なため、Geminiモデルを使用
+    return 'gemini-2.5-pro'; // 場所には詳細な地理情報が必要なため、Geminiモデルを使用
   } else if (elementType === 'cultures' || elementType === '文化') {
-    return 'gemini-1.5-pro'; // 文化には細かいニュアンスが必要
+    return 'gemini-2.5-pro'; // 文化には細かいニュアンスが必要
   } else {
-    return 'gemini-1.5-pro'; // その他の場合も同様にGeminiを使用
+    return 'gemini-2.5-pro'; // その他の場合も同様にGeminiを使用
   }
 }
 
@@ -758,7 +758,7 @@ router.post('/plot-advice', async (req, res) => {
 
     const aiRequest: StandardAIRequest = {
       requestType: requestType || 'plot-advice',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt: 'あなたは優秀な小説のプロットアドバイザーです。',
       userPrompt: userPrompt,
       context: context,
@@ -812,7 +812,7 @@ router.post('/timeline-event-generation', async (req, res) => {
 
     const aiRequest: StandardAIRequest = {
       requestType: requestType || 'timeline-event-generation',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt:
         'あなたは物語のタイムラインに沿った出来事を考案する専門家です。',
       userPrompt: userPrompt,
@@ -929,7 +929,7 @@ ${lengthInstruction}
 
     const aiRequest: StandardAIRequest = {
       requestType: 'chapter-generation',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt:
         'あなたは熟練した小説の執筆アシスタントです。与えられた情報から、読者を引き込む物語の章を創作します。',
       userPrompt: userPrompt,
@@ -1033,7 +1033,7 @@ router.post('/synopsis-generation', async (req, res) => {
     // AIリクエストを作成
     const aiRequest: StandardAIRequest = {
       requestType: 'synopsis-generation',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt,
       userPrompt,
       context: {
@@ -1100,7 +1100,7 @@ router.get('/settings', async (req, res) => {
     // デフォルト設定を返す（実際の実装では環境変数やデータベースから取得）
     const defaultSettings = {
       provider: 'gemini',
-      modelName: 'gemini-1.5-pro',
+      modelName: 'gemini-2.5-pro',
       parameters: {
         temperature: 0.7,
         maxTokens: 2000,
@@ -1289,7 +1289,7 @@ ${existingCharacterContext}
     // AIからの応答を取得
     const aiResponse = await processAIRequest({
       requestType: 'character-generation',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt: systemPrompt,
       userPrompt,
       context: {
@@ -1440,7 +1440,7 @@ ${existingCharacterContext}
     // AIからの応答を取得
     const aiResponse = await processAIRequest({
       requestType: 'character-list-generation',
-      model: model || 'gemini-1.5-pro',
+      model: model || 'gemini-2.5-pro',
       systemPrompt: systemPrompt,
       userPrompt,
       context: {

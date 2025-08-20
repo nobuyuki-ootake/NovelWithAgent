@@ -44,14 +44,14 @@ const MODEL_CONFIG = {
     ],
   },
   gemini: {
-    default: 'gemini-pro-1.5',
-    models: ['gemini-pro', 'gemini-pro-1.5'],
+    default: 'gemini-2.5-pro',
+    models: ['gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-pro'],
   },
   mistral: {
     default: 'mistral-large-latest',
     models: ['mistral-large-latest', 'mistral-medium', 'mistral-small'],
   },
-};
+};;
 
 // OpenAI クライアントの設定
 let openaiClient: OpenAI | null = null;
@@ -398,9 +398,8 @@ async function callGemini(
     // Geminiクライアントの初期化
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // モデル名を修正（gemini-pro-1.5 → gemini-1.5-pro）
-    const modelName =
-      model === 'gemini-pro-1.5' ? 'gemini-1.5-pro' : model || 'gemini-1.5-pro';
+    // モデル名をそのまま使用（デフォルトはgemini-2.5-pro）
+    const modelName = model || 'gemini-2.5-pro';
 
     // 生成設定
     const generationConfig = {
@@ -525,11 +524,25 @@ ${request.userPrompt}`;
         totalTokens: Math.round(promptTokens + completionTokens),
       },
     };
-  } catch (error) {
-    // 詳細なエラー情報を出力（デバッグ用）
+  } catch (error: any) {
     console.error(`[AI] Gemini APIエラー:`, error);
 
-    // エラー情報を構造化
+    // クォータエラー（429）の特別処理
+    if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('Too Many Requests')) {
+      throw {
+        type: 'QUOTA_EXCEEDED',
+        message: 'Gemini APIのクォータ制限に達しました。しばらく時間をおいてから再試行してください。',
+        details: {
+          errorType: 'quota_exceeded',
+          retryAfter: error.errorDetails?.find((detail: any) => detail['@type']?.includes('RetryInfo'))?.retryDelay || '30秒',
+          model: model,
+          requestType: request.requestType,
+        },
+        originalError: error,
+      };
+    }
+
+    // その他のエラー処理
     const errorDetail = {
       message: error instanceof Error ? error.message : '不明なエラー',
       name: error instanceof Error ? error.name : 'Unknown',

@@ -86,9 +86,25 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
   // Axiosエラーレスポンスの処理
   if (error instanceof AxiosError && error.response) {
     const status = error.response.status;
-    const errorData = error.response.data as { error?: string }; // errorData の型を仮定
+    const errorData = error.response.data as { 
+      error?: { 
+        code?: string;
+        message?: string;
+        details?: any;
+      } | string;
+      message?: string; 
+    };
 
     console.error(`${operationName} - APIエラー (${status}):`, errorData);
+
+    // クォータエラーの特別処理
+    if (status === 500 && errorData?.error && typeof errorData.error === 'object') {
+      const errorObj = errorData.error;
+      if (errorObj.code === 'QUOTA_EXCEEDED' || errorObj.details?.errorType === 'quota_exceeded') {
+        const retryAfter = errorObj.details?.retryAfter || '30秒';
+        throw new Error(`Gemini APIのクォータ制限に達しました。${retryAfter}後に再試行してください。`);
+      }
+    }
 
     // ステータスコードに応じたエラーメッセージ
     switch (status) {
@@ -96,18 +112,21 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
         throw new Error("認証に失敗しました。APIキーを確認してください。");
       case 400:
         throw new Error(
-          errorData?.error || "リクエストが不正です。入力を確認してください。"
+          (typeof errorData?.error === 'string' ? errorData.error : errorData?.message) || "リクエストが不正です。入力を確認してください。"
         );
       case 429:
         throw new Error(
           "リクエスト制限を超過しました。しばらく待ってから再試行してください。"
         );
       case 500:
-        throw new Error(
-          "サーバー内部エラーが発生しました。管理者に連絡してください。"
-        );
+        const serverErrorMsg = typeof errorData?.error === 'string' 
+          ? errorData.error 
+          : (typeof errorData?.error === 'object' ? errorData.error.message : undefined) 
+          || errorData?.message 
+          || "サーバー内部エラーが発生しました。";
+        throw new Error(serverErrorMsg);
       default:
-        throw new Error(errorData?.error || "エラーが発生しました。");
+        throw new Error((typeof errorData?.error === 'string' ? errorData.error : errorData?.message) || "エラーが発生しました。");
     }
   }
 
@@ -195,7 +214,7 @@ export const aiAgentApi = {
   generateSynopsis: async (
     message: string,
     projectData: Record<string, unknown> = {},
-    model: string = "gemini-1.5-pro",
+    model: string = "gemini-2.5-pro",
     format: "text" | "json" | "yaml" = "text"
   ) => {
     try {
@@ -415,7 +434,7 @@ export const aiAgentApi = {
     message: string,
     plotElements: PlotElement[] = [],
     charactersElements: Character[] = [],
-    model: string = "gemini-1.5-pro",
+    model: string = "gemini-2.5-pro",
     format: string = "json",
     elementType: string = "places"
   ) => {
@@ -653,7 +672,7 @@ export const aiAgentApi = {
   generatePlot: async (
     message: string,
     projectData: Record<string, unknown> = {},
-    model: string = "gemini-1.5-pro",
+    model: string = "gemini-2.5-pro",
     format: "text" | "json" | "yaml" = "text"
   ) => {
     try {
