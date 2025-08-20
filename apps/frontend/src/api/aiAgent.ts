@@ -90,50 +90,83 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
       error?: { 
         code?: string;
         message?: string;
-        details?: any;
+        details?: Record<string, unknown>;
       } | string;
       message?: string; 
     };
 
     console.error(`${operationName} - APIエラー (${status}):`, errorData);
 
-    // クォータエラーとサーバーエラーの特別処理
-    if (status === 500 && errorData?.error && typeof errorData.error === 'object') {
+    // Gemini APIエラーの詳細処理
+    if (errorData?.error && typeof errorData.error === 'object') {
       const errorObj = errorData.error;
+      const model = errorObj.details?.model || 'Gemini';
+      const suggestion = errorObj.details?.suggestion || '';
       
-      // クォータエラー
-      if (errorObj.code === 'QUOTA_EXCEEDED' || errorObj.details?.errorType === 'quota_exceeded') {
-        const retryAfter = errorObj.details?.retryAfter || '30秒';
-        throw new Error(`Gemini APIのクォータ制限に達しました。${retryAfter}後に再試行してください。`);
+      // 400エラー（不正なリクエスト）
+      if (errorObj.code === 'INVALID_REQUEST' || errorObj.details?.errorType === 'invalid_request') {
+        throw new Error(`${model}への不正なリクエストです。${suggestion}`);
       }
       
-      // Geminiサーバー内部エラー
+      // 401エラー（認証エラー）
+      if (errorObj.code === 'AUTHENTICATION_ERROR' || errorObj.details?.errorType === 'authentication_error') {
+        throw new Error(`Gemini APIキーが無効または権限が不足しています。${suggestion}`);
+      }
+      
+      // 403エラー（権限エラー）
+      if (errorObj.code === 'PERMISSION_DENIED' || errorObj.details?.errorType === 'permission_denied') {
+        throw new Error(`${model}へのアクセス権限がありません。${suggestion}`);
+      }
+      
+      // 429エラー（クォータエラー）
+      if (errorObj.code === 'QUOTA_EXCEEDED' || errorObj.details?.errorType === 'quota_exceeded') {
+        const retryAfter = errorObj.details?.retryAfter || '30秒〜数分';
+        throw new Error(`Gemini APIのレート制限またはクォータ制限に達しました。${retryAfter}後に再試行してください。`);
+      }
+      
+      // 500エラー（サーバー内部エラー）
       if (errorObj.code === 'GEMINI_SERVER_ERROR' || errorObj.details?.errorType === 'server_internal_error') {
-        const model = errorObj.details?.model || 'Gemini';
-        const suggestion = errorObj.details?.suggestion || '数分待ってから再試行してください';
-        throw new Error(`${model}モデルでサーバー内部エラーが発生しました。Google側の一時的な問題の可能性があります。${suggestion}。`);
+        throw new Error(`${model}でサーバー内部エラーが発生しました。Google側の一時的な問題の可能性があります。${suggestion}`);
+      }
+      
+      // 504エラー（タイムアウト）
+      if (errorObj.code === 'TIMEOUT_ERROR' || errorObj.details?.errorType === 'timeout') {
+        throw new Error(`${model}でリクエストがタイムアウトしました。${suggestion}`);
+      }
+      
+      // その他のGemini APIエラー
+      if (errorObj.code === 'GEMINI_API_ERROR') {
+        const errorDetail = errorObj.message || '不明なエラーが発生しました';
+        throw new Error(`${model}でエラーが発生しました: ${errorDetail}。${suggestion}`);
       }
     }
 
-    // ステータスコードに応じたエラーメッセージ
+    // 一般的なステータスコードに応じたエラーメッセージ
     switch (status) {
-      case 401:
-        throw new Error("認証に失敗しました。APIキーを確認してください。");
       case 400:
         throw new Error(
-          (typeof errorData?.error === 'string' ? errorData.error : errorData?.message) || "リクエストが不正です。入力を確認してください。"
+          (typeof errorData?.error === 'string' ? errorData.error : errorData?.message) || "リクエストが不正です。入力内容を確認してください。"
         );
+      case 401:
+        throw new Error("認証に失敗しました。APIキーを確認してください。");
+      case 403:
+        throw new Error("アクセス権限がありません。APIキーの権限を確認してください。");
       case 429:
-        throw new Error(
-          "リクエスト制限を超過しました。しばらく待ってから再試行してください。"
-        );
-      case 500:
+        throw new Error("リクエスト制限に達しました。しばらく待ってから再試行してください。");
+      case 500: {
         const serverErrorMsg = typeof errorData?.error === 'string' 
           ? errorData.error 
           : (typeof errorData?.error === 'object' ? errorData.error.message : undefined) 
           || errorData?.message 
           || "サーバー内部エラーが発生しました。";
         throw new Error(serverErrorMsg);
+      }
+      case 502:
+        throw new Error("サーバーゲートウェイエラーが発生しました。しばらく待ってから再試行してください。");
+      case 503:
+        throw new Error("サービスが一時的に利用できません。しばらく待ってから再試行してください。");
+      case 504:
+        throw new Error("リクエストがタイムアウトしました。入力内容を簡潔にするか、しばらく待ってから再試行してください。");
       default:
         throw new Error((typeof errorData?.error === 'string' ? errorData.error : errorData?.message) || "エラーが発生しました。");
     }

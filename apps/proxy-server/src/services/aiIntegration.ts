@@ -44,8 +44,8 @@ const MODEL_CONFIG = {
     ],
   },
   gemini: {
-    default: 'gemini-1.5-pro',
-    models: ['gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-2.5-pro', 'gemini-pro'],
+    default: 'gemini-2.5-pro',
+    models: ['gemini-2.5-pro', 'gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-pro'],
   },
   mistral: {
     default: 'mistral-large-latest',
@@ -527,16 +527,62 @@ ${request.userPrompt}`;
   } catch (error: any) {
     console.error(`[AI] Gemini APIエラー:`, error);
 
+    // 400エラー（不正なリクエスト）の特別処理
+    if (error.status === 400) {
+      throw {
+        type: 'INVALID_REQUEST',
+        message: `Gemini ${model}モデルへのリクエストが不正です。リクエスト形式やパラメータを確認してください。`,
+        details: {
+          errorType: 'invalid_request',
+          model: model,
+          requestType: request.requestType,
+          suggestion: 'API仕様を確認し、必須フィールドが含まれているかチェックしてください',
+        },
+        originalError: error,
+      };
+    }
+
+    // 401エラー（認証エラー）の特別処理
+    if (error.status === 401) {
+      throw {
+        type: 'AUTHENTICATION_ERROR',
+        message: 'Gemini APIキーが無効または権限が不足しています。設定を確認してください。',
+        details: {
+          errorType: 'authentication_error',
+          model: model,
+          requestType: request.requestType,
+          suggestion: 'GEMINI_API_KEYが正しく設定されているか確認してください',
+        },
+        originalError: error,
+      };
+    }
+
+    // 403エラー（権限エラー）の特別処理
+    if (error.status === 403) {
+      throw {
+        type: 'PERMISSION_DENIED',
+        message: `Gemini ${model}モデルへのアクセス権限がありません。APIキーの権限を確認してください。`,
+        details: {
+          errorType: 'permission_denied',
+          model: model,
+          requestType: request.requestType,
+          suggestion: 'APIキーがこのモデルへのアクセス権限を持っているか確認してください',
+        },
+        originalError: error,
+      };
+    }
+
     // クォータエラー（429）の特別処理
     if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('Too Many Requests')) {
       throw {
         type: 'QUOTA_EXCEEDED',
-        message: 'Gemini APIのクォータ制限に達しました。しばらく時間をおいてから再試行してください。',
+        message: 'Gemini APIのレート制限またはクォータ制限に達しました。しばらく時間をおいてから再試行してください。',
         details: {
           errorType: 'quota_exceeded',
-          retryAfter: error.errorDetails?.find((detail: any) => detail['@type']?.includes('RetryInfo'))?.retryDelay || '30秒',
+          retryAfter: error.errorDetails?.find((detail: any) => detail['@type']?.includes('RetryInfo'))?.retryDelay || '30秒～数分',
           model: model,
           requestType: request.requestType,
+          suggestion: 'しばらく待ってから再試行するか、リクエスト頻度を下げてください',
         },
         originalError: error,
       };
@@ -557,6 +603,21 @@ ${request.userPrompt}`;
       };
     }
 
+    // タイムアウトエラー（504）の特別処理
+    if (error.status === 504) {
+      throw {
+        type: 'TIMEOUT_ERROR',
+        message: `Gemini ${model}モデルでリクエストがタイムアウトしました。サーバーが規定時間内に応答できませんでした。`,
+        details: {
+          errorType: 'timeout',
+          model: model,
+          requestType: request.requestType,
+          suggestion: 'リクエストの内容を簡潔にするか、タイムアウト設定を大きくして再試行してください',
+        },
+        originalError: error,
+      };
+    }
+
     // その他のエラー処理
     const errorDetail = {
       message: error instanceof Error ? error.message : '不明なエラー',
@@ -569,8 +630,11 @@ ${request.userPrompt}`;
     // エラーを再スロー（追加情報付き）
     throw {
       type: 'GEMINI_API_ERROR',
-      message: `Gemini APIでのリクエスト処理中にエラーが発生しました（${error.status || 'Unknown'}）`,
-      details: errorDetail,
+      message: `Gemini ${model}モデルでエラーが発生しました（HTTPステータス: ${error.status || 'Unknown'}）。詳細: ${error.message || '不明なエラー'}`,
+      details: {
+        ...errorDetail,
+        suggestion: 'エラーが継続する場合は、APIキーやリクエスト内容を確認してください',
+      },
       originalError: error,
     };
   }
