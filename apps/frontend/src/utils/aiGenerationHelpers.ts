@@ -18,11 +18,14 @@ export const generateSynopsisContent = async (
   try {
     const response = await aiAgentApi.generateSynopsis(message, projectData);
     if (response.status === "success") {
-      return (
-        response.data ||
-        response.rawContent ||
-        "あらすじを生成できませんでした。"
-      );
+      // contentまたはrawContentが存在し、空でない場合のみ成功とする
+      if (response.data && response.data.trim() !== "") {
+        return response.data;
+      } else if (response.rawContent && response.rawContent.trim() !== "") {
+        return response.rawContent;
+      } else {
+        throw new Error("AIから空のレスポンスが返されました。モデルが利用できない可能性があります。");
+      }
     } else {
       throw new Error(response.message || "あらすじ生成に失敗しました");
     }

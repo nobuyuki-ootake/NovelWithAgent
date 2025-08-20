@@ -44,14 +44,14 @@ const MODEL_CONFIG = {
     ],
   },
   gemini: {
-    default: 'gemini-2.5-pro',
-    models: ['gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-pro'],
+    default: 'gemini-1.5-pro',
+    models: ['gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-2.5-pro', 'gemini-pro'],
   },
   mistral: {
     default: 'mistral-large-latest',
     models: ['mistral-large-latest', 'mistral-medium', 'mistral-small'],
   },
-};;
+};;;
 
 // OpenAI クライアントの設定
 let openaiClient: OpenAI | null = null;

@@ -1068,6 +1068,19 @@ router.post('/synopsis-generation', async (req, res) => {
       });
     }
 
+    // 成功レスポンスの検証
+    if (!aiResponse.content || (typeof aiResponse.content === 'string' && aiResponse.content.trim() === '')) {
+      console.error('[API] あらすじ生成失敗: 空のコンテンツが返されました');
+      return res.status(500).json({
+        status: 'error',
+        message: 'あらすじの生成に失敗しました。AIモデルから有効なレスポンスが得られませんでした。',
+        error: {
+          code: 'EMPTY_CONTENT',
+          message: '生成されたコンテンツが空です',
+        },
+      });
+    }
+
     // 成功レスポンス
     return res.json({
       status: 'success',
