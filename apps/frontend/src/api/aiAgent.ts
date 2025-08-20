@@ -97,12 +97,21 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
 
     console.error(`${operationName} - APIエラー (${status}):`, errorData);
 
-    // クォータエラーの特別処理
+    // クォータエラーとサーバーエラーの特別処理
     if (status === 500 && errorData?.error && typeof errorData.error === 'object') {
       const errorObj = errorData.error;
+      
+      // クォータエラー
       if (errorObj.code === 'QUOTA_EXCEEDED' || errorObj.details?.errorType === 'quota_exceeded') {
         const retryAfter = errorObj.details?.retryAfter || '30秒';
         throw new Error(`Gemini APIのクォータ制限に達しました。${retryAfter}後に再試行してください。`);
+      }
+      
+      // Geminiサーバー内部エラー
+      if (errorObj.code === 'GEMINI_SERVER_ERROR' || errorObj.details?.errorType === 'server_internal_error') {
+        const model = errorObj.details?.model || 'Gemini';
+        const suggestion = errorObj.details?.suggestion || '数分待ってから再試行してください';
+        throw new Error(`${model}モデルでサーバー内部エラーが発生しました。Google側の一時的な問題の可能性があります。${suggestion}。`);
       }
     }
 

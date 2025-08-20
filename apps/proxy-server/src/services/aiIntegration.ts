@@ -542,18 +542,34 @@ ${request.userPrompt}`;
       };
     }
 
+    // サーバー内部エラー（500）の特別処理
+    if (error.status === 500) {
+      throw {
+        type: 'GEMINI_SERVER_ERROR',
+        message: `Gemini ${model}モデルでサーバー内部エラーが発生しました。Google側の一時的な問題の可能性があります。数分後に再試行してください。`,
+        details: {
+          errorType: 'server_internal_error',
+          model: model,
+          requestType: request.requestType,
+          suggestion: '数分待ってから再試行するか、しばらく時間をおいて再度お試しください',
+        },
+        originalError: error,
+      };
+    }
+
     // その他のエラー処理
     const errorDetail = {
       message: error instanceof Error ? error.message : '不明なエラー',
       name: error instanceof Error ? error.name : 'Unknown',
       stack: error instanceof Error ? error.stack : undefined,
+      status: error.status,
       requestType: request.requestType,
     };
 
     // エラーを再スロー（追加情報付き）
     throw {
       type: 'GEMINI_API_ERROR',
-      message: 'Gemini APIでのリクエスト処理中にエラーが発生しました',
+      message: `Gemini APIでのリクエスト処理中にエラーが発生しました（${error.status || 'Unknown'}）`,
       details: errorDetail,
       originalError: error,
     };
