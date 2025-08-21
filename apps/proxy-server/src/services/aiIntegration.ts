@@ -503,17 +503,18 @@ ${request.userPrompt}`;
       throw new Error('Gemini APIからの応答が空です');
     }
 
-    // レスポンスの詳細情報をログ出力
-    console.log('[AI] Gemini APIレスポンス詳細:', {
+    // レスポンスの詳細情報をログ出力（JSON.stringifyで完全に表示）
+    console.log('[AI] Gemini APIレスポンス詳細:', JSON.stringify({
       promptFeedback: result.response.promptFeedback,
       candidatesCount: result.response.candidates?.length,
       candidates: result.response.candidates?.map(candidate => ({
         finishReason: candidate.finishReason,
         safetyRatings: candidate.safetyRatings,
         contentParts: candidate.content?.parts?.length,
+        contentPartsDetail: candidate.content?.parts,
         content: candidate.content
       })),
-    });
+    }, null, 2));
 
     // セーフティフィルターのチェック
     if (result.response.promptFeedback?.blockReason) {
@@ -543,14 +544,25 @@ ${request.userPrompt}`;
 
     // テキスト取得方法を詳細に確認
     let responseText = '';
+    
+    // まずcandidateのcontent構造を確認
+    console.log('[AI] candidate.content構造:', JSON.stringify(candidate.content, null, 2));
+    
     try {
       responseText = result.response.text() || '';
+      console.log('[AI] result.response.text()で取得したテキスト長:', responseText.length);
     } catch (textError) {
       console.error('[AI] テキスト取得エラー:', textError);
       // 代替方法: candidateから直接テキストを取得
       if (candidate.content?.parts?.[0]?.text) {
         responseText = candidate.content.parts[0].text;
-        console.log('[AI] candidateから直接テキストを取得しました');
+        console.log('[AI] candidate.content.parts[0].textから取得したテキスト長:', responseText.length);
+      } else if (typeof candidate.content === 'string') {
+        // contentが直接文字列の場合
+        responseText = candidate.content;
+        console.log('[AI] candidate.content(文字列)から取得したテキスト長:', responseText.length);
+      } else {
+        console.error('[AI] テキストを取得できませんでした');
       }
     }
     
