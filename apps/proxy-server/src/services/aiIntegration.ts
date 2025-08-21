@@ -423,6 +423,14 @@ async function callGemini(
 
     // システムプロンプトとユーザープロンプトを構築
     const systemPrompt = request.systemPrompt || WORLD_BUILDER;
+    
+    // デバッグ: システムプロンプトの確認
+    if (request.requestType === 'synopsis-generation') {
+      console.log('[AI] あらすじ生成リクエストのシステムプロンプト:');
+      console.log('  - request.systemPrompt存在:', !!request.systemPrompt);
+      console.log('  - systemPrompt長:', systemPrompt.length);
+      console.log('  - systemPrompt冒頭100文字:', systemPrompt.substring(0, 100) + '...');
+    }
 
     // フォーマット指定があれば、それに応じた指示を追加
     let formatInstruction = '';
@@ -473,6 +481,16 @@ ${request.userPrompt}`;
     );
     console.log(`[AI] プロンプト長: ${combinedPrompt.length}文字`);
     console.log(`[AI] ユーザープロンプト: ${request.userPrompt.substring(0, 200)}...`);
+    
+    // デバッグ: あらすじ生成の場合の詳細
+    if (request.requestType === 'synopsis-generation') {
+      console.log('[AI] あらすじ生成のcombinedPrompt詳細:');
+      console.log('  - systemPrompt長:', systemPrompt.length);
+      console.log('  - userPrompt長:', request.userPrompt.length);
+      console.log('  - formatInstruction長:', formatInstruction.length);
+      console.log('  - specialInstruction長:', specialInstruction.length);
+      console.log('  - combinedPrompt全体:', combinedPrompt);
+    }
 
     // Gemini APIを呼び出す
     const result = await geminiModel.generateContent([
@@ -488,9 +506,11 @@ ${request.userPrompt}`;
     // レスポンスの詳細情報をログ出力
     console.log('[AI] Gemini APIレスポンス詳細:', {
       promptFeedback: result.response.promptFeedback,
+      candidatesCount: result.response.candidates?.length,
       candidates: result.response.candidates?.map(candidate => ({
         finishReason: candidate.finishReason,
         safetyRatings: candidate.safetyRatings,
+        contentParts: candidate.content?.parts?.length,
         content: candidate.content
       })),
     });
@@ -521,10 +541,27 @@ ${request.userPrompt}`;
       }
     }
 
-    const responseText = result.response.text() || '';
+    // テキスト取得方法を詳細に確認
+    let responseText = '';
+    try {
+      responseText = result.response.text() || '';
+    } catch (textError) {
+      console.error('[AI] テキスト取得エラー:', textError);
+      // 代替方法: candidateから直接テキストを取得
+      if (candidate.content?.parts?.[0]?.text) {
+        responseText = candidate.content.parts[0].text;
+        console.log('[AI] candidateから直接テキストを取得しました');
+      }
+    }
+    
     console.log(
       `[AI] Gemini APIからの生のレスポンス取得: ${responseText.length}バイト`,
     );
+    
+    // デバッグ: レスポンスの冒頭100文字を表示
+    if (responseText.length > 0) {
+      console.log(`[AI] レスポンス冒頭: ${responseText.substring(0, 100)}...`);
+    }
 
     // 空のレスポンスの詳細チェック
     if (responseText.length === 0) {
@@ -535,7 +572,12 @@ ${request.userPrompt}`;
         requestType: request.requestType,
         finishReason: candidate.finishReason,
         safetyRatings: candidate.safetyRatings,
+        candidateContent: candidate.content,
+        candidateParts: candidate.content?.parts,
       });
+      
+      // プロンプト内容を確認
+      console.error('[AI] 使用されたプロンプト:', combinedPrompt);
       
       // 空のレスポンスの場合、エラーとして扱う
       throw new Error(`Gemini ${modelName}から空のレスポンスが返されました。セーフティフィルターまたはモデルの制限による可能性があります。`);
