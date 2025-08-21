@@ -400,10 +400,7 @@ async function callGemini(
 
     // モデル名をそのまま使用（デフォルトはgemini-2.5-pro）
     const modelName = model || 'gemini-2.5-pro';
-    
-    // モデルアクセス権限のチョック（gemini-2.5-proはプレビュー版のため、一時的にgemini-1.5-proを使用）
-    const actualModelName = modelName === 'gemini-2.5-pro' ? 'gemini-1.5-pro' : modelName;
-    console.log(`[AI] リクエストモデル: ${modelName}, 実際のモデル: ${actualModelName}`);
+    console.log(`[AI] 使用モデル: ${modelName}`);
 
     // 生成設定
     const generationConfig = {
@@ -412,9 +409,9 @@ async function callGemini(
     };
 
     // Geminiモデルの取得
-    console.log(`[AI] モデル ${actualModelName} で実行します`);
+    console.log(`[AI] モデル ${modelName} で実行します`);
     const geminiModel = genAI.getGenerativeModel({
-      model: actualModelName,
+      model: modelName,
       generationConfig,
     });
 
@@ -466,8 +463,10 @@ ${specialInstruction}
 ${request.userPrompt}`;
 
     console.log(
-      `[AI] Gemini APIにリクエスト送信: ${modelName} ${request.requestType} ${request.userPrompt}`,
+      `[AI] Gemini APIにリクエスト送信: ${modelName} ${request.requestType}`,
     );
+    console.log(`[AI] プロンプト長: ${combinedPrompt.length}文字`);
+    console.log(`[AI] ユーザープロンプト: ${request.userPrompt.substring(0, 200)}...`);
 
     // Gemini APIを呼び出す
     const result = await geminiModel.generateContent([
@@ -523,6 +522,9 @@ ${request.userPrompt}`;
         finishReason: candidate.finishReason,
         safetyRatings: candidate.safetyRatings,
       });
+      
+      // 空のレスポンスの場合、エラーとして扱う
+      throw new Error(`Gemini ${modelName}から空のレスポンスが返されました。セーフティフィルターまたはモデルの制限による可能性があります。`);
     }
 
     // レスポンスの処理（フォーマットに合わせてパース）
