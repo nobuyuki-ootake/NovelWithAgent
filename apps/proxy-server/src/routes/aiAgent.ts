@@ -1041,7 +1041,7 @@ router.post('/synopsis-generation', async (req, res) => {
       },
       options: {
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 4000, // あらすじ生成に十分なトークン数
         expectedFormat:
           format === 'text' ? 'text' : format === 'json' ? 'json' : 'yaml',
         responseFormat:
