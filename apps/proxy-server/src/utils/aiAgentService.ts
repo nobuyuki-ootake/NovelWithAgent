@@ -165,7 +165,7 @@ export class AIAgentService {
     const {
       provider = AIProvider.OPENAI,
       temperature = 0.7,
-      maxTokens = 1000,
+      maxTokens = 4000, // gemini-2.5-proに適したデフォルト値
       systemRole = SystemRoles.DEFAULT,
     } = options;
 
