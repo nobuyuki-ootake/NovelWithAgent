@@ -400,6 +400,10 @@ async function callGemini(
 
     // モデル名をそのまま使用（デフォルトはgemini-2.5-pro）
     const modelName = model || 'gemini-2.5-pro';
+    
+    // モデルアクセス権限のチョック（gemini-2.5-proはプレビュー版のため、一時的にgemini-1.5-proを使用）
+    const actualModelName = modelName === 'gemini-2.5-pro' ? 'gemini-1.5-pro' : modelName;
+    console.log(`[AI] リクエストモデル: ${modelName}, 実際のモデル: ${actualModelName}`);
 
     // 生成設定
     const generationConfig = {
@@ -408,9 +412,9 @@ async function callGemini(
     };
 
     // Geminiモデルの取得
-    console.log(`[AI] モデル ${modelName} で実行します`);
+    console.log(`[AI] モデル ${actualModelName} で実行します`);
     const geminiModel = genAI.getGenerativeModel({
-      model: modelName,
+      model: actualModelName,
       generationConfig,
     });
 
@@ -472,13 +476,54 @@ ${request.userPrompt}`;
 
     // 結果がないとエラー
     if (!result || !result.response) {
+      console.error('[AI] Gemini APIレスポンスが存在しません:', result);
       throw new Error('Gemini APIからの応答が空です');
+    }
+
+    // レスポンスの詳細情報をログ出力
+    console.log('[AI] Gemini APIレスポンス詳細:', {
+      promptFeedback: result.response.promptFeedback,
+      candidates: result.response.candidates?.map(candidate => ({
+        finishReason: candidate.finishReason,
+        safetyRatings: candidate.safetyRatings,
+        content: candidate.content
+      })),
+    });
+
+    // セーフティフィルターのチェック
+    if (result.response.promptFeedback?.blockReason) {
+      console.error('[AI] プロンプトがブロックされました:', result.response.promptFeedback);
+      throw new Error(`Gemini APIプロンプトフィルター: ${result.response.promptFeedback.blockReason}`);
+    }
+
+    // 生成結果のチェック
+    const candidate = result.response.candidates?.[0];
+    if (!candidate) {
+      console.error('[AI] 生成結果がありません');
+      throw new Error('Gemini APIから生成結果が返されませんでした');
+    }
+
+    if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+      console.error('[AI] 生成が異常終了:', candidate.finishReason, candidate.safetyRatings);
+      throw new Error(`Gemini API生成終了: ${candidate.finishReason}`);
     }
 
     const responseText = result.response.text() || '';
     console.log(
       `[AI] Gemini APIからの生のレスポンス取得: ${responseText.length}バイト`,
     );
+
+    // 空のレスポンスの詳細チェック
+    if (responseText.length === 0) {
+      console.error('[AI] 空のレスポンスが返されました. 詳細情報:', {
+        model: modelName,
+        promptLength: combinedPrompt.length,
+        responseFormat: responseFormat,
+        requestType: request.requestType,
+        finishReason: candidate.finishReason,
+        safetyRatings: candidate.safetyRatings,
+      });
+    }
 
     // レスポンスの処理（フォーマットに合わせてパース）
     let parsedContent;
