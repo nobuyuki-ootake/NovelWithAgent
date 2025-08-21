@@ -529,14 +529,16 @@ ${request.userPrompt}`;
       throw new Error('Gemini APIから生成結果が返されませんでした');
     }
 
+    // finishReasonのチェック（MAX_TOKENSは条件付きで続行）
     if (candidate.finishReason && candidate.finishReason !== 'STOP') {
       console.error('[AI] 生成が異常終了:', candidate.finishReason, candidate.safetyRatings);
       
-      // MAX_TOKENSエラーの場合の詳細メッセージ
-      if (candidate.finishReason === 'MAX_TOKENS') {
-        throw new Error(`Gemini ${modelName}の出力トークン制限(${generationConfig.maxOutputTokens}トークン)に達しました。より長い出力が必要な場合は、プロンプトを調整してください。`);
-      } else if (candidate.finishReason === 'SAFETY') {
+      if (candidate.finishReason === 'SAFETY') {
         throw new Error(`Gemini ${modelName}のセーフティフィルターにより生成が停止されました。プロンプトを調整してください。`);
+      } else if (candidate.finishReason === 'MAX_TOKENS') {
+        console.warn(`[AI] 警告: Gemini ${modelName}の出力トークン制限(${generationConfig.maxOutputTokens}トークン)に達しました`);
+        console.warn('[AI] 部分的なレスポンスが存在する場合は使用を試みます');
+        // MAX_TOKENSの場合は続行して、レスポンステキストが存在するかチェック
       } else {
         throw new Error(`Gemini API生成終了: ${candidate.finishReason}`);
       }
