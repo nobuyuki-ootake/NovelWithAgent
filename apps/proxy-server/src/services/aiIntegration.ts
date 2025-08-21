@@ -545,34 +545,76 @@ ${request.userPrompt}`;
     // テキスト取得方法を詳細に確認
     let responseText = '';
     
-    // まずcandidateのcontent構造を確認
-    console.log('[AI] candidate.content構造:', JSON.stringify(candidate.content, null, 2));
+    // candidateのcontent構造を詳細に確認
+    console.log('[AI] === candidate.content詳細解析開始 ===');
+    console.log('[AI] candidate.content全体:', JSON.stringify(candidate.content, null, 2));
+    console.log('[AI] candidate.content.parts存在:', !!candidate.content?.parts);
+    console.log('[AI] candidate.content.partsの長さ:', candidate.content?.parts?.length);
     
+    if (candidate.content?.parts && candidate.content.parts.length > 0) {
+      console.log('[AI] 各partsの詳細:');
+      candidate.content.parts.forEach((part, index) => {
+        console.log(`[AI]   part[${index}]:`, JSON.stringify(part, null, 2));
+        console.log(`[AI]   part[${index}].text存在:`, !!part.text);
+        console.log(`[AI]   part[${index}].text長:`, part.text?.length || 0);
+      });
+    }
+    
+    // メソッドを1: result.response.text()
     try {
       responseText = result.response.text() || '';
-      console.log('[AI] result.response.text()で取得したテキスト長:', responseText.length);
+      console.log('[AI] 方法1 result.response.text():テキスト長=' + responseText.length);
+      if (responseText.length > 0) {
+        console.log('[AI] 方法1 成功: テキストを取得しました');
+      }
     } catch (textError) {
-      console.error('[AI] テキスト取得エラー:', textError);
-      // 代替方法: candidateから直接テキストを取得
+      console.error('[AI] 方法1 result.response.text()エラー:', textError);
+    }
+    
+    // 方法1が失敗した場合、代替手段を試行
+    if (responseText.length === 0) {
+      console.log('[AI] 方法1が失敗、代替手段を試行中...');
+      
+      // メソッドを2: candidate.content.parts[0].text
       if (candidate.content?.parts?.[0]?.text) {
         responseText = candidate.content.parts[0].text;
-        console.log('[AI] candidate.content.parts[0].textから取得したテキスト長:', responseText.length);
-      } else if (typeof candidate.content === 'string') {
-        // contentが直接文字列の場合
+        console.log('[AI] 方法2 candidate.content.parts[0].text:テキスト長=' + responseText.length);
+        console.log('[AI] 方法2 成功: parts[0].textからテキストを取得');
+      } 
+      // メソッドを3: parts配列の全てのtextを結合
+      else if (candidate.content?.parts && candidate.content.parts.length > 0) {
+        const allTexts = candidate.content.parts
+          .filter(part => part.text)
+          .map(part => part.text)
+          .join('');
+        if (allTexts) {
+          responseText = allTexts;
+          console.log('[AI] 方法3 全partsのtext結合:テキスト長=' + responseText.length);
+          console.log('[AI] 方法3 成功: 全partsのtextを結合して取得');
+        }
+      }
+      // メソッドを4: contentが直接文字列の場合
+      else if (typeof candidate.content === 'string') {
         responseText = candidate.content;
-        console.log('[AI] candidate.content(文字列)から取得したテキスト長:', responseText.length);
+        console.log('[AI] 方法4 candidate.content(文字列):テキスト長=' + responseText.length);
+        console.log('[AI] 方法4 成功: contentが直接文字列');
       } else {
-        console.error('[AI] テキストを取得できませんでした');
+        console.error('[AI] 全てのメソッドが失敗: テキストを取得できませんでした');
+        console.error('[AI] candidate.contentの型:', typeof candidate.content);
+        console.error('[AI] candidate.contentのキー:', Object.keys(candidate.content || {}));
       }
     }
     
-    console.log(
-      `[AI] Gemini APIからの生のレスポンス取得: ${responseText.length}バイト`,
-    );
+    console.log('[AI] === テキスト取得結果 ===');
     
-    // デバッグ: レスポンスの冒頭100文字を表示
+    console.log(`[AI] 最終的なレスポンステキスト長: ${responseText.length}バイト`);
+    
+    // デバッグ: レスポンスの内容を表示
     if (responseText.length > 0) {
-      console.log(`[AI] レスポンス冒頭: ${responseText.substring(0, 100)}...`);
+      console.log(`[AI] レスポンス内容の冒頭200文字: ${responseText.substring(0, 200)}...`);
+      console.log(`[AI] レスポンス全体: ${responseText}`);
+    } else {
+      console.error('[AI] レスポンステキストが空です!');
     }
 
     // 空のレスポンスの詳細チェック
