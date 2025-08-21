@@ -46,7 +46,7 @@ export const AISettingsTab: React.FC<AISettingsTabProps> = ({
   const [maxTokens, setMaxTokens] = useState(
     currentSettings?.parameters?.maxTokens ||
       providerModels.find((m) => m.id === modelName)?.maxTokens ||
-      1000
+      4000 // gemini-2.5-proに適したデフォルト値
   );
 
   // UI状態

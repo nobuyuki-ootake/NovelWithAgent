@@ -91,8 +91,17 @@ export const availableModels: ModelInfo[] = [
     features: ["創作支援", "推論", "長文理解"],
     maxTokens: 1000000,
     provider: "gemini",
-    isRecommended: true,
     pricingInfo: "入力: $0.00035/1Kトークン, 出力: $0.00105/1Kトークン",
+  },
+  {
+    id: "gemini-2.5-pro",
+    name: "Gemini 2.5 Pro",
+    description: "Googleの最新思考型マルチモーダルモデル",
+    features: ["高度な創作支援", "論理的推論", "超長文理解", "思考プロセス"],
+    maxTokens: 8192, // 実際は65,000まで可能だが、実用的な値を設定
+    provider: "gemini",
+    isRecommended: true,
+    pricingInfo: "無料（実験段階）",
   },
 ];
 
