@@ -137,6 +137,10 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
       // その他のGemini APIエラー
       if (errorObj.code === 'GEMINI_API_ERROR') {
         const errorDetail = errorObj.message || '不明なエラーが発生しました';
+        // MAX_TOKENSエラーの特別処理
+        if (errorDetail.includes('MAX_TOKENS') || errorDetail.includes('出力トークン制限')) {
+          throw new Error(errorDetail); // 詳細なエラーメッセージをそのまま使用
+        }
         throw new Error(`${model}でエラーが発生しました: ${errorDetail}。${suggestion}`);
       }
     }

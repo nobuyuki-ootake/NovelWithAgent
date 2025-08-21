@@ -403,10 +403,16 @@ async function callGemini(
     console.log(`[AI] 使用モデル: ${modelName}`);
 
     // 生成設定
+    // gemini-2.5-proは最大65,000トークンまで出力可能
+    // gemini-1.5-proは最大8,192トークンまで出力可能
+    const defaultMaxTokens = modelName === 'gemini-2.5-pro' ? 8192 : 
+                            modelName === 'gemini-1.5-pro' ? 8192 : 2000;
     const generationConfig = {
       temperature: request.options?.temperature || 0.7,
-      maxOutputTokens: request.options?.maxTokens || 2000,
+      maxOutputTokens: request.options?.maxTokens || defaultMaxTokens,
     };
+    
+    console.log(`[AI] 生成設定: temperature=${generationConfig.temperature}, maxOutputTokens=${generationConfig.maxOutputTokens}`);
 
     // Geminiモデルの取得
     console.log(`[AI] モデル ${modelName} で実行します`);
@@ -504,7 +510,15 @@ ${request.userPrompt}`;
 
     if (candidate.finishReason && candidate.finishReason !== 'STOP') {
       console.error('[AI] 生成が異常終了:', candidate.finishReason, candidate.safetyRatings);
-      throw new Error(`Gemini API生成終了: ${candidate.finishReason}`);
+      
+      // MAX_TOKENSエラーの場合の詳細メッセージ
+      if (candidate.finishReason === 'MAX_TOKENS') {
+        throw new Error(`Gemini ${modelName}の出力トークン制限(${generationConfig.maxOutputTokens}トークン)に達しました。より長い出力が必要な場合は、プロンプトを調整してください。`);
+      } else if (candidate.finishReason === 'SAFETY') {
+        throw new Error(`Gemini ${modelName}のセーフティフィルターにより生成が停止されました。プロンプトを調整してください。`);
+      } else {
+        throw new Error(`Gemini API生成終了: ${candidate.finishReason}`);
+      }
     }
 
     const responseText = result.response.text() || '';
