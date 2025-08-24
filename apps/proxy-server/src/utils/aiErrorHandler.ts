@@ -4,6 +4,7 @@
  */
 
 import * as yaml from 'js-yaml';
+import { parseYamlSafely } from './securityUtils.js';
 
 // エラータイプの定義
 export enum AIErrorType {
@@ -329,7 +330,7 @@ export function recoverFromJSONParseError(jsonString: string): any {
 export function parseYAML(yamlString: string): any {
   try {
     // 通常のYAMLパースを試みる
-    return yaml.load(yamlString);
+    return parseYamlSafely(yamlString);
   } catch (error) {
     console.warn('[AI] YAMLパースエラー、修復を試みます');
     console.debug('[AI] 問題のYAML文字列:\n', yamlString);
@@ -373,7 +374,7 @@ export function parseYAML(yamlString: string): any {
       cleaned = fixedLines.join('\n');
 
       // パースを試みる
-      return yaml.load(cleaned);
+      return parseYamlSafely(cleaned);
     } catch (recoveryError) {
       console.error('[AI] YAMLの修復に失敗しました', recoveryError);
       console.error(

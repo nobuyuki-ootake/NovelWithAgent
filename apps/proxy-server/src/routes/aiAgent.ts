@@ -12,8 +12,10 @@ import {
   Character,
 } from '@novel-ai-assistant/types';
 import { generateElementPrompt } from '../utils/worldBuildingSchemas.js';
+import { parseYamlSafely, sanitizePromptInput } from '../utils/securityUtils.js';
 
 const router = express.Router();
+
 
 /**
  * 世界観要素の詳細生成エンドポイント
@@ -677,7 +679,7 @@ router.post('/format-conversion', async (req, res) => {
       if (fromFormat === 'json') {
         parsedData = typeof data === 'string' ? JSON.parse(data) : data;
       } else if (fromFormat === 'yaml') {
-        parsedData = typeof data === 'string' ? yaml.load(data) : data;
+        parsedData = typeof data === 'string' ? parseYamlSafely(data) : data;
       } else {
         return res.status(400).json({
           status: 'error',
@@ -1497,8 +1499,8 @@ ${existingCharacterContext}
         const responseContent =
           typeof aiResponse.content === 'string' ? aiResponse.content : '';
 
-        // YAMLパースを試行
-        const parsed = yaml.load(responseContent) as any;
+        // YAMLパースを試行 - セキュアなパース関数を使用
+        const parsed = parseYamlSafely(responseContent);
 
         if (Array.isArray(parsed)) {
           characterList = parsed;
