@@ -26,6 +26,7 @@ import {
 } from '../utils/aiErrorHandler.js';
 import templateManager from '../utils/aiTemplateManager.js';
 import { WORLD_BUILDER } from '../utils/systemPrompts.js';
+import { parseYamlSafely } from '../utils/securityUtils.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // サポートされているモデル設定
@@ -271,7 +272,7 @@ async function callOpenAI(
     }
   } else if (responseFormat === 'yaml') {
     try {
-      parsedContent = yaml.load(responseText);
+      parsedContent = parseYamlSafely(responseText);
     } catch {
       parsedContent = handleAIResponseParsing(responseText, true, 'yaml');
     }
@@ -343,7 +344,7 @@ async function callAnthropic(
     }
   } else if (responseFormat === 'yaml') {
     try {
-      parsedContent = yaml.load(dummyResponse);
+      parsedContent = parseYamlSafely(dummyResponse);
     } catch {
       parsedContent = handleAIResponseParsing(dummyResponse, true, 'yaml');
     }
@@ -626,7 +627,7 @@ ${request.userPrompt}`;
       }
     } else if (responseFormat === 'yaml') {
       try {
-        parsedContent = yaml.load(responseText);
+        parsedContent = parseYamlSafely(responseText);
         console.log(`[AI] YAML解析成功`);
       } catch (parseError) {
         console.error(`[AI] YAMLパースエラー:`, parseError);
