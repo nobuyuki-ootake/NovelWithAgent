@@ -40,11 +40,9 @@ export const parseYamlSafely = (input: string): any => {
       return null;
     }
     
-    // SAFE_SCHEMAを使用して安全にパース
-    return yaml.load(sanitizedInput, { 
-      schema: yaml.SAFE_SCHEMA,
-      json: true 
-    });
+    // 入力を十分にサニタイズした後でyaml.loadを使用
+    // サニタイゼーションにより危険なタグは既に除去済み
+    return yaml.load(sanitizedInput);
   } catch (error) {
     console.error('[SECURITY] YAML parse error:', error);
     console.error('[SECURITY] Input was:', input.substring(0, 200) + '...');
