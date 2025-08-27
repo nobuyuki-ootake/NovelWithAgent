@@ -24,6 +24,17 @@
     "storybook": "cd apps/frontend && pnpm run storybook",
     "build-storybook": "cd apps/frontend && pnpm run build-storybook"
   },
+  "pnpm": {
+    "overrides": {
+      "form-data": "^4.0.4",
+      "sha.js": "^2.4.12",
+      "axios": "^1.7.0",
+      "langchain": "^0.2.19",
+      "vite": "^6.3.4",
+      "brace-expansion": "^2.0.2",
+      "@eslint/plugin-kit": "^0.3.4"
+    }
+  },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
     "concurrently": "^8.2.2",
