@@ -21,9 +21,32 @@ export const sanitizeUserInput = (input: string): string => {
     .replace(/!!scala\//gi, '') // Scala tags を除去
     .replace(/!!java\//gi, '') // Java tags を除去
     .replace(/[<>]/g, '') // HTML tags を除去
-    .replace(/[\x00-\x1F\x7F]/g, '') // 制御文字を除去
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '') // 危険な制御文字を除去（改行、タブ、CRは保持）
     .replace(/\$\{[^}]*\}/g, '') // テンプレート文字列を除去
     .trim();
+};
+
+/**
+ * マークダウンのコードブロック記法を除去する関数
+ * GeminiなどのAIモデルが```yaml ... ```形式で返すレスポンスを処理
+ */
+const removeCodeBlockFormatting = (input: string): string => {
+  if (typeof input !== 'string') {
+    return '';
+  }
+  
+  // コードブロック記法のパターン（```yaml, ```yml, ```YAML など）
+  const codeBlockPattern = /^```(?:yaml|yml|YAML|YML)?\s*\n([\s\S]*?)\n?```\s*$/;
+  const match = input.match(codeBlockPattern);
+  
+  if (match) {
+    // コードブロック内の内容だけを返す
+    console.log('[SECURITY] Detected code block formatting, extracting content');
+    return match[1];
+  }
+  
+  // コードブロック記法がない場合はそのまま返す
+  return input;
 };
 
 /**
@@ -32,8 +55,11 @@ export const sanitizeUserInput = (input: string): string => {
  */
 export const parseYamlSafely = (input: string): any => {
   try {
+    // まずコードブロック記法を除去
+    const withoutCodeBlock = removeCodeBlockFormatting(input);
+    
     // 入力をサニタイズ
-    const sanitizedInput = sanitizeUserInput(input);
+    const sanitizedInput = sanitizeUserInput(withoutCodeBlock);
     
     // 空文字列の場合はnullを返す
     if (!sanitizedInput.trim()) {
@@ -51,13 +77,38 @@ export const parseYamlSafely = (input: string): any => {
 };
 
 /**
+ * JSONコードブロック記法を除去する関数
+ */
+const removeJsonCodeBlockFormatting = (input: string): string => {
+  if (typeof input !== 'string') {
+    return '';
+  }
+  
+  // JSONコードブロック記法のパターン（```json, ```JSON など）
+  const codeBlockPattern = /^```(?:json|JSON)?\s*\n([\s\S]*?)\n?```\s*$/;
+  const match = input.match(codeBlockPattern);
+  
+  if (match) {
+    // コードブロック内の内容だけを返す
+    console.log('[SECURITY] Detected JSON code block formatting, extracting content');
+    return match[1];
+  }
+  
+  // コードブロック記法がない場合はそのまま返す
+  return input;
+};
+
+/**
  * 安全なJSONパース関数
  * JSONインジェクション攻撃を防ぐ
  */
 export const parseJsonSafely = (input: string): any => {
   try {
+    // まずコードブロック記法を除去
+    const withoutCodeBlock = removeJsonCodeBlockFormatting(input);
+    
     // 入力をサニタイズ
-    const sanitizedInput = sanitizeUserInput(input);
+    const sanitizedInput = sanitizeUserInput(withoutCodeBlock);
     
     // 空文字列の場合はnullを返す
     if (!sanitizedInput.trim()) {
