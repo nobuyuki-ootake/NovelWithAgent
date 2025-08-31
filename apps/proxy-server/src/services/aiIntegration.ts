@@ -26,7 +26,7 @@ import {
 } from '../utils/aiErrorHandler.js';
 import templateManager from '../utils/aiTemplateManager.js';
 import { WORLD_BUILDER } from '../utils/systemPrompts.js';
-import { parseYamlSafely } from '../utils/securityUtils.js';
+import { parseYamlSafely, parseJsonSafely } from '../utils/securityUtils.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // サポートされているモデル設定
@@ -266,7 +266,7 @@ async function callOpenAI(
   let parsedContent;
   if (responseFormat === 'json') {
     try {
-      parsedContent = JSON.parse(responseText);
+      parsedContent = parseJsonSafely(responseText);
     } catch {
       parsedContent = handleAIResponseParsing(responseText, true, 'json');
     }
@@ -338,7 +338,7 @@ async function callAnthropic(
   let parsedContent;
   if (responseFormat === 'json') {
     try {
-      parsedContent = JSON.parse(dummyResponse);
+      parsedContent = parseJsonSafely(dummyResponse);
     } catch {
       parsedContent = handleAIResponseParsing(dummyResponse, true, 'json');
     }
@@ -618,7 +618,7 @@ ${request.userPrompt}`;
           ? match[1] || match[2] || responseText
           : responseText;
 
-        parsedContent = JSON.parse(jsonStr.trim());
+        parsedContent = parseJsonSafely(jsonStr.trim());
         console.log(`[AI] JSON解析成功: ${typeof parsedContent}, ${jsonStr}`);
       } catch (parseError) {
         console.error(`[AI] JSONパースエラー:`, parseError);
