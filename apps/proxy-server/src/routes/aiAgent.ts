@@ -533,7 +533,7 @@ router.post('/plot-development', async (req, res) => {
       userPrompt: contextualPrompt,
       options: {
         temperature: 0.7,
-        maxTokens: 2000,
+        maxTokens: 6000, // 起承転結+導入部分（4~5個のプロットアイテム）に十分なトークン数
         expectedFormat: 'text',
         responseFormat: 'text',
       },
