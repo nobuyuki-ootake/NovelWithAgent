@@ -406,13 +406,13 @@ async function callGemini(
     // 生成設定
     // gemini-2.5-proは最大65,000トークンまで出力可能
     // gemini-1.5-proは最大8,192トークンまで出力可能
-    const defaultMaxTokens = modelName === 'gemini-2.5-pro' ? 8192 : 
-                            modelName === 'gemini-1.5-pro' ? 8192 : 2000;
+    const defaultMaxTokens = modelName === 'gemini-2.5-pro' ? 8192 :
+      modelName === 'gemini-1.5-pro' ? 8192 : 2000;
     const generationConfig = {
       temperature: request.options?.temperature || 0.7,
       maxOutputTokens: request.options?.maxTokens || defaultMaxTokens,
     };
-    
+
     console.log(`[AI] 生成設定: temperature=${generationConfig.temperature}, maxOutputTokens=${generationConfig.maxOutputTokens}`);
 
     // Geminiモデルの取得
@@ -424,7 +424,7 @@ async function callGemini(
 
     // システムプロンプトとユーザープロンプトを構築
     const systemPrompt = request.systemPrompt || WORLD_BUILDER;
-    
+
     // デバッグ: システムプロンプトの確認
     if (request.requestType === 'synopsis-generation') {
       console.log('[AI] あらすじ生成リクエストのシステムプロンプト:');
@@ -465,7 +465,8 @@ async function callGemini(
         '- characterIds: イベントに関連するキャラクターのIDの配列 (省略可、文字列の配列)\n' +
         '- relatedPlaceIds: イベントに関連する場所のIDの配列 (省略可、文字列の配列)\n' +
         '- relatedPlotIds: イベントに関連するプロットのIDの配列 (省略可、文字列の配列)\n' +
-        'ユーザープロンプトで既存のキャラクター、場所、プロットの情報が提供されている場合は、それらを参考にしてください。';
+        'ユーザープロンプトで既存のキャラクター、場所、プロットの情報が提供されている場合は、それらを参考にしてください。\n' +
+        '**重要**: characterIds, relatedPlaceIds, relatedPlotIds は、提供されたコンテキスト内のIDと**完全に一致する場合のみ**含めてください。確信がない場合は空配列にしてください。';
     }
 
     // 最終的なプロンプトを組み立て
@@ -482,7 +483,7 @@ ${request.userPrompt}`;
     );
     console.log(`[AI] プロンプト長: ${combinedPrompt.length}文字`);
     console.log(`[AI] ユーザープロンプト: ${request.userPrompt.substring(0, 200)}...`);
-    
+
     // デバッグ: あらすじ生成の場合の詳細
     if (request.requestType === 'synopsis-generation') {
       console.log('[AI] あらすじ生成のcombinedPrompt詳細:');
@@ -533,7 +534,7 @@ ${request.userPrompt}`;
     // finishReasonのチェック（MAX_TOKENSは条件付きで続行）
     if (candidate.finishReason && candidate.finishReason !== 'STOP') {
       console.error('[AI] 生成が異常終了:', candidate.finishReason, candidate.safetyRatings);
-      
+
       if (candidate.finishReason === 'SAFETY') {
         throw new Error(`Gemini ${modelName}のセーフティフィルターにより生成が停止されました。プロンプトを調整してください。`);
       } else if (candidate.finishReason === 'MAX_TOKENS') {
@@ -547,9 +548,9 @@ ${request.userPrompt}`;
 
     // テキスト取得（curlテスト結果に基づいて最適化）
     let responseText = '';
-    
+
     console.log('[AI] === Gemini APIレスポンス処理開始 ===');
-    
+
     // curlテストで確認した構造: candidates[0].content.parts[0].text
     if (candidate.content?.parts?.[0]?.text) {
       responseText = candidate.content.parts[0].text;
@@ -565,7 +566,7 @@ ${request.userPrompt}`;
         console.error('[AI] result.response.text()エラー:', textError);
       }
     }
-    
+
     // デバッグ情報（空の場合のみ）
     if (responseText.length === 0) {
       console.error('[AI] 空のレスポンスの詳細情報:');
@@ -577,11 +578,11 @@ ${request.userPrompt}`;
         });
       }
     }
-    
+
     console.log('[AI] === テキスト取得完了 ===');
-    
+
     console.log(`[AI] 最終的なレスポンステキスト長: ${responseText.length}文字`);
-    
+
     // レスポンス内容の表示（簡潔化）
     if (responseText.length > 0) {
       console.log(`[AI] レスポンス内容の冒頭100文字: ${responseText.substring(0, 100)}...`);
@@ -599,10 +600,10 @@ ${request.userPrompt}`;
         candidateContent: candidate.content,
         candidateParts: candidate.content?.parts,
       });
-      
+
       // プロンプト内容を確認
       console.error('[AI] 使用されたプロンプト:', combinedPrompt);
-      
+
       // 空のレスポンスの場合、エラーとして扱う
       throw new Error(`Gemini ${modelName}から空のレスポンスが返されました。セーフティフィルターまたはモデルの制限による可能性があります。`);
     }

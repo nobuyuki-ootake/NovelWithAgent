@@ -220,7 +220,7 @@ router.post('/worldbuilding-list-generation', async (req, res) => {
         : validatedElementType === 'cultures' || validatedElementType === '文化'
           ? 'cultures'
           : validatedElementType === 'characters' ||
-              validatedElementType === 'キャラクター'
+            validatedElementType === 'キャラクター'
             ? 'characters'
             : 'places'; // デフォルトを'characters'から'places'に変更
 
@@ -316,37 +316,37 @@ router.post('/worldbuilding-list-generation', async (req, res) => {
       const dummyData =
         validatedElementType === 'places' || validatedElementType === '場所'
           ? [
+            {
+              name: '魔法の森',
+              type: 'place',
+            },
+            {
+              name: '古代都市エレミア',
+              type: 'place',
+            },
+          ]
+          : validatedElementType === 'cultures' ||
+            validatedElementType === '文化'
+            ? [
               {
-                name: '魔法の森',
-                type: 'place',
+                name: '空翔ける民',
+                type: 'culture',
               },
               {
-                name: '古代都市エレミア',
-                type: 'place',
+                name: '深緑の守護者',
+                type: 'culture',
               },
             ]
-          : validatedElementType === 'cultures' ||
-              validatedElementType === '文化'
-            ? [
-                {
-                  name: '空翔ける民',
-                  type: 'culture',
-                },
-                {
-                  name: '深緑の守護者',
-                  type: 'culture',
-                },
-              ]
             : [
-                {
-                  name: '魔法使いの制約',
-                  type: 'rule',
-                },
-                {
-                  name: '王国の継承法',
-                  type: 'rule',
-                },
-              ];
+              {
+                name: '魔法使いの制約',
+                type: 'rule',
+              },
+              {
+                name: '王国の継承法',
+                type: 'rule',
+              },
+            ];
 
       // ダミーデータを返す
       return res.json({
@@ -1247,21 +1247,19 @@ router.post('/character-generation', async (req, res) => {
     const systemPrompt = `あなたは小説作成のプロフェッショナルです。
 ユーザーのリクエストに基づいて、魅力的なキャラクターを生成してください。
 
-${
-  plotContext
-    ? `プロット情報:
+${plotContext
+        ? `プロット情報:
 ${plotContext}
 
 `
-    : ''
-}${
-      existingCharacterContext
+        : ''
+      }${existingCharacterContext
         ? `既存キャラクター:
 ${existingCharacterContext}
 
 `
         : ''
-    }キャラクターの詳細情報を以下の形式で提供してください：
+      }キャラクターの詳細情報を以下の形式で提供してください：
 
 【キャラクター名】
 名前: [キャラクター名]
@@ -1413,21 +1411,19 @@ router.post('/character-list-generation', async (req, res) => {
     const systemPrompt = `あなたは小説作成のプロフェッショナルです。
 ユーザーのリクエストに基づいて、物語に必要なキャラクターのリストを生成してください。
 
-${
-  plotContext
-    ? `プロット情報:
+${plotContext
+        ? `プロット情報:
 ${plotContext}
 
 `
-    : ''
-}${
-      existingCharacterContext
+        : ''
+      }${existingCharacterContext
         ? `既存キャラクター:
 ${existingCharacterContext}
 
 `
         : ''
-    }以下のYAML形式で、3-5人のキャラクターを提案してください：
+      }以下のYAML形式で、3-5人のキャラクターを提案してください：
 
 ---
 - name: "キャラクター名"
@@ -1546,6 +1542,97 @@ ${existingCharacterContext}
       message:
         error.message ||
         'キャラクターリスト生成中に予期しないエラーが発生しました',
+    });
+  }
+});
+
+/**
+ * タイムラインイベント生成エンドポイント
+ * 物語のタイムラインに追加するイベントのアイデアを生成します
+ */
+router.post('/timeline-event-generation', async (req, res) => {
+  try {
+    const { userPrompt, context, model } = req.body;
+    const format = req.body.format || 'json';
+
+    console.log(`[API] タイムラインイベント生成リクエスト: ${userPrompt?.slice(0, 50)}...`);
+
+    // コンテキスト情報の展開とフォーマット
+    const characters = context?.characters || [];
+    const places = context?.places || [];
+    const allPlots = context?.allPlots || [];
+
+    // プロンプトに付加するコンテキスト情報の構築
+    let contextPrompt = '';
+
+    if (allPlots.length > 0) {
+      contextPrompt += '\n\n【関連プロット情報】\n';
+      allPlots.forEach((plot: any) => {
+        contextPrompt += `- ID: ${plot.id}\n  タイトル: ${plot.title}\n  内容: ${plot.description}\n`;
+      });
+    }
+
+    if (characters.length > 0) {
+      contextPrompt += '\n\n【登場キャラクター情報】\n';
+      characters.forEach((char: any) => {
+        contextPrompt += `- ID: ${char.id}\n  名前: ${char.name}\n  概要: ${char.description}\n`;
+      });
+    }
+
+    if (places.length > 0) {
+      contextPrompt += '\n\n【主要な場所情報】\n';
+      places.forEach((place: any) => {
+        contextPrompt += `- ID: ${place.id}\n  名前: ${place.name}\n  概要: ${place.description}\n`;
+      });
+    }
+
+    // 拡張されたユーザープロンプト
+    const enhancedUserPrompt = `${userPrompt}${contextPrompt}`;
+
+    // AIリクエストを作成
+    const aiRequest: StandardAIRequest = {
+      requestType: 'timeline-event-generation',
+      model: model || 'gemini-2.5-pro',
+      systemPrompt: 'あなたは小説のプロットとタイムライン構成の専門家です。ユーザーの指示に従って、物語のタイムラインイベントを考案してください。',
+      userPrompt: enhancedUserPrompt,
+      context: context,
+      options: {
+        temperature: 0.7,
+        maxTokens: 8000,
+        expectedFormat: 'json',
+        responseFormat: 'json',
+      },
+    };
+
+    // AIリクエストを実行
+    console.log(`[API] AIリクエスト実行: ${aiRequest.requestType}`);
+    const aiResponse = await processAIRequest(aiRequest);
+
+    if (aiResponse.status === 'error') {
+      console.error('[API] AIリクエスト失敗:', aiResponse.error);
+      return res.status(500).json({
+        status: 'error',
+        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
+        error: aiResponse.error,
+      });
+    }
+
+    // 成功レスポンス
+    return res.json({
+      status: 'success',
+      content: aiResponse.content,
+      rawContent: aiResponse.rawContent,
+      metadata: {
+        model: aiResponse.debug?.model,
+        processingTime: aiResponse.debug?.processingTime,
+        requestType: aiRequest.requestType,
+      },
+    });
+  } catch (error: any) {
+    console.error('[API] タイムラインイベント生成エラー:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || '処理中に予期しないエラーが発生しました',
     });
   }
 });
