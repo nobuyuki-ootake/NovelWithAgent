@@ -803,61 +803,7 @@ router.post('/plot-advice', async (req, res) => {
   }
 });
 
-/**
- * タイムラインイベント生成エンドポイント
- */
-router.post('/timeline-event-generation', async (req, res) => {
-  try {
-    const { userPrompt, context, model, requestType } =
-      req.body as StandardAIRequest;
-    console.log(`[API] タイムラインイベント生成リクエスト`);
 
-    const aiRequest: StandardAIRequest = {
-      requestType: requestType || 'timeline-event-generation',
-      model: model || 'gemini-2.5-pro',
-      systemPrompt:
-        'あなたは物語のタイムラインに沿った出来事を考案する専門家です。',
-      userPrompt: userPrompt,
-      context: context,
-      options: {
-        temperature: 0.8,
-        maxTokens: 2000,
-        responseFormat: 'json',
-      },
-    };
-
-    const aiResponse = await processAIRequest(aiRequest);
-
-    if (aiResponse.status === 'error') {
-      console.error(
-        '[API] タイムラインイベントAIリクエスト失敗:',
-        aiResponse.error,
-      );
-      return res.status(500).json({
-        status: 'error',
-        message: aiResponse.error?.message || 'AI処理中にエラーが発生しました',
-        error: aiResponse.error,
-      });
-    }
-
-    res.json({
-      status: 'success',
-      content: aiResponse.content,
-      rawContent: aiResponse.rawContent,
-      metadata: {
-        model: aiRequest.model,
-        processingTime: aiResponse.debug?.processingTime,
-      },
-    });
-  } catch (error) {
-    console.error('[API] タイムラインイベント生成エラー:', error);
-    res.status(500).json({
-      status: 'error',
-      error:
-        error.message || 'タイムラインイベントの生成中にエラーが発生しました',
-    });
-  }
-});
 
 /**
  * 章の本文生成エンドポイント
