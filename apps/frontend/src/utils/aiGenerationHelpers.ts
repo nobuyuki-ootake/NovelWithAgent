@@ -3,8 +3,6 @@ import {
   PlotElement,
   Character,
   TimelineEventSeed,
-  StandardAIRequest,
-  StandardAIResponse,
 } from "@novel-ai-assistant/types";
 import axios from "axios";
 
