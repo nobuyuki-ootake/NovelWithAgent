@@ -350,13 +350,13 @@ export const useWorldBuildingAI = () => {
 
 プロット情報:
 ${plotElementsTyped
-  .map((plot) => `- ${plot.title}: ${plot.description}`)
-  .join("\n")}
+            .map((plot) => `- ${plot.title}: ${plot.description}`)
+            .join("\n")}
 
 キャラクター情報:
 ${charactersElementsTyped
-  .map((char) => `- ${char.name}: ${char.description}`)
-  .join("\n")}`;
+            .map((char) => `- ${char.name}: ${char.description}`)
+            .join("\n")}`;
 
         // 1. 世界観要素リストを生成
         setAiGenerationProgress(10);
@@ -366,7 +366,7 @@ ${charactersElementsTyped
           contextualMessage,
           plotElementsTyped,
           charactersElementsTyped,
-          "gemini-1.5-pro",
+          "gemini-2.5-pro",
           "json",
           "world-building-list-generic"
         );
@@ -424,8 +424,7 @@ ${charactersElementsTyped
           setCurrentElement(`${element.name} (${element.type}) を生成中...`);
 
           console.log(
-            `要素 ${index + 1}/${elementsList.length} 生成中: ${
-              element.name
+            `要素 ${index + 1}/${elementsList.length} 生成中: ${element.name
             } (${element.type})`
           );
 

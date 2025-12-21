@@ -46,7 +46,7 @@ const MODEL_CONFIG = {
   },
   gemini: {
     default: 'gemini-2.5-pro',
-    models: ['gemini-2.5-pro', 'gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-pro'],
+    models: ['gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-pro'],
   },
   mistral: {
     default: 'mistral-large-latest',
