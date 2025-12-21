@@ -27,7 +27,7 @@ import {
 import templateManager from '../utils/aiTemplateManager.js';
 import { WORLD_BUILDER } from '../utils/systemPrompts.js';
 import { parseYamlSafely, parseJsonSafely } from '../utils/securityUtils.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
 // サポートされているモデル設定
 const MODEL_CONFIG = {
@@ -408,18 +408,44 @@ async function callGemini(
     // gemini-1.5-proは最大8,192トークンまで出力可能
     const defaultMaxTokens = modelName === 'gemini-2.5-pro' ? 8192 :
       modelName === 'gemini-1.5-pro' ? 8192 : 2000;
-    const generationConfig = {
+    const generationConfig: any = {
       temperature: request.options?.temperature || 0.7,
       maxOutputTokens: request.options?.maxTokens || defaultMaxTokens,
     };
 
-    console.log(`[AI] 生成設定: temperature=${generationConfig.temperature}, maxOutputTokens=${generationConfig.maxOutputTokens}`);
+    // JSONモードの有効化 (gemini-1.5-pro以降で利用可能)
+    if (responseFormat === 'json' && (modelName.includes('1.5') || modelName.includes('2.5') || modelName.includes('2.0') || modelName.includes('gemini-pro'))) {
+      generationConfig.responseMimeType = 'application/json';
+    }
+
+    console.log(`[AI] 生成設定: temperature=${generationConfig.temperature}, maxOutputTokens=${generationConfig.maxOutputTokens}, responseMimeType=${generationConfig.responseMimeType}`);
+
+    // セーフティ設定（なるべくブロックされないように設定）
+    const safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+    ];
 
     // Geminiモデルの取得
     console.log(`[AI] モデル ${modelName} で実行します`);
     const geminiModel = genAI.getGenerativeModel({
       model: modelName,
       generationConfig,
+      safetySettings,
     });
 
     // システムプロンプトとユーザープロンプトを構築
