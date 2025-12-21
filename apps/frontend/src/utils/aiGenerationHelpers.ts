@@ -130,13 +130,12 @@ export const generateCharacterContent = async (
           const detailMessage = `以下のキャラクターの詳細情報を生成してください：
 
 名前: ${charInfo.name}
-役割: ${
-            charInfo.role === "protagonist"
+役割: ${charInfo.role === "protagonist"
               ? "主人公"
               : charInfo.role === "antagonist"
-              ? "敵役"
-              : "脇役"
-          }
+                ? "敵役"
+                : "脇役"
+            }
 重要度: ${charInfo.importance}
 概要: ${charInfo.description}
 
@@ -147,8 +146,8 @@ export const generateCharacterContent = async (
             charInfo.role === "protagonist"
               ? "主人公"
               : charInfo.role === "antagonist"
-              ? "敵役"
-              : "脇役",
+                ? "敵役"
+                : "脇役",
             detailMessage
           );
 
@@ -230,13 +229,12 @@ export const generateCharacterContent = async (
 
         return `【キャラクター${index + 1}】
 名前: ${char.name}
-役割: ${
-          char.role === "protagonist"
+役割: ${char.role === "protagonist"
             ? "主人公"
             : char.role === "antagonist"
-            ? "敵役"
-            : "脇役"
-        }
+              ? "敵役"
+              : "脇役"
+          }
 重要度: ${char.importance}
 概要: ${char.summary}
 
@@ -340,45 +338,28 @@ export const generateTimelineContent = async (
   try {
     console.log("タイムライン生成開始:", { message, projectData });
 
-    const worldBuilding = projectData.worldBuilding as
-      | { places?: unknown[] }
-      | undefined;
-
-    const requestPayload: StandardAIRequest = {
-      requestType: "timeline-event-generation",
-      userPrompt: message,
-      context: {
-        allPlots: projectData.plot || [],
-        characters: projectData.characters || [],
-        places: worldBuilding?.places || [],
-      },
-      options: {
-        responseFormat: "json",
-      },
-    };
-
-    const response = await axios.post<StandardAIResponse>(
-      "/api/ai-agent/timeline-event-generation",
-      requestPayload
+    const responseData = await aiAgentApi.generateTimelineEvent(
+      message,
+      projectData
     );
 
-    if (response.data.status === "success" && response.data.content) {
-      const eventSeeds = response.data.content as TimelineEventSeed[];
+    if (responseData.status === "success" && responseData.content) {
+      const eventSeeds = responseData.content as TimelineEventSeed[];
       console.log("タイムライン生成完了:", eventSeeds);
       return eventSeeds;
-    } else if (response.data.status === "error") {
+    } else if (responseData.status === "error") {
       console.error(
         "タイムライン生成エラー (APIレスポンス):",
-        response.data.error
+        responseData.error
       );
       throw new Error(
-        response.data.error?.message ||
-          "タイムライン生成中にAPIからエラーが返されました。"
+        responseData.error?.message ||
+        "タイムライン生成中にAPIからエラーが返されました。"
       );
     } else {
       console.error(
         "タイムライン生成の予期しないレスポンス形式:",
-        response.data
+        responseData
       );
       throw new Error("タイムライン生成のレスポンス形式が不正です。");
     }
@@ -387,8 +368,7 @@ export const generateTimelineContent = async (
     if (axios.isAxiosError(error) && error.response) {
       console.error("Axiosエラー詳細:", error.response.data);
       throw new Error(
-        `タイムライン生成に失敗しました: ${
-          error.response.data?.error?.message || "詳細不明"
+        `タイムライン生成に失敗しました: ${error.response.data?.error?.message || "詳細不明"
         }`
       );
     }

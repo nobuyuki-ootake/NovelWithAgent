@@ -7,6 +7,7 @@ import {
   WorldBuildingElement,
   TimelineEvent,
   StandardAIResponse,
+  StandardAIRequest,
 } from "@novel-ai-assistant/types";
 
 // APIのベースURL
@@ -59,14 +60,14 @@ axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
   console.log('Axios interceptor - Token:', token);
   console.log('Axios interceptor - URL:', config.url);
-  
+
   if (token) {
     // AxiosHeadersを使用して確実にヘッダーを設定
     config.headers = config.headers || {};
     config.headers['Authorization'] = `Bearer ${token}`;
     console.log('Axios interceptor - Authorization header set:', config.headers['Authorization']);
   }
-  
+
   return config;
 }, (error) => {
   console.error('Axios interceptor error:', error);
@@ -86,13 +87,13 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
   // Axiosエラーレスポンスの処理
   if (error instanceof AxiosError && error.response) {
     const status = error.response.status;
-    const errorData = error.response.data as { 
-      error?: { 
+    const errorData = error.response.data as {
+      error?: {
         code?: string;
         message?: string;
         details?: Record<string, unknown>;
       } | string;
-      message?: string; 
+      message?: string;
     };
 
     console.error(`${operationName} - APIエラー (${status}):`, errorData);
@@ -102,38 +103,38 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
       const errorObj = errorData.error;
       const model = errorObj.details?.model || 'Gemini';
       const suggestion = errorObj.details?.suggestion || '';
-      
+
       // 400エラー（不正なリクエスト）
       if (errorObj.code === 'INVALID_REQUEST' || errorObj.details?.errorType === 'invalid_request') {
         throw new Error(`${model}への不正なリクエストです。${suggestion}`);
       }
-      
+
       // 401エラー（認証エラー）
       if (errorObj.code === 'AUTHENTICATION_ERROR' || errorObj.details?.errorType === 'authentication_error') {
         throw new Error(`Gemini APIキーが無効または権限が不足しています。${suggestion}`);
       }
-      
+
       // 403エラー（権限エラー）
       if (errorObj.code === 'PERMISSION_DENIED' || errorObj.details?.errorType === 'permission_denied') {
         throw new Error(`${model}へのアクセス権限がありません。${suggestion}`);
       }
-      
+
       // 429エラー（クォータエラー）
       if (errorObj.code === 'QUOTA_EXCEEDED' || errorObj.details?.errorType === 'quota_exceeded') {
         const retryAfter = errorObj.details?.retryAfter || '30秒〜数分';
         throw new Error(`Gemini APIのレート制限またはクォータ制限に達しました。${retryAfter}後に再試行してください。`);
       }
-      
+
       // 500エラー（サーバー内部エラー）
       if (errorObj.code === 'GEMINI_SERVER_ERROR' || errorObj.details?.errorType === 'server_internal_error') {
         throw new Error(`${model}でサーバー内部エラーが発生しました。Google側の一時的な問題の可能性があります。${suggestion}`);
       }
-      
+
       // 504エラー（タイムアウト）
       if (errorObj.code === 'TIMEOUT_ERROR' || errorObj.details?.errorType === 'timeout') {
         throw new Error(`${model}でリクエストがタイムアウトしました。${suggestion}`);
       }
-      
+
       // その他のGemini APIエラー
       if (errorObj.code === 'GEMINI_API_ERROR') {
         const errorDetail = errorObj.message || '不明なエラーが発生しました';
@@ -158,10 +159,10 @@ const handleApiError = (error: AxiosError | Error, operationName: string) => {
       case 429:
         throw new Error("リクエスト制限に達しました。しばらく待ってから再試行してください。");
       case 500: {
-        const serverErrorMsg = typeof errorData?.error === 'string' 
-          ? errorData.error 
-          : (typeof errorData?.error === 'object' ? errorData.error.message : undefined) 
-          || errorData?.message 
+        const serverErrorMsg = typeof errorData?.error === 'string'
+          ? errorData.error
+          : (typeof errorData?.error === 'object' ? errorData.error.message : undefined)
+          || errorData?.message
           || "サーバー内部エラーが発生しました。";
         throw new Error(serverErrorMsg);
       }
@@ -566,8 +567,7 @@ export const aiAgentApi = {
         console.error("世界観要素詳細生成エラー (詳細):", error);
         if (error instanceof AxiosError && error.response) {
           throw new Error(
-            `API Error ${error.response.status}: ${
-              error.response.data?.error || error.message
+            `API Error ${error.response.status}: ${error.response.data?.error || error.message
             }`
           );
         }
@@ -732,6 +732,46 @@ export const aiAgentApi = {
     } catch (error) {
       if (error instanceof AxiosError || error instanceof Error) {
         return handleApiError(error, "プロット生成");
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * タイムラインイベント生成を行う
+   * @param message ユーザーのメッセージ
+   * @param projectData プロジェクトデータ
+   */
+  generateTimelineEvent: async (
+    message: string,
+    projectData: Record<string, unknown>
+  ) => {
+    try {
+      const worldBuilding = projectData.worldBuilding as
+        | { places?: unknown[] }
+        | undefined;
+
+      const requestPayload: StandardAIRequest = {
+        requestType: "timeline-event-generation",
+        userPrompt: message,
+        context: {
+          allPlots: projectData.plot || [],
+          characters: projectData.characters || [],
+          places: worldBuilding?.places || [],
+        },
+        options: {
+          responseFormat: "json",
+        },
+      };
+
+      const response = await axios.post(
+        `${API_BASE_URL}/timeline-event-generation`,
+        requestPayload
+      );
+      return response.data;
+    } catch (error) {
+      if (error instanceof AxiosError || error instanceof Error) {
+        return handleApiError(error, "タイムラインイベント生成");
       }
       throw error;
     }
