@@ -72,7 +72,7 @@ router.post('/worldbuilding-detail-generation', async (req, res) => {
       },
       options: {
         temperature: 0.7,
-        maxTokens: 2000,
+        maxTokens: 8192,
         expectedFormat: format === 'json' ? 'json' : 'yaml',
         responseFormat: format === 'json' ? 'json' : 'yaml',
       },
