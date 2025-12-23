@@ -209,7 +209,7 @@ export const WritingProvider: React.FC<{ children: ReactNode }> = ({
         params.selectedLocations,
         params.userInstructions,
         params.targetChapterLength || undefined,
-        "gemini-1.5-pro"
+        "gemini-2.5-pro"
       );
 
       console.log("AIからのレスポンス受信:", response);

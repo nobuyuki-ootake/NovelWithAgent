@@ -406,8 +406,7 @@ async function callGemini(
     // 生成設定
     // gemini-2.5-proは最大65,000トークンまで出力可能
     // gemini-1.5-proは最大8,192トークンまで出力可能
-    const defaultMaxTokens = modelName === 'gemini-2.5-pro' ? 8192 :
-      modelName === 'gemini-1.5-pro' ? 8192 : 2000;
+    const defaultMaxTokens = modelName === 'gemini-2.5-pro' ? 8192 : 2000;
     const generationConfig: any = {
       temperature: request.options?.temperature || 0.7,
       maxOutputTokens: request.options?.maxTokens || defaultMaxTokens,
